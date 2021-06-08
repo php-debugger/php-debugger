@@ -2,7 +2,7 @@
    +----------------------------------------------------------------------+
    | Xdebug                                                               |
    +----------------------------------------------------------------------+
-   | Copyright (c) 2002-2020 Derick Rethans                               |
+   | Copyright (c) 2002-2025 Derick Rethans                               |
    +----------------------------------------------------------------------+
    | This source file is subject to version 1.01 of the Xdebug license,   |
    | that is bundled with this package in the file LICENSE, and is        |
@@ -18,14 +18,16 @@
 #define __XDEBUG_SET_H__
 
 typedef struct _xdebug_set {
-	unsigned int size;
+	unsigned int   size;
 	unsigned char *setinfo;
+	char           resizable;
 } xdebug_set;
 
 xdebug_set *xdebug_set_create(unsigned int size);
+xdebug_set *xdebug_set_create_resizable(void);
 void xdebug_set_add(xdebug_set *set, unsigned int position);
-#define xdebug_set_in(x,y) xdebug_set_in_ex(x,y,1)
-int xdebug_set_in_ex(xdebug_set *set, unsigned int position, int noisy);
+int xdebug_set_in(xdebug_set *set, unsigned int position);
+void xdebug_set_clear(xdebug_set *set);
 void xdebug_set_free(xdebug_set *set);
 
 #endif
