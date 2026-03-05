@@ -149,10 +149,6 @@ static void function_stack_entry_dtor(void *elem)
 		e->declared_vars = NULL;
 	}
 
-	if (e->profile.call_list) {
-		xdebug_llist_destroy(e->profile.call_list, NULL);
-		e->profile.call_list = NULL;
-	}
 }
 
 int xdebug_include_or_eval_handler(XDEBUG_OPCODE_HANDLER_ARGS)
@@ -689,7 +685,7 @@ function_stack_entry *xdebug_add_stack_frame(zend_execute_data *zdata, zend_op_a
 
 	}
 
-	/* Now we have location and name, we can run the filter (for stack and tracing)*/
+	/* Now we have location and name, we can run the filter */
 	xdebug_filter_run(tmp);
 
 	return tmp;
@@ -721,7 +717,7 @@ static void xdebug_execute_user_code_begin(zend_execute_data *execute_data)
 	fse = xdebug_add_stack_frame(execute_data, op_array, XDEBUG_USER_DEFINED);
 	fse->function.internal = 0;
 
-	/* A hack to make __call work with profiles. The function *is* user defined after all. */
+	/* A hack to make __call work. The function *is* user defined after all. */
 	if (fse && xdebug_vector_element_is_valid(XG_BASE(stack), fse - 1) && fse->function.function && zend_string_equals_literal(fse->function.function, "__call")) {
 		(fse - 1)->user_defined = XDEBUG_USER_DEFINED;
 	}
@@ -904,7 +900,6 @@ static void xdebug_execute_internal_end(zend_execute_data *execute_data, zval *r
 	if (fse->soap_error_cb) {
 		zend_error_cb = fse->soap_error_cb;
 	}
-
 
 	if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)) {
 		/* Check for return breakpoints */
@@ -1505,7 +1500,7 @@ PHP_FUNCTION(xdebug_error_reporting)
 /* }}} */
 
 /* {{{ proto void xdebug_pcntl_exec(void)
-   Dummy function to stop profiling when we run pcntl_exec */
+   Dummy function for pcntl_exec interception */
 PHP_FUNCTION(xdebug_pcntl_exec)
 {
 
@@ -1514,7 +1509,7 @@ PHP_FUNCTION(xdebug_pcntl_exec)
 /* }}} */
 
 /* {{{ proto void xdebug_exit(void)
-   Dummy function to stop profiling when we run exit */
+   Dummy function for exit interception */
 PHP_FUNCTION(xdebug_exit)
 {
 	orig_exit_func(INTERNAL_FUNCTION_PARAM_PASSTHRU);

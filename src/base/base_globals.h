@@ -39,7 +39,6 @@ typedef struct _xdebug_nanotime_context {
 #endif
 } xdebug_nanotime_context;
 
-
 typedef struct _xdebug_base_globals_t {
 	xdebug_vector *stack;
 #if PHP_VERSION_ID >= 80100
@@ -78,12 +77,8 @@ typedef struct _xdebug_base_globals_t {
 #endif
 
 	/* filters */
-	zend_long     filter_type_code_coverage;
 	zend_long     filter_type_stack;
-	zend_long     filter_type_tracing;
-	xdebug_llist *filters_code_coverage;
 	xdebug_llist *filters_stack;
-	xdebug_llist *filters_tracing;
 
 	/* PHP versions */
 	const char   *php_version_compile_time;

@@ -107,13 +107,6 @@ typedef struct _xdebug_func {
 	int   internal;
 } xdebug_func;
 
-typedef struct xdebug_profile {
-	uint64_t      nanotime;
-	uint64_t      nanotime_mark;
-	long          memory;
-	long          mem_mark;
-	xdebug_llist *call_list;
-} xdebug_profile;
 
 typedef struct _function_stack_entry {
 	/* function properties */
@@ -137,32 +130,16 @@ typedef struct _function_stack_entry {
 	bool has_line_breakpoints;
 
 	/* filter properties */
-	unsigned char filtered_code_coverage;
 	unsigned char filtered_stack;
-	unsigned char filtered_tracing;
-
-	/* coverage properties */
-	bool         code_coverage_init;
-	char        *code_coverage_function_name;
-	zend_string *code_coverage_filename;
 
 	/* location properties */
 	int          lineno;
 	zend_string *filename;
 
-	/* tracing properties */
 	signed long  memory;
 	signed long  prev_memory;
 	uint64_t     nanotime;
-	bool         function_call_traced;
 
-	/* profiling properties */
-	xdebug_profile profile;
-	struct {
-		int          lineno;
-		zend_string *filename;
-		zend_string *function;
-	} profiler;
 
 	/* misc properties */
 	zend_op_array *op_array;
@@ -174,7 +151,6 @@ typedef struct _function_stack_entry {
 } function_stack_entry;
 
 function_stack_entry *xdebug_get_stack_frame(int nr);
-
 
 xdebug_hash* xdebug_declared_var_hash_from_llist(xdebug_llist *list);
 int xdebug_trigger_enabled(int setting, const char *var_name, char *var_value);
@@ -234,7 +210,7 @@ typedef struct _xdebug_library_settings_t {
 	/* Whether we should do native path mapping */
 	zend_bool         path_mapping;
 
-	/* Whether to use zlib compression for profiling and trace files, if ZLIB support
+	/* Whether to use zlib compression, if ZLIB support
 	 * is enabled */
 	zend_bool     use_compression;
 
@@ -260,12 +236,7 @@ void xdebug_library_post_deactivate(void);
 void xdebug_disable_opcache_optimizer(void);
 
 #define XDEBUG_MODE_OFF             0
-#define XDEBUG_MODE_DEVELOP      1<<0
-#define XDEBUG_MODE_COVERAGE     1<<1
 #define XDEBUG_MODE_STEP_DEBUG   1<<2
-#define XDEBUG_MODE_GCSTATS      1<<3
-#define XDEBUG_MODE_PROFILING    1<<4
-#define XDEBUG_MODE_TRACING      1<<5
 int xdebug_lib_set_mode(const char *mode);
 
 #define XDEBUG_MODE_IS_OFF() ((xdebug_global_mode == XDEBUG_MODE_OFF))

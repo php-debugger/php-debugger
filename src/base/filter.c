@@ -25,14 +25,10 @@ ZEND_EXTERN_MODULE_GLOBALS(xdebug)
 int xdebug_is_stack_frame_filtered(int filter_type, function_stack_entry *fse)
 {
 	switch (filter_type) {
-		case XDEBUG_FILTER_CODE_COVERAGE:
-			return fse->filtered_code_coverage;
 
 		case XDEBUG_FILTER_STACK:
 			return fse->filtered_stack;
 
-		case XDEBUG_FILTER_TRACING:
-			return fse->filtered_tracing;
 	}
 
 	return 0;
@@ -47,9 +43,7 @@ int xdebug_is_top_stack_frame_filtered(int filter_type)
 
 void xdebug_filter_register_constants(INIT_FUNC_ARGS)
 {
-	REGISTER_LONG_CONSTANT("XDEBUG_FILTER_CODE_COVERAGE", XDEBUG_FILTER_CODE_COVERAGE, CONST_CS | CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("XDEBUG_FILTER_STACK", XDEBUG_FILTER_STACK, CONST_CS | CONST_PERSISTENT);
-	REGISTER_LONG_CONSTANT("XDEBUG_FILTER_TRACING", XDEBUG_FILTER_TRACING, CONST_CS | CONST_PERSISTENT);
 
 	REGISTER_LONG_CONSTANT("XDEBUG_FILTER_NONE", XDEBUG_FILTER_NONE, CONST_CS | CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("XDEBUG_PATH_INCLUDE", XDEBUG_PATH_INCLUDE, CONST_CS | CONST_PERSISTENT);
@@ -102,7 +96,6 @@ static int xdebug_filter_match_namespace_exclude(function_stack_entry *fse, unsi
 	return 0;
 }
 
-
 void xdebug_filter_run_internal(function_stack_entry *fse, int group, unsigned char *filtered_flag, int type, xdebug_llist *filters)
 {
 	xdebug_llist_element *le;
@@ -115,20 +108,12 @@ void xdebug_filter_run_internal(function_stack_entry *fse, int group, unsigned c
 	switch (type) {
 		case XDEBUG_PATH_INCLUDE:
 			*filtered_flag = 1;
-			if (group == XDEBUG_FILTER_CODE_COVERAGE && fse->function.type & XFUNC_INCLUDES) {
-				tmp_fse.filename = fse->function.include_filename;
-				fse = &tmp_fse;
-			}
 
 			filter_to_run = xdebug_filter_match_path_include;
 			break;
 
 		case XDEBUG_PATH_EXCLUDE:
 			*filtered_flag = 0;
-			if (group == XDEBUG_FILTER_CODE_COVERAGE && fse->function.type & XFUNC_INCLUDES) {
-				tmp_fse.filename = fse->function.include_filename;
-				fse = &tmp_fse;
-			}
 
 			filter_to_run = xdebug_filter_match_path_exclude;
 			break;
@@ -161,18 +146,13 @@ void xdebug_filter_run_internal(function_stack_entry *fse, int group, unsigned c
 void xdebug_filter_run(function_stack_entry *fse)
 {
 	fse->filtered_stack   = 0;
-	fse->filtered_tracing = 0;
 
 	if (XG_BASE(filter_type_stack) != XDEBUG_FILTER_NONE) {
 		xdebug_filter_run_internal(fse, XDEBUG_FILTER_STACK, &fse->filtered_stack, XG_BASE(filter_type_stack), XG_BASE(filters_stack));
 	}
-	if (XG_BASE(filter_type_tracing) != XDEBUG_FILTER_NONE) {
-		xdebug_filter_run_internal(fse, XDEBUG_FILTER_TRACING, &fse->filtered_tracing, XG_BASE(filter_type_tracing), XG_BASE(filters_tracing));
-	}
 }
 
-/* {{{ proto void xdebug_set_filter(int group, int type, array filters)
-   This function configures filters for tracing and code coverage */
+/* {{{ proto void xdebug_set_filter(int group, int type, array filters) */
 PHP_FUNCTION(xdebug_set_filter)
 {
 	zend_long      filter_group;
@@ -184,45 +164,13 @@ PHP_FUNCTION(xdebug_set_filter)
 		return;
 	}
 
-	switch (filter_group) {
-		case XDEBUG_FILTER_CODE_COVERAGE:
-			if (!XDEBUG_MODE_IS(XDEBUG_MODE_COVERAGE)) {
-				xdebug_log_ex(XLOG_CHAN_BASE, XLOG_WARN, "COV-FILTER", "Can not set a filter for code coverage, because Xdebug mode does not include 'coverage'");
-				return;
-			}
-
-			filter_list = &XG_BASE(filters_code_coverage);
-			XG_BASE(filter_type_code_coverage) = XDEBUG_FILTER_NONE;
-			if (filter_type == XDEBUG_NAMESPACE_INCLUDE || filter_type == XDEBUG_NAMESPACE_EXCLUDE) {
-				php_error(E_WARNING, "The code coverage filter (XDEBUG_FILTER_CODE_COVERAGE) only supports the XDEBUG_PATH_INCLUDE, XDEBUG_PATH_EXCLUDE, and XDEBUG_FILTER_NONE filter types");
-				return;
-			}
-			break;
-
-		case XDEBUG_FILTER_STACK:
-			if (!XDEBUG_MODE_IS(XDEBUG_MODE_DEVELOP)) {
-				xdebug_log_ex(XLOG_CHAN_BASE, XLOG_WARN, "DEV-FILTER", "Can not set a stack filter, because Xdebug mode does not include 'develop'");
-				return;
-			}
-
-			filter_list = &XG_BASE(filters_stack);
-			XG_BASE(filter_type_stack) = XDEBUG_FILTER_NONE;
-			break;
-
-		case XDEBUG_FILTER_TRACING:
-			if (!XDEBUG_MODE_IS(XDEBUG_MODE_TRACING)) {
-				xdebug_log_ex(XLOG_CHAN_BASE, XLOG_WARN, "TRACE-FILTER", "Can not set a filter for tracing, because Xdebug mode does not include 'trace'");
-				return;
-			}
-
-			filter_list = &XG_BASE(filters_tracing);
-			XG_BASE(filter_type_tracing) = XDEBUG_FILTER_NONE;
-			break;
-
-		default:
-			php_error(E_WARNING, "Filter group needs to be one of XDEBUG_FILTER_CODE_COVERAGE, XDEBUG_FILTER_STACK, or XDEBUG_FILTER_TRACING");
-			return;
+	if (filter_group != XDEBUG_FILTER_STACK) {
+		php_error(E_WARNING, "Filter group must be XDEBUG_FILTER_STACK");
+		return;
 	}
+
+	filter_list = &XG_BASE(filters_stack);
+	XG_BASE(filter_type_stack) = XDEBUG_FILTER_NONE;
 
 	if (
 		filter_type == XDEBUG_PATH_INCLUDE ||
@@ -231,19 +179,7 @@ PHP_FUNCTION(xdebug_set_filter)
 		filter_type == XDEBUG_NAMESPACE_EXCLUDE ||
 		filter_type == XDEBUG_FILTER_NONE
 	) {
-		switch (filter_group) {
-			case XDEBUG_FILTER_CODE_COVERAGE:
-				XG_BASE(filter_type_code_coverage) = filter_type;
-				break;
-
-			case XDEBUG_FILTER_STACK:
-				XG_BASE(filter_type_stack) = filter_type;
-				break;
-
-			case XDEBUG_FILTER_TRACING:
-				XG_BASE(filter_type_tracing) = filter_type;
-				break;
-		}
+		XG_BASE(filter_type_stack) = filter_type;
 	} else {
 		php_error(E_WARNING, "Filter type needs to be one of XDEBUG_PATH_INCLUDE, XDEBUG_PATH_EXCLUDE, XDEBUG_NAMESPACE_INCLUDE, XDEBUG_NAMESPACE_EXCLUDE, or XDEBUG_FILTER_NONE");
 		return;
