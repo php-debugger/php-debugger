@@ -106,13 +106,13 @@ function check_reqs( $req_str )
 
 		if ( substr( $req, 0, 9 ) === '!ext-flag' )
 		{
-			$missing += (int) ( in_array( substr( $req, 10 ), xdebug_info( 'extension-flags' ) ) );
+			$missing += (int) ( in_array( substr( $req, 10 ), function_exists("xdebug_info") ? xdebug_info( "extension-flags" ) : [] ) );
 			$req = "absence of 'xdebug-" . substr( $req, 10 ) . '\' compile flag';
 		}
 
 		if ( substr( $req, 0, 8 ) === 'ext-flag' )
 		{
-			$missing += (int) ( ! in_array( substr( $req, 9 ), xdebug_info( 'extension-flags' ) ) );
+			$missing += (int) ( ! in_array( substr( $req, 9 ), function_exists("xdebug_info") ? xdebug_info( "extension-flags" ) : [] ) );
 			$req = "'xdebug-" . substr( $req, 9 ) . '\' compile flag';
 		}
 		else if ( substr( $req, 0, 3 ) === 'ext' )

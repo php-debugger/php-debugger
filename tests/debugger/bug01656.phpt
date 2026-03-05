@@ -3,15 +3,10 @@ Test for bug #1656: discover_client_host alters header if multiple values are pr
 --SKIPIF--
 <?php
 require __DIR__ . "/../utils.inc";
-if (is_stripped_debugger()) die("skip Removed feature in stripped build");
+if (is_stripped_debugger()) die("skip Log format changed in stripped build");
 ?>
 --ENV--
 I_LIKE_COOKIES=127.0.0.1, 127.0.0.2
---SKIPIF--
-<?php
-require __DIR__ . "/../utils.inc";
-if (is_stripped_debugger()) die("skip Removed feature in stripped build");
-?>
 --INI--
 xdebug.mode=debug
 xdebug.start_with_request=yes
@@ -20,11 +15,6 @@ xdebug.discover_client_host=1
 xdebug.client_port=9999
 xdebug.log=
 xdebug.log_level=10
---SKIPIF--
-<?php
-require __DIR__ . "/../utils.inc";
-if (is_stripped_debugger()) die("skip Removed feature in stripped build");
-?>
 --FILE--
 <?php
 var_dump( $_SERVER['I_LIKE_COOKIES'] );
