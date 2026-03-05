@@ -93,3 +93,8 @@ tests/ctest/ftest
 tests/ctest/fuzz-output
 tests/ctest/xdebuglib.a
 
+src/*/*/*/.libs/
+src/*/*.dep
+src/*/*.lo
+src/*/*/*.dep
+src/*/*/*.lo
