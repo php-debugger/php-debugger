@@ -1,6 +1,6 @@
 <?php
-$e = xdebug_get_headers();
+$e = array();
 xdebug_break();
-$e = xdebug_get_headers();
+$e = array();
 echo "Hi!\n";
 ?>

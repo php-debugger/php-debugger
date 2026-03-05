@@ -1,6 +1,6 @@
 <?php
-$e = xdebug_get_headers();
+$e = array();
 @trigger_error('foo');
-$e = xdebug_get_headers();
+$e = array();
 echo "Not triggered!\n";
 ?>

@@ -1,5 +1,6 @@
 #!/usr/bin/env php
 <?php
+error_reporting(E_ALL & ~E_DEPRECATED);
 /*
    +----------------------------------------------------------------------+
    | Copyright (c) The PHP Group                                          |
