@@ -4,6 +4,7 @@ Test for bug #990: DBGP: Add notification for notices, warnings and errors
 <?php
 require __DIR__ . '/../utils.inc';
 check_reqs('dbgp');
+if (is_stripped_debugger()) die('skip Known issue in stripped build');
 ?>
 --FILE--
 <?php

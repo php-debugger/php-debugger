@@ -1,7 +1,17 @@
 --TEST--
 Test for bug #2251: xdebug.log setting not picked up from XDEBUG_CONFIG
+--SKIPIF--
+<?php
+require __DIR__ . "/../utils.inc";
+if (is_stripped_debugger()) die("skip Removed feature in stripped build");
+?>
 --ENV--
 XDEBUG_CONFIG=log={TMPFILE:bug02251.log}
+--SKIPIF--
+<?php
+require __DIR__ . "/../utils.inc";
+if (is_stripped_debugger()) die("skip Removed feature in stripped build");
+?>
 --INI--
 xdebug.mode=debug,develop
 default_charset=utf-8
@@ -10,6 +20,11 @@ xdebug.client_port=9172
 xdebug.start_with_request=yes
 xdebug.log=
 xdebug.log_level=10
+--SKIPIF--
+<?php
+require __DIR__ . "/../utils.inc";
+if (is_stripped_debugger()) die("skip Removed feature in stripped build");
+?>
 --FILE--
 <?php
 require_once __DIR__ . '/../utils.inc';

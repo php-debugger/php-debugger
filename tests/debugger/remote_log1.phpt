@@ -4,6 +4,7 @@ Test for Xdebug's remote log (can not connect, no remote callback)
 <?php
 require __DIR__ . '/../utils.inc';
 check_reqs('dbgp; !win');
+if (is_stripped_debugger()) die('skip Removed feature in stripped build');
 ?>
 --INI--
 xdebug.mode=debug

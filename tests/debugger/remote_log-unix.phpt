@@ -4,6 +4,7 @@ Test for Xdebug's remote log (with unix sockets)
 <?php
 require __DIR__ . '/../utils.inc';
 check_reqs('dbgp; !win');
+if (is_stripped_debugger()) die('skip Removed feature in stripped build');
 ?>
 --ENV--
 I_LIKE_COOKIES=doesnotexist3

@@ -4,6 +4,7 @@ Test for bug #2322: Xdebug tries to open debugging connection in destructors dur
 <?php
 require __DIR__ . '/../utils.inc';
 check_reqs('dbgp');
+if (is_stripped_debugger()) die('skip Removed feature in stripped build');
 ?>
 --INI--
 xdebug.mode=debug

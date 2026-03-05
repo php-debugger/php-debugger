@@ -4,6 +4,7 @@ Test for bug #1782: Make sure we use SameSite=Lax cookies (>= PHP 7.3)
 <?php
 require __DIR__ . '/../utils.inc';
 check_reqs('PHP >= 7.3');
+if (is_stripped_debugger()) die('skip Needs develop mode');
 ?>
 --ENV--
 XDEBUG_CONFIG=idekey=testing

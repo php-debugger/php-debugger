@@ -231,4 +231,8 @@ function getTmpFile(string $filename) : string
 
 	return $tmpFile;
 }
+function is_stripped_debugger() {
+    return !function_exists("xdebug_get_headers");
+}
 ?>
+

@@ -1,5 +1,10 @@
 --TEST--
 Test for bug #1915: Debugger should only start with XDEBUG_SESSION and not XDEBUG_PROFILE
+--SKIPIF--
+<?php
+require __DIR__ . "/../utils.inc";
+if (is_stripped_debugger()) die("skip Needs profile mode");
+?>
 --ENV--
 XDEBUG_PROFILE=1
 --FILE--

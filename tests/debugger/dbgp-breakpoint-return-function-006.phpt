@@ -4,6 +4,7 @@ DBGP: return value with internal function as top frame
 <?php
 require __DIR__ . '/../utils.inc';
 check_reqs('PHP >= 7.4; dbgp');
+if (is_stripped_debugger()) die('skip Needs develop mode');
 ?>
 --FILE--
 <?php
