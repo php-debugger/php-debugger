@@ -309,12 +309,7 @@ void xdebug_print_info(void)
 		php_info_print_table_header(2, "Feature", "Enabled/Disabled");
 	}
 
-	print_feature_row("Development Helpers", XDEBUG_MODE_DEVELOP, "develop");
-	print_feature_row("Coverage", XDEBUG_MODE_COVERAGE, "code_coverage");
-	print_feature_row("GC Stats", XDEBUG_MODE_GCSTATS, "garbage_collection");
-	print_feature_row("Profiler", XDEBUG_MODE_PROFILING, "profiler");
 	print_feature_row("Step Debugger", XDEBUG_MODE_STEP_DEBUG, "remote");
-	print_feature_row("Tracing", XDEBUG_MODE_TRACING, "trace");
 
 	php_info_print_table_end();
 
@@ -357,7 +352,6 @@ void xdebug_print_info(void)
 	} else {
 		php_info_print_table_row(2, "Systemd Private Temp Directory", "not enabled");
 	}
-
 
 	php_info_print_table_end();
 }
@@ -626,41 +620,6 @@ static void print_diagnostic_log(void)
 	php_info_print_table_end();
 }
 
-static void print_profile_information(void)
-{
-	char *file_name;
-
-	if (!XDEBUG_MODE_IS(XDEBUG_MODE_PROFILING)) {
-		return;
-	}
-
-	file_name = xdebug_get_profiler_filename();
-
-	php_info_print_table_start();
-	if (!sapi_module.phpinfo_as_text) {
-		PUTS("<tr class=\"h\"><th colspan=\"2\">Profiler</th><th>Docs</th></tr>\n");
-		if (file_name) {
-			xdebug_info_printf("<tr><td class=\"e\">Profile File</td><td class=\"v\">%s%s</td><td class=\"d\"><a href=\"%sprofiler\">" DOCS_LINK_ICON "</a></td></tr>\n",
-				private_tmp_directory(file_name),
-				file_name,
-				xdebug_lib_docs_base());
-		} else {
-			xdebug_info_printf("<tr><td colspan=\"2\" class=\"d\">Profiler is not active</td><td class=\"d\"><a href=\"%sprofiler\">" DOCS_LINK_ICON "</a></td></tr>\n",
-				xdebug_lib_docs_base());
-		}
-	} else {
-		php_info_print_table_colspan_header(2, (char*) "Profiler");
-		if (file_name) {
-			if (is_using_private_tmp_directory(file_name)) {
-				php_info_print_table_row(2, "Profile File Directory", XG_BASE(private_tmp));
-			}
-			php_info_print_table_row(2, "Profile File", file_name);
-		} else {
-			PUTS("Profiler is not active\n");
-		}
-	}
-	php_info_print_table_end();
-}
 
 static void print_step_debug_information(void)
 {
@@ -780,41 +739,6 @@ static void print_step_debug_information(void)
 	php_info_print_table_end();
 }
 
-static void print_trace_information(void)
-{
-	char *file_name;
-
-	if (!XDEBUG_MODE_IS(XDEBUG_MODE_TRACING)) {
-		return;
-	}
-
-	file_name = xdebug_get_trace_filename();
-
-	php_info_print_table_start();
-	if (!sapi_module.phpinfo_as_text) {
-		PUTS("<tr class=\"h\"><th colspan=\"2\">Function Tracing</th><th>Docs</th></tr>\n");
-		if (file_name) {
-			xdebug_info_printf("<tr><td class=\"e\">Trace File</td><td class=\"v\">%s%s</td><td class=\"d\"><a href=\"%strace\">" DOCS_LINK_ICON "</a></td></tr>\n",
-				private_tmp_directory(file_name),
-				file_name,
-				xdebug_lib_docs_base());
-		} else {
-			xdebug_info_printf("<tr><td colspan=\"2\" class=\"d\">Function tracing is not active</td><td class=\"d\"><a href=\"%strace\">" DOCS_LINK_ICON "</a></td></tr>\n",
-				xdebug_lib_docs_base());
-		}
-	} else {
-		php_info_print_table_colspan_header(2, (char*) "Function Tracing");
-		if (file_name) {
-			if (is_using_private_tmp_directory(file_name)) {
-				php_info_print_table_row(2, "Trace File Directory", XG_BASE(private_tmp));
-			}
-			php_info_print_table_row(2, "Trace File", file_name);
-		} else {
-			PUTS("Function tracing is not active\n");
-		}
-	}
-	php_info_print_table_end();
-}
 
 static void xdebug_display_all_info(void)
 {
@@ -824,8 +748,6 @@ static void xdebug_display_all_info(void)
 
 	print_diagnostic_log();
 	print_step_debug_information();
-	print_profile_information();
-	print_trace_information();
 
 	xdebug_print_php_section();
 
@@ -838,23 +760,8 @@ static void info_modes_set(INTERNAL_FUNCTION_PARAMETERS)
 {
 	array_init_size(return_value, 6);
 
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_COVERAGE)) {
-		add_next_index_stringl(return_value, "coverage", 8);
-	}
 	if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)) {
 		add_next_index_stringl(return_value, "debug", 5);
-	}
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_DEVELOP)) {
-		add_next_index_stringl(return_value, "develop", 7);
-	}
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_GCSTATS)) {
-		add_next_index_stringl(return_value, "gcstats", 7);
-	}
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_PROFILING)) {
-		add_next_index_stringl(return_value, "profile", 7);
-	}
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_TRACING)) {
-		add_next_index_stringl(return_value, "trace", 5);
 	}
 }
 
@@ -873,7 +780,6 @@ static void info_extension_flags_set(INTERNAL_FUNCTION_PARAMETERS)
 	}
 #endif
 }
-
 
 PHP_FUNCTION(xdebug_info)
 {

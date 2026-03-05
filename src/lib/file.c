@@ -63,11 +63,10 @@ int xdebug_file_open(xdebug_file *file, const char *filename, const char *extens
 		FILE *tmp_file;
 		char *combined_extension;
 
-		/* Can't use profiler append with compression */
 		if (strcmp(mode, "ab") == 0) {
 			xdebug_log_ex(
 				XLOG_CHAN_CONFIG, XLOG_WARN, "ZLIB-A",
-				"Cannot append to profiling file while file compression is turned on. Falling back to creating an uncompressed file"
+				"Cannot append to file while file compression is turned on. Falling back to creating an uncompressed file"
 			);
 			goto uncompressed;
 		}

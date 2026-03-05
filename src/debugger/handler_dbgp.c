@@ -119,8 +119,6 @@ const char *xdebug_dbgp_reason_strings[4] =
 #define XDEBUG_ERROR_STACK_DEPTH_INVALID           301
 #define XDEBUG_ERROR_CONTEXT_INVALID               302 /* unused */
 
-#define XDEBUG_ERROR_PROFILING_NOT_STARTED         800
-
 #define XDEBUG_ERROR_ENCODING_NOT_SUPPORTED        900
 
 typedef struct {
@@ -148,7 +146,6 @@ static xdebug_error_entry xdebug_error_codes[24] = {
 	{ 300, "can not get property" },
 	{ 301, "stack depth invalid" },
 	{ 302, "context invalid" },
-	{ 800, "profiler not started" },
 	{ 900, "encoding not supported" },
 	{ 998, "an internal exception in the debugger" },
 	{ 999, "unknown error" },
@@ -187,7 +184,6 @@ const char *xdebug_dbgp_typemap[XDEBUG_TYPES_COUNT][3] = {
 	{"object",   "object",   NULL},
 	{"resource", "resource", NULL}
 };
-
 
 typedef struct {
 	int         value;
@@ -245,15 +241,10 @@ DBGP_FUNC(step_over);
 DBGP_FUNC(detach);
 
 /* Non standard comments */
-DBGP_FUNC(xcmd_profiler_name_get);
+
 DBGP_FUNC(xcmd_get_executable_lines);
 
-/*****************************************************************************
-** Dispatcher tables for supported debug commands
-*/
-
 static xdebug_dbgp_cmd dbgp_commands[] = {
-	/* DBGP_FUNC_ENTRY(break) */
 	DBGP_FUNC_ENTRY(breakpoint_get,    XDEBUG_DBGP_NONE)
 	DBGP_FUNC_ENTRY(breakpoint_list,   XDEBUG_DBGP_POST_MORTEM)
 	DBGP_FUNC_ENTRY(breakpoint_remove, XDEBUG_DBGP_NONE)
@@ -289,11 +280,9 @@ static xdebug_dbgp_cmd dbgp_commands[] = {
 	DBGP_STOP_FUNC_ENTRY(detach,       XDEBUG_DBGP_POST_MORTEM)
 
 	/* Non standard functions */
-	DBGP_FUNC_ENTRY(xcmd_profiler_name_get,    XDEBUG_DBGP_POST_MORTEM)
 	DBGP_FUNC_ENTRY(xcmd_get_executable_lines, XDEBUG_DBGP_NONE)
 	{ NULL, NULL, 0 }
 };
-
 
 /*****************************************************************************
 ** Path Mapping Helpers
@@ -466,7 +455,6 @@ static void send_message(xdebug_con *context, xdebug_xml_node *message)
 {
 	send_message_ex(context, message, 0);
 }
-
 
 static xdebug_xml_node* get_symbol(xdebug_str *name, xdebug_var_export_options *options)
 {
@@ -747,7 +735,6 @@ static void breakpoint_brk_info_add_resolved(xdebug_xml_node *xml, xdebug_brk_in
 	}
 }
 
-
 static void breakpoint_brk_info_add(xdebug_xml_node *xml, xdebug_brk_info *brk_info)
 {
 	xdebug_xml_add_attribute_ex(xml, "type", xdstrdup(XDEBUG_BREAKPOINT_TYPE_NAME(brk_info->brk_type)), 0, 1);
@@ -942,8 +929,6 @@ static int breakpoint_remove(int type, char *hkey)
 			RETURN_RESULT(XG_DBG(status), XG_DBG(reason), XDEBUG_ERROR_INVALID_ARGS); \
 		XDEBUG_STR_CASE_DEFAULT_END \
 	}
-
-
 
 static void breakpoint_do_action(DBGP_FUNC_PARAMETERS, int action)
 {
@@ -1326,7 +1311,6 @@ static void xdebug_send_stream(const char *name, const char *str, unsigned int s
 	return;
 }
 
-
 DBGP_FUNC(stderr)
 {
 	xdebug_xml_add_attribute(*retval, "success", "0");
@@ -1433,7 +1417,6 @@ DBGP_FUNC(detach)
 		xdebug_log_ex(XLOG_CHAN_DEBUG, XLOG_WARN, "DETACH", "Debug client detached: %s", XG_DBG(context).detached_message);
 	}
 }
-
 
 DBGP_FUNC(source)
 {
@@ -2259,7 +2242,6 @@ DBGP_FUNC(status)
 	xdebug_xml_add_attribute(*retval, "reason", xdebug_dbgp_reason_strings[XG_DBG(reason)]);
 }
 
-
 DBGP_FUNC(context_names)
 {
 	xdebug_xml_node *child;
@@ -2306,17 +2288,6 @@ DBGP_FUNC(context_get)
 	xdebug_xml_add_attribute_ex(*retval, "context", xdebug_sprintf("%d", context_id), 0, 1);
 }
 
-DBGP_FUNC(xcmd_profiler_name_get)
-{
-	char *filename = xdebug_get_profiler_filename();
-
-	if (!filename) {
-		RETURN_RESULT(XG_DBG(status), XG_DBG(reason), XDEBUG_ERROR_PROFILING_NOT_STARTED);
-	}
-
-	xdebug_xml_add_text(*retval, xdstrdup(filename));
-}
-
 DBGP_FUNC(xcmd_get_executable_lines)
 {
 	function_stack_entry *fse;
@@ -2345,7 +2316,6 @@ DBGP_FUNC(xcmd_get_executable_lines)
 	}
 	xdebug_xml_add_child(*retval, lines);
 }
-
 
 /*****************************************************************************
 ** Parsing functions
@@ -2435,7 +2405,6 @@ static int xdebug_dbgp_parse_option(xdebug_con *context, char* line, int flags, 
 
 #define FD_RL_FILE    0
 #define FD_RL_SOCKET  1
-
 
 static char* xdebug_fd_read_line_delim(int socketfd, fd_buf *context, int type, unsigned char delim, int *length)
 {
@@ -2852,7 +2821,6 @@ int xdebug_dbgp_breakpoint(xdebug_con *context, xdebug_vector *stack, xdebug_str
 	xdebug_xml_add_attribute(response, "reason", xdebug_dbgp_reason_strings[XG_DBG(reason)]);
 
 	xdebug_xml_add_child(response, message_container);
-
 
 	if (XG_DBG(context).breakpoint_include_return_value && return_value) {
 		xdebug_xml_node *return_value_container, *tmp_node;

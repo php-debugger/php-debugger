@@ -41,7 +41,6 @@ void xdebug_init_library_globals(xdebug_library_globals_t *xg)
 	xg->diagnosis_buffer = NULL;
 }
 
-
 void xdebug_library_zend_startup(void)
 {
 	xdebug_lib_zend_startup_overload_sapi_headers();
@@ -51,7 +50,6 @@ void xdebug_library_zend_shutdown(void)
 {
 	xdebug_lib_zend_shutdown_restore_sapi_headers();
 }
-
 
 void xdebug_library_minit(void)
 {
@@ -138,7 +136,6 @@ void xdebug_library_post_deactivate(void)
 	}
 }
 
-
 void xdebug_disable_opcache_optimizer(void)
 {
 	zend_string *key = zend_string_init(ZEND_STRL("opcache.optimization_level"), 1);
@@ -150,35 +147,17 @@ void xdebug_disable_opcache_optimizer(void)
 	zend_string_release(value);
 }
 
-
 static int xdebug_lib_set_mode_item(const char *mode, int len)
 {
 	if (strncmp(mode, "off", len) == 0) {
 		xdebug_global_mode |= XDEBUG_MODE_OFF;
 		return 1;
 	}
-	if (strncmp(mode, "develop", len) == 0) {
-		xdebug_global_mode |= XDEBUG_MODE_DEVELOP;
-		return 1;
-	}
-	if (strncmp(mode, "coverage", len) == 0) {
-		xdebug_global_mode |= XDEBUG_MODE_COVERAGE;
-		return 1;
-	}
 	if (strncmp(mode, "debug", len) == 0) {
 		xdebug_global_mode |= XDEBUG_MODE_STEP_DEBUG;
 		return 1;
 	}
-	if (strncmp(mode, "gcstats", len) == 0) {
-		xdebug_global_mode |= XDEBUG_MODE_GCSTATS;
-		return 1;
-	}
-	if (strncmp(mode, "profile", len) == 0) {
-		xdebug_global_mode |= XDEBUG_MODE_PROFILING;
-		return 1;
-	}
 	if (strncmp(mode, "trace", len) == 0) {
-		xdebug_global_mode |= XDEBUG_MODE_TRACING;
 		return 1;
 	}
 
@@ -291,12 +270,6 @@ int xdebug_lib_start_with_request(int for_mode)
 		return 1;
 	}
 
-	if (XG_LIB(start_with_request) == XDEBUG_START_WITH_REQUEST_DEFAULT) {
-		if (for_mode == XDEBUG_MODE_PROFILING && XDEBUG_MODE_IS(XDEBUG_MODE_PROFILING)) {
-			return 1;
-		}
-	}
-
 	return 0;
 }
 
@@ -308,7 +281,6 @@ int xdebug_lib_never_start_with_request(void)
 
 	return 0;
 }
-
 
 int xdebug_lib_get_start_upon_error(void)
 {
@@ -345,17 +317,8 @@ int xdebug_lib_start_upon_error(void)
 const char *xdebug_lib_mode_from_value(int mode)
 {
 	switch (mode) {
-		case XDEBUG_MODE_DEVELOP:
-			return "develop";
-		case XDEBUG_MODE_COVERAGE:
-			return "coverage";
 		case XDEBUG_MODE_STEP_DEBUG:
 			return "debug";
-		case XDEBUG_MODE_GCSTATS:
-			return "gcstats";
-		case XDEBUG_MODE_PROFILING:
-			return "profile";
-		case XDEBUG_MODE_TRACING:
 			return "trace";
 		default:
 			return "?";
@@ -512,11 +475,7 @@ static int trigger_enabled(int for_mode, char **found_trigger_value)
 
 	/* If not found, we fall back to the per-mode name for backwards compatibility reasons */
 	if (!trigger_value) {
-		if (XDEBUG_MODE_IS(XDEBUG_MODE_PROFILING) && (for_mode == XDEBUG_MODE_PROFILING)) {
-			trigger_name = "XDEBUG_PROFILE";
-		} else if (XDEBUG_MODE_IS(XDEBUG_MODE_TRACING) && (for_mode == XDEBUG_MODE_TRACING)) {
-			trigger_name = "XDEBUG_TRACE";
-		} else if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG) && (for_mode == XDEBUG_MODE_STEP_DEBUG)) {
+		if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG) && (for_mode == XDEBUG_MODE_STEP_DEBUG)) {
 			trigger_name = "XDEBUG_SESSION";
 		}
 
@@ -561,8 +520,7 @@ static int is_mode_trigger_and_enabled(int for_mode, int force_trigger, char **f
 
 	if (XG_LIB(start_with_request) == XDEBUG_START_WITH_REQUEST_DEFAULT) {
 		if (
-			XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG) ||
-			XDEBUG_MODE_IS(XDEBUG_MODE_TRACING)
+			XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)
 		) {
 			return force_trigger || trigger_enabled(for_mode, found_trigger_value);
 		}
@@ -585,7 +543,6 @@ int xdebug_lib_start_if_mode_is_trigger(int for_mode)
 {
 	return is_mode_trigger_and_enabled(for_mode, 1, NULL);
 }
-
 
 function_stack_entry *xdebug_get_stack_frame(int nr)
 {

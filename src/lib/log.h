@@ -38,10 +38,8 @@
 #define XLOG_CHAN_CONFIG   0
 #define XLOG_CHAN_LOGFILE  1
 #define XLOG_CHAN_DEBUG    2
-#define XLOG_CHAN_GCSTATS  3
 #define XLOG_CHAN_PROFILE  4
 #define XLOG_CHAN_TRACE    5
-#define XLOG_CHAN_COVERAGE 6
 #define XLOG_CHAN_BASE     7
 #define XLOG_CHAN_PATHMAP  8
 

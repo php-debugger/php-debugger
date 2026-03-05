@@ -101,7 +101,6 @@ HashTable *xdebug_objdebug_pp(zval **zval_pp, int flags)
 		void        *original_trace_context;
 		zend_object *orig_exception;
 
-		xdebug_tracing_save_trace_context(&original_trace_context);
 		XG_BASE(in_debug_info) = 1;
 		orig_exception = EG(exception);
 		EG(exception) = NULL;
@@ -112,7 +111,6 @@ HashTable *xdebug_objdebug_pp(zval **zval_pp, int flags)
 		}
 
 		XG_BASE(in_debug_info) = 0;
-		xdebug_tracing_restore_trace_context(original_trace_context);
 		EG(exception) = orig_exception;
 
 		return tmp;
@@ -216,7 +214,6 @@ zval *xdebug_get_zval(zend_execute_data *zdata, int node_type, const znode_op *n
 {
 	return xdebug_get_zval_with_opline(zdata, zdata->opline, node_type, node);
 }
-
 
 /*****************************************************************************
 ** PHP Variable related utility functions
@@ -1038,7 +1035,6 @@ void xdebug_add_variable_attributes(xdebug_str *str, zval *struc, zend_bool html
 		xdebug_str_add_literal(str, ")=");
 	}
 }
-
 
 /*****************************************************************************
 ** XML encoding function
