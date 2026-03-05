@@ -2,12 +2,10 @@ dnl config.m4 for extension Xdebug
 
 PHP_ARG_ENABLE(xdebug, whether to enable Xdebug support,
 [  --enable-xdebug         Enable Xdebug support])
-
 PHP_ARG_ENABLE(xdebug-dev, whether to enable Xdebug developer build flags,
 [  --enable-xdebug-dev              Xdebug: Enable developer flags],, no)
 
-PHP_ARG_WITH(xdebug-compression, [whether to compress profiler files (requires zlib)],
-[  --without-xdebug-compression     Xdebug: Disable compression through zlib],yes,no)
+
 
 m4_include([m4/pkg.m4])
 m4_include([m4/clocks.m4])
@@ -51,14 +49,7 @@ if test "$PHP_XDEBUG" != "no"; then
 
   PHP_CHECK_LIBRARY(m, cos, [ PHP_ADD_LIBRARY(m,, XDEBUG_SHARED_LIBADD) ])
 
-  if test "$PHP_XDEBUG_COMPRESSION" != "no"; then
-    PKG_CHECK_MODULES([ZLIB], [zlib >= 1.2.9],[
-      PHP_EVAL_LIBLINE($ZLIB_LIBS, XDEBUG_SHARED_LIBADD)
-      PHP_EVAL_INCLINE($ZLIB_CFLAGS)
 
-      AC_DEFINE(HAVE_XDEBUG_ZLIB,1,[ do we have zlib support compiled in? ])
-    ],[ ])
-  fi
 
   CPPFLAGS=$old_CPPFLAGS
 
@@ -111,23 +102,13 @@ if test "$PHP_XDEBUG" != "no"; then
   XDEBUG_LIB_SOURCES="src/lib/usefulstuff.c src/lib/cmd_parser.c src/lib/compat.c src/lib/crc32.c src/lib/file.c src/lib/hash.c src/lib/headers.c src/lib/lib.c src/lib/llist.c src/lib/log.c src/lib/normalize_path.c src/lib/set.c src/lib/str.c src/lib/timing.c src/lib/trim.c src/lib/var.c src/lib/var_export_html.c src/lib/var_export_line.c src/lib/var_export_text.c src/lib/var_export_xml.c src/lib/xdebug_strndup.c src/lib/xml.c"
   XDEBUG_LIB_MAPS_SOURCES="src/lib/maps/maps.c src/lib/maps/maps_private.c src/lib/maps/parser.c"
 
-  XDEBUG_COVERAGE_SOURCES="src/coverage/branch_info.c src/coverage/code_coverage.c"
   XDEBUG_DEBUGGER_SOURCES="src/debugger/com.c src/debugger/debugger.c src/debugger/handler_dbgp.c src/debugger/handlers.c src/debugger/ip_info.c"
-  XDEBUG_DEVELOP_SOURCES="src/develop/develop.c src/develop/monitor.c src/develop/php_functions.c src/develop/stack.c src/develop/superglobals.c"
-  XDEBUG_GCSTATS_SOURCES="src/gcstats/gc_stats.c"
-  XDEBUG_PROFILER_SOURCES="src/profiler/profiler.c"
-  XDEBUG_TRACING_SOURCES="src/tracing/trace_computerized.c src/tracing/trace_flamegraph.c src/tracing/trace_html.c src/tracing/trace_textual.c src/tracing/tracing.c"
 
-  PHP_NEW_EXTENSION(xdebug, xdebug.c $XDEBUG_BASE_SOURCES $XDEBUG_LIB_SOURCES $XDEBUG_LIB_MAPS_SOURCES $XDEBUG_COVERAGE_SOURCES $XDEBUG_DEBUGGER_SOURCES $XDEBUG_DEVELOP_SOURCES $XDEBUG_GCSTATS_SOURCES $XDEBUG_PROFILER_SOURCES $XDEBUG_TRACING_SOURCES, $ext_shared,,$PHP_XDEBUG_CFLAGS,,yes)
+  PHP_NEW_EXTENSION(xdebug, xdebug.c $XDEBUG_BASE_SOURCES $XDEBUG_LIB_SOURCES $XDEBUG_LIB_MAPS_SOURCES $XDEBUG_DEBUGGER_SOURCES, $ext_shared,,$PHP_XDEBUG_CFLAGS,,yes)
   PHP_ADD_BUILD_DIR(PHP_EXT_BUILDDIR(xdebug)[/src/base])
   PHP_ADD_BUILD_DIR(PHP_EXT_BUILDDIR(xdebug)[/src/lib])
   PHP_ADD_BUILD_DIR(PHP_EXT_BUILDDIR(xdebug)[/src/lib/maps])
-  PHP_ADD_BUILD_DIR(PHP_EXT_BUILDDIR(xdebug)[/src/coverage])
   PHP_ADD_BUILD_DIR(PHP_EXT_BUILDDIR(xdebug)[/src/debugger])
-  PHP_ADD_BUILD_DIR(PHP_EXT_BUILDDIR(xdebug)[/src/develop])
-  PHP_ADD_BUILD_DIR(PHP_EXT_BUILDDIR(xdebug)[/src/gcstats])
-  PHP_ADD_BUILD_DIR(PHP_EXT_BUILDDIR(xdebug)[/src/profiler])
-  PHP_ADD_BUILD_DIR(PHP_EXT_BUILDDIR(xdebug)[/src/tracing])
   PHP_SUBST(XDEBUG_SHARED_LIBADD)
   PHP_ADD_MAKEFILE_FRAGMENT
 

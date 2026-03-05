@@ -38,8 +38,6 @@
 #include "handler_dbgp.h"
 #include "debugger_private.h"
 
-#include "coverage/code_coverage.h"
-#include "develop/stack.h"
 #include "lib/compat.h"
 #include "lib/hash.h"
 #include "lib/llist.h"

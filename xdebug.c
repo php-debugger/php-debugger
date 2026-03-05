@@ -52,12 +52,7 @@
 # include "base/ctrl_socket.h"
 #endif
 #include "base/filter.h"
-#include "coverage/code_coverage.h"
-#include "develop/monitor.h"
-#include "develop/stack.h"
-#include "develop/superglobals.h"
 #include "debugger/com.h"
-#include "gcstats/gc_stats.h"
 #include "lib/usefulstuff.h"
 #include "lib/lib.h"
 #include "lib/llist.h"
@@ -66,8 +61,6 @@
 #include "lib/var_export_html.h"
 #include "lib/var_export_line.h"
 #include "lib/var_export_text.h"
-#include "profiler/profiler.h"
-#include "tracing/tracing.h"
 
 static zend_result (*xdebug_orig_post_startup_cb)(void);
 static zend_result xdebug_post_startup(void);
@@ -101,46 +94,6 @@ ZEND_GET_MODULE(xdebug)
 ZEND_TSRMLS_CACHE_DEFINE();
 # endif
 #endif
-
-static PHP_INI_MH(OnUpdateServer)
-{
-	DUMP_TOK(server);
-}
-
-static PHP_INI_MH(OnUpdateGet)
-{
-	DUMP_TOK(get);
-}
-
-static PHP_INI_MH(OnUpdatePost)
-{
-	DUMP_TOK(post);
-}
-
-static PHP_INI_MH(OnUpdateCookie)
-{
-	DUMP_TOK(cookie);
-}
-
-static PHP_INI_MH(OnUpdateFiles)
-{
-	DUMP_TOK(files);
-}
-
-static PHP_INI_MH(OnUpdateEnv)
-{
-	DUMP_TOK(env);
-}
-
-static PHP_INI_MH(OnUpdateRequest)
-{
-	DUMP_TOK(request);
-}
-
-static PHP_INI_MH(OnUpdateSession)
-{
-	DUMP_TOK(session);
-}
 
 static PHP_INI_MH(OnUpdateStartWithRequest)
 {
@@ -241,7 +194,6 @@ ZEND_INI_DISP(display_start_with_request)
 	}
 }
 
-
 static const char *xdebug_start_upon_error_types[4] = { "", "default", "yes", "no" };
 
 ZEND_INI_DISP(display_start_upon_error)
@@ -262,7 +214,6 @@ ZEND_INI_DISP(display_start_upon_error)
 	}
 }
 
-
 #if HAVE_XDEBUG_ZLIB
 # define USE_COMPRESSION_DEFAULT "1"
 #else
@@ -271,7 +222,7 @@ ZEND_INI_DISP(display_start_upon_error)
 
 PHP_INI_BEGIN()
 	/* Library settings */
-	STD_PHP_INI_ENTRY("xdebug.mode",               "develop",               PHP_INI_SYSTEM,                OnUpdateString, settings.library.requested_mode,   zend_xdebug_globals, xdebug_globals)
+	STD_PHP_INI_ENTRY("xdebug.mode",               "debug",               PHP_INI_SYSTEM,                OnUpdateString, settings.library.requested_mode,   zend_xdebug_globals, xdebug_globals)
 	PHP_INI_ENTRY_EX( "xdebug.start_with_request", "default",               PHP_INI_SYSTEM|PHP_INI_PERDIR, OnUpdateStartWithRequest, display_start_with_request)
 	PHP_INI_ENTRY_EX( "xdebug.start_upon_error",   "default",               PHP_INI_SYSTEM|PHP_INI_PERDIR, OnUpdateStartUponError,   display_start_upon_error)
 	STD_PHP_INI_ENTRY("xdebug.output_dir",         XDEBUG_TEMP_DIR,         PHP_INI_ALL,                   OnUpdateString, settings.library.output_dir,       zend_xdebug_globals, xdebug_globals)
@@ -295,33 +246,6 @@ PHP_INI_BEGIN()
 	/* Base settings */
 	STD_PHP_INI_ENTRY("xdebug.max_nesting_level", "512",                PHP_INI_ALL,    OnUpdateLong,   settings.base.max_nesting_level, zend_xdebug_globals, xdebug_globals)
 
-	/* Develop settings */
-	STD_PHP_INI_ENTRY("xdebug.cli_color",         "0",                  PHP_INI_ALL,    OnUpdateLong,   settings.develop.cli_color,         zend_xdebug_globals, xdebug_globals)
-	STD_PHP_INI_BOOLEAN("xdebug.force_display_errors", "0",             PHP_INI_SYSTEM, OnUpdateBool,   settings.develop.force_display_errors, zend_xdebug_globals, xdebug_globals)
-	STD_PHP_INI_ENTRY("xdebug.force_error_reporting", "0",              PHP_INI_SYSTEM, OnUpdateLong,   settings.develop.force_error_reporting, zend_xdebug_globals, xdebug_globals)
-	STD_PHP_INI_ENTRY("xdebug.halt_level",        "0",                  PHP_INI_ALL,    OnUpdateLong,   settings.develop.halt_level,        zend_xdebug_globals, xdebug_globals)
-	STD_PHP_INI_ENTRY("xdebug.max_stack_frames",  "-1",                 PHP_INI_ALL,    OnUpdateLong,   settings.develop.max_stack_frames,  zend_xdebug_globals, xdebug_globals)
-	STD_PHP_INI_BOOLEAN("xdebug.show_error_trace",  "0",                PHP_INI_ALL,    OnUpdateBool,   settings.develop.show_error_trace,  zend_xdebug_globals, xdebug_globals)
-	STD_PHP_INI_BOOLEAN("xdebug.show_exception_trace",  "0",            PHP_INI_ALL,    OnUpdateBool,   settings.develop.show_ex_trace,     zend_xdebug_globals, xdebug_globals)
-	STD_PHP_INI_BOOLEAN("xdebug.show_local_vars", "0",                  PHP_INI_ALL,    OnUpdateBool,   settings.develop.show_local_vars,   zend_xdebug_globals, xdebug_globals)
-
-	/* Dump superglobals settings */
-	PHP_INI_ENTRY("xdebug.dump.COOKIE",           NULL,                 PHP_INI_ALL,    OnUpdateCookie)
-	PHP_INI_ENTRY("xdebug.dump.ENV",              NULL,                 PHP_INI_ALL,    OnUpdateEnv)
-	PHP_INI_ENTRY("xdebug.dump.FILES",            NULL,                 PHP_INI_ALL,    OnUpdateFiles)
-	PHP_INI_ENTRY("xdebug.dump.GET",              NULL,                 PHP_INI_ALL,    OnUpdateGet)
-	PHP_INI_ENTRY("xdebug.dump.POST",             NULL,                 PHP_INI_ALL,    OnUpdatePost)
-	PHP_INI_ENTRY("xdebug.dump.REQUEST",          NULL,                 PHP_INI_ALL,    OnUpdateRequest)
-	PHP_INI_ENTRY("xdebug.dump.SERVER",           NULL,                 PHP_INI_ALL,    OnUpdateServer)
-	PHP_INI_ENTRY("xdebug.dump.SESSION",          NULL,                 PHP_INI_ALL,    OnUpdateSession)
-	STD_PHP_INI_BOOLEAN("xdebug.dump_globals",    "1",                  PHP_INI_ALL,    OnUpdateBool,   settings.develop.dump_globals,      zend_xdebug_globals, xdebug_globals)
-	STD_PHP_INI_BOOLEAN("xdebug.dump_once",       "1",                  PHP_INI_ALL,    OnUpdateBool,   settings.develop.dump_once,         zend_xdebug_globals, xdebug_globals)
-	STD_PHP_INI_BOOLEAN("xdebug.dump_undefined",  "0",                  PHP_INI_ALL,    OnUpdateBool,   settings.develop.dump_undefined,    zend_xdebug_globals, xdebug_globals)
-
-	/* Profiler settings */
-	STD_PHP_INI_ENTRY("xdebug.profiler_output_name",      "cachegrind.out.%p",  PHP_INI_SYSTEM|PHP_INI_PERDIR, OnUpdateString, settings.profiler.profiler_output_name,          zend_xdebug_globals, xdebug_globals)
-	STD_PHP_INI_BOOLEAN("xdebug.profiler_append",         "0",                  PHP_INI_SYSTEM|PHP_INI_PERDIR, OnUpdateBool,   settings.profiler.profiler_append,               zend_xdebug_globals, xdebug_globals)
-
 	/* Xdebug Cloud */
 	STD_PHP_INI_ENTRY("xdebug.cloud_id", "", PHP_INI_SYSTEM, OnUpdateString, settings.debugger.cloud_id, zend_xdebug_globals, xdebug_globals)
 
@@ -333,19 +257,6 @@ PHP_INI_BEGIN()
 	STD_PHP_INI_ENTRY("xdebug.idekey",                  "",                                 PHP_INI_ALL, OnUpdateString, settings.debugger.ide_key_setting,         zend_xdebug_globals, xdebug_globals)
 	STD_PHP_INI_ENTRY("xdebug.connect_timeout_ms",      "200",                              PHP_INI_ALL, OnUpdateLong,   settings.debugger.connect_timeout_ms,      zend_xdebug_globals, xdebug_globals)
 
-	/* Scream support */
-	STD_PHP_INI_BOOLEAN("xdebug.scream",                 "0",           PHP_INI_ALL,    OnUpdateBool,   settings.develop.do_scream,            zend_xdebug_globals, xdebug_globals)
-
-	/* GC Stats support */
-	STD_PHP_INI_ENTRY("xdebug.gc_stats_output_name", "gcstats.%p",      PHP_INI_SYSTEM|PHP_INI_PERDIR, OnUpdateString, settings.gc_stats.output_name, zend_xdebug_globals, xdebug_globals)
-
-	/* Tracing settings */
-	STD_PHP_INI_ENTRY("xdebug.trace_output_name", "trace.%c",           PHP_INI_ALL,    OnUpdateString, settings.tracing.trace_output_name, zend_xdebug_globals, xdebug_globals)
-	STD_PHP_INI_ENTRY("xdebug.trace_format",      "0",                  PHP_INI_ALL,    OnUpdateLong,   settings.tracing.trace_format,      zend_xdebug_globals, xdebug_globals)
-	STD_PHP_INI_ENTRY("xdebug.trace_options",     "0",                  PHP_INI_ALL,    OnUpdateLong,   settings.tracing.trace_options,     zend_xdebug_globals, xdebug_globals)
-	STD_PHP_INI_BOOLEAN("xdebug.collect_assignments", "0",              PHP_INI_ALL,    OnUpdateBool,   settings.tracing.collect_assignments, zend_xdebug_globals, xdebug_globals)
-	STD_PHP_INI_BOOLEAN("xdebug.collect_params", "1",                   PHP_INI_ALL,    OnUpdateBool,   settings.tracing.collect_params,    zend_xdebug_globals, xdebug_globals)
-	STD_PHP_INI_BOOLEAN("xdebug.collect_return",  "0",                  PHP_INI_ALL,    OnUpdateBool,   settings.tracing.collect_return,    zend_xdebug_globals, xdebug_globals)
 PHP_INI_END()
 
 static void xdebug_init_base_globals(xdebug_base_globals_t *xg)
@@ -359,19 +270,14 @@ static void xdebug_init_base_globals(xdebug_base_globals_t *xg)
 	xg->error_reporting_overridden = 0;
 	xg->statement_handler_enabled  = false;
 
-	xg->filter_type_code_coverage = XDEBUG_FILTER_NONE;
 	xg->filter_type_stack         = XDEBUG_FILTER_NONE;
-	xg->filter_type_tracing       = XDEBUG_FILTER_NONE;
-	xg->filters_code_coverage     = NULL;
 	xg->filters_stack             = NULL;
-	xg->filters_tracing           = NULL;
 
 	xg->php_version_compile_time = PHP_VERSION;
 	xg->php_version_run_time     = zend_get_module_version("standard");
 
 	xdebug_nanotime_init(xg);
 }
-
 
 static void php_xdebug_init_globals(zend_xdebug_globals *xg)
 {
@@ -380,33 +286,14 @@ static void php_xdebug_init_globals(zend_xdebug_globals *xg)
 	xdebug_init_library_globals(&xg->globals.library);
 	xdebug_init_base_globals(&xg->globals.base);
 
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_COVERAGE)) {
-		xdebug_init_coverage_globals(&xg->globals.coverage);
-	}
 	if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)) {
 		xdebug_init_debugger_globals(&xg->globals.debugger);
-	}
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_DEVELOP)) {
-		xdebug_init_develop_globals(&xg->globals.develop);
-	}
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_PROFILING)) {
-		xdebug_init_profiler_globals(&xg->globals.profiler);
-	}
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_GCSTATS)) {
-		xdebug_init_gc_stats_globals(&xg->globals.gc_stats);
-	}
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_TRACING)) {
-		xdebug_init_tracing_globals(&xg->globals.tracing);
 	}
 }
 
 static void php_xdebug_shutdown_globals(zend_xdebug_globals *xg)
 {
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_DEVELOP)) {
-		xdebug_deinit_develop_globals(&xg->globals.develop);
-	}
 }
-
 
 static void xdebug_env_config(void)
 {
@@ -456,9 +343,6 @@ static void xdebug_env_config(void)
 		if (strcasecmp(envvar, "output_dir") == 0) {
 			name = "xdebug.output_dir";
 		} else
-		if (strcasecmp(envvar, "profiler_output_name") == 0) {
-			name = "xdebug.profiler_output_name";
-		} else
 		if (strcasecmp(envvar, "log") == 0) {
 			name = "xdebug.log";
 		} else
@@ -498,13 +382,11 @@ PHP_MINIT_FUNCTION(xdebug)
 	ZEND_INIT_MODULE_GLOBALS(xdebug, php_xdebug_init_globals, php_xdebug_shutdown_globals);
 	REGISTER_INI_ENTRIES();
 
-	xdebug_coverage_register_constants(INIT_FUNC_ARGS_PASSTHRU);
 	xdebug_filter_register_constants(INIT_FUNC_ARGS_PASSTHRU);
-	xdebug_tracing_register_constants(INIT_FUNC_ARGS_PASSTHRU);
 
 	/* Locking in mode as it currently is */
 	if (!xdebug_lib_set_mode(XG(settings.library.requested_mode))) {
-		xdebug_lib_set_mode("develop");
+		xdebug_lib_set_mode("debug");
 	}
 
 	if (XDEBUG_MODE_IS_OFF()) {
@@ -517,28 +399,13 @@ PHP_MINIT_FUNCTION(xdebug)
 	if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)) {
 		xdebug_debugger_minit();
 	}
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_DEVELOP)) {
-		xdebug_develop_minit(INIT_FUNC_ARGS_PASSTHRU);
-	}
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_GCSTATS)) {
-		xdebug_gcstats_minit();
-	}
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_PROFILING)) {
-		xdebug_profiler_minit();
-	}
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_TRACING)) {
-		xdebug_tracing_minit(INIT_FUNC_ARGS_PASSTHRU);
-	}
 
 	/* Overload the "include_or_eval" opcode if the mode is 'debug' or 'trace' */
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG) || XDEBUG_MODE_IS(XDEBUG_MODE_TRACING)) {
+	if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)) {
 		xdebug_register_with_opcode_multi_handler(ZEND_INCLUDE_OR_EVAL, xdebug_include_or_eval_handler);
 	}
 
 	/* Coverage must be last, as it has a catch all override for opcodes */
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_COVERAGE)) {
-		xdebug_coverage_minit(INIT_FUNC_ARGS_PASSTHRU);
-	}
 
 	if (zend_xdebug_initialised == 0) {
 		zend_error(E_WARNING, "Xdebug MUST be loaded as a Zend extension");
@@ -554,13 +421,6 @@ PHP_MSHUTDOWN_FUNCTION(xdebug)
 		ts_free_id(xdebug_globals_id);
 #endif
 		return SUCCESS;
-	}
-
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_GCSTATS)) {
-		xdebug_gcstats_mshutdown();
-	}
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_PROFILING)) {
-		xdebug_profiler_mshutdown();
 	}
 
 	xdebug_library_mshutdown();
@@ -586,7 +446,6 @@ static void xdebug_init_auto_globals(void)
 	zend_is_auto_global_str((char*) ZEND_STRL("_SESSION"));
 }
 
-
 PHP_RINIT_FUNCTION(xdebug)
 {
 #if defined(ZTS) && defined(COMPILE_DL_XDEBUG)
@@ -603,27 +462,12 @@ PHP_RINIT_FUNCTION(xdebug)
 
 	xdebug_library_rinit();
 
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_COVERAGE)) {
-		xdebug_coverage_rinit();
-	}
 	if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)) {
 		xdebug_debugger_rinit();
 
 		if (xdebug_debugger_bailout_if_no_exec_requested()) {
 			zend_bailout();
 		}
-	}
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_DEVELOP)) {
-		xdebug_develop_rinit();
-	}
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_GCSTATS)) {
-		xdebug_gcstats_rinit();
-	}
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_PROFILING)) {
-		xdebug_profiler_rinit();
-	}
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_TRACING)) {
-		xdebug_tracing_rinit();
 	}
 
 	xdebug_init_auto_globals();
@@ -642,20 +486,8 @@ ZEND_MODULE_POST_ZEND_DEACTIVATE_D(xdebug)
 		return SUCCESS;
 	}
 
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_COVERAGE)) {
-		xdebug_coverage_post_deactivate();
-	}
 	if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)) {
 		xdebug_debugger_post_deactivate();
-	}
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_DEVELOP)) {
-		xdebug_develop_post_deactivate();
-	}
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_PROFILING)) {
-		xdebug_profiler_post_deactivate();
-	}
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_TRACING)) {
-		xdebug_tracing_post_deactivate();
 	}
 
 	xdebug_base_post_deactivate();
@@ -668,13 +500,6 @@ PHP_RSHUTDOWN_FUNCTION(xdebug)
 {
 	if (XDEBUG_MODE_IS_OFF()) {
 		return SUCCESS;
-	}
-
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_DEVELOP)) {
-		xdebug_develop_rshutdown();
-	}
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_GCSTATS)) {
-		xdebug_gcstats_rshutdown();
 	}
 
 	xdebug_base_rshutdown();
@@ -723,10 +548,6 @@ ZEND_DLEXPORT void xdebug_statement_call(zend_execute_data *frame)
 	op_array = &frame->func->op_array;
 	lineno = EG(current_execute_data)->opline->lineno;
 
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_COVERAGE)) {
-		xdebug_coverage_count_line_if_active(op_array, op_array->filename, lineno);
-	}
-
 	if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)) {
 		xdebug_debugger_statement_call(op_array->filename, lineno);
 	}
@@ -774,9 +595,6 @@ ZEND_DLEXPORT void xdebug_init_oparray(zend_op_array *op_array)
 		return;
 	}
 
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_COVERAGE)) {
-		xdebug_coverage_init_oparray(op_array);
-	}
 }
 
 #ifndef ZEND_EXT_API
