@@ -1,0 +1,75 @@
+name: Build
+
+on:
+    push:
+        branches:
+            - main
+            - phase2-observer-migration
+    pull_request:
+    workflow_dispatch:
+        inputs:
+            php-version:
+                description: 'PHP version to build'
+                required: false
+                default: '8.5'
+                type: choice
+                options:
+                    - '8.2'
+                    - '8.3'
+                    - '8.4'
+                    - '8.5'
+
+jobs:
+    build:
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - os: macos-latest
+                      name: macOS (Apple Silicon)
+                    - os: ubuntu-latest
+                      name: Linux (x86_64)
+        runs-on: ${{ matrix.os }}
+        name: "${{ matrix.name }} — PHP ${{ inputs.php-version || '8.5' }}"
+        steps:
+            -   uses: actions/checkout@v6
+
+            -   name: Setup PHP
+                uses: shivammathur/setup-php@v2
+                with:
+                    php-version: ${{ inputs.php-version || '8.5' }}
+                    coverage: none
+                    extensions: xmlreader
+
+            -   name: Build extension
+                run: |
+                    phpize
+                    ./configure --enable-xdebug
+                    make -j$(sysctl -n hw.logicalcpu 2>/dev/null || nproc)
+
+            -   name: Verify extension loads
+                run: |
+                    php -dzend_extension=$PWD/modules/xdebug.so -v
+                    php -dzend_extension=$PWD/modules/xdebug.so -r "echo 'xdebug_info() works: ' . (function_exists('xdebug_info') ? 'yes' : 'no') . PHP_EOL;"
+
+            -   name: Smoke test (DBGp)
+                run: |
+                    TEST_PHP_ARGS="-n -dzend_extension=$PWD/modules/xdebug.so"
+                    echo "TEST_PHP_ARGS=$TEST_PHP_ARGS" >> $GITHUB_ENV
+                    export TEST_PHP_ARGS
+                    php -n run-xdebug-tests.php -q tests/debugger/bug00530.phpt
+
+            -   name: Get build info
+                id: info
+                run: |
+                    PHP_VER=$(php -r "echo PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION;")
+                    OS_TAG=$(echo "${{ matrix.os }}" | sed 's/-latest//')
+                    ARCH=$(uname -m)
+                    echo "artifact_name=xdebug-php${PHP_VER}-${OS_TAG}-${ARCH}" >> $GITHUB_OUTPUT
+
+            -   name: Upload artifact
+                uses: actions/upload-artifact@v4
+                with:
+                    name: ${{ steps.info.outputs.artifact_name }}
+                    path: modules/xdebug.so
+                    retention-days: 90
