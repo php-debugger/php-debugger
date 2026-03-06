@@ -53,11 +53,7 @@ void xdebug_library_zend_shutdown(void)
 
 void xdebug_library_minit(void)
 {
-	xdebug_set_opcode_multi_handler(ZEND_ASSIGN);
-	xdebug_set_opcode_multi_handler(ZEND_ASSIGN_DIM);
-	xdebug_set_opcode_multi_handler(ZEND_ASSIGN_OBJ);
-	xdebug_set_opcode_multi_handler(ZEND_ASSIGN_STATIC_PROP);
-	xdebug_set_opcode_multi_handler(ZEND_QM_ASSIGN);
+	/* ZEND_ASSIGN* handlers removed: were only needed for tracing/coverage (stripped in Phase 1) */
 	xdebug_set_opcode_multi_handler(ZEND_INCLUDE_OR_EVAL);
 }
 

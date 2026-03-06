@@ -59,6 +59,8 @@ typedef struct _xdebug_base_globals_t {
 
 	/* in-execution checking */
 	zend_bool  in_execution;
+	zend_bool  observer_active;     /* true when debug session is active or needs init */
+	zend_bool  needs_debug_init;    /* true until first-call debug init check is done */
 	zend_bool  in_var_serialisation;
 
 	/* Systemd Private Temp */
