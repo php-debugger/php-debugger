@@ -729,6 +729,9 @@ bool xdebug_should_ignore(void)
 	const char *found_in_global;
 
 	ignore_value = xdebug_lib_find_in_globals("XDEBUG_IGNORE", &found_in_global);
+	if (!ignore_value) {
+		ignore_value = xdebug_lib_find_in_globals("PHP_DEBUGGER_IGNORE", &found_in_global);
+	}
 
 	if (!ignore_value) {
 		return false;
@@ -805,6 +808,12 @@ static int xdebug_handle_start_session()
 			(dummy = zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_GET]), "XDEBUG_SESSION_START", sizeof("XDEBUG_SESSION_START") - 1)) != NULL
 		) || (
 			(dummy = zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_POST]), "XDEBUG_SESSION_START", sizeof("XDEBUG_SESSION_START") - 1)) != NULL
+		) || (
+			(dummy = zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_ENV]), "PHP_DEBUGGER_SESSION_START", sizeof("PHP_DEBUGGER_SESSION_START") - 1)) != NULL
+		) || (
+			(dummy = zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_GET]), "PHP_DEBUGGER_SESSION_START", sizeof("PHP_DEBUGGER_SESSION_START") - 1)) != NULL
+		) || (
+			(dummy = zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_POST]), "PHP_DEBUGGER_SESSION_START", sizeof("PHP_DEBUGGER_SESSION_START") - 1)) != NULL
 		))
 		&& !SG(headers_sent)
 	) {
@@ -816,7 +825,8 @@ static int xdebug_handle_start_session()
 		xdebug_setcookie("XDEBUG_SESSION", sizeof("XDEBUG_SESSION") - 1, Z_STRVAL_P(dummy), Z_STRLEN_P(dummy), 0, "/", 1, NULL, 0, 0, 1, 0);
 		activate_session = 1;
 	} else if (
-		(dummy_env = getenv("XDEBUG_SESSION_START")) != NULL
+		(dummy_env = getenv("XDEBUG_SESSION_START")) != NULL ||
+		(dummy_env = getenv("PHP_DEBUGGER_SESSION_START")) != NULL
 	) {
 		xdebug_log(XLOG_CHAN_DEBUG, XLOG_DEBUG, "Found 'XDEBUG_SESSION_START' ENV variable, with value '%s'", dummy_env);
 
@@ -827,8 +837,8 @@ static int xdebug_handle_start_session()
 		}
 
 		activate_session = 1;
-	} else if (getenv("XDEBUG_CONFIG")) {
-		xdebug_log(XLOG_CHAN_DEBUG, XLOG_DEBUG, "Found 'XDEBUG_CONFIG' ENV variable");
+	} else if (getenv("XDEBUG_CONFIG") || getenv("PHP_DEBUGGER_CONFIG")) {
+		xdebug_log(XLOG_CHAN_DEBUG, XLOG_DEBUG, "Found 'XDEBUG_CONFIG' or 'PHP_DEBUGGER_CONFIG' ENV variable");
 
 		if (XG_DBG(ide_key) && *XG_DBG(ide_key) && !SG(headers_sent)) {
 			xdebug_setcookie("XDEBUG_SESSION", sizeof("XDEBUG_SESSION") - 1, XG_DBG(ide_key), strlen(XG_DBG(ide_key)), 0, "/", 1, NULL, 0, 0, 1, 0);
@@ -853,6 +863,10 @@ static void xdebug_handle_stop_session()
 			zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_GET]), "XDEBUG_SESSION_STOP", sizeof("XDEBUG_SESSION_STOP") - 1) != NULL
 		) || (
 			zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_POST]), "XDEBUG_SESSION_STOP", sizeof("XDEBUG_SESSION_STOP") - 1) != NULL
+		) || (
+			zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_GET]), "PHP_DEBUGGER_SESSION_STOP", sizeof("PHP_DEBUGGER_SESSION_STOP") - 1) != NULL
+		) || (
+			zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_POST]), "PHP_DEBUGGER_SESSION_STOP", sizeof("PHP_DEBUGGER_SESSION_STOP") - 1) != NULL
 		))
 		&& !SG(headers_sent)
 	) {

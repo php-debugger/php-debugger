@@ -187,7 +187,10 @@ int xdebug_lib_set_mode(const char *mode)
 	char *config = getenv("XDEBUG_MODE");
 	int   result = 0;
 
-	/* XDEBUG_MODE environment variable */
+	/* XDEBUG_MODE / PHP_DEBUGGER_MODE environment variable */
+	if (!config || !strlen(config)) {
+		config = getenv("PHP_DEBUGGER_MODE");
+	}
 	if (config && strlen(config)) {
 		result = xdebug_lib_set_mode_from_setting(config);
 
@@ -469,6 +472,14 @@ static int trigger_enabled(int for_mode, char **found_trigger_value)
 	/* First we check for the generic 'XDEBUG_TRIGGER' option */
 	trigger_value = xdebug_lib_find_in_globals(trigger_name, &found_in_global);
 
+	/* If not found, try the PHP_DEBUGGER_TRIGGER alias */
+	if (!trigger_value) {
+		trigger_value = xdebug_lib_find_in_globals("PHP_DEBUGGER_TRIGGER", &found_in_global);
+		if (trigger_value) {
+			trigger_name = "PHP_DEBUGGER_TRIGGER";
+		}
+	}
+
 	/* If not found, we fall back to the per-mode name for backwards compatibility reasons */
 	if (!trigger_value) {
 		if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG) && (for_mode == XDEBUG_MODE_STEP_DEBUG)) {
@@ -477,6 +488,12 @@ static int trigger_enabled(int for_mode, char **found_trigger_value)
 
 		if (trigger_name) {
 			xdebug_log(XLOG_CHAN_CONFIG, XLOG_INFO, "Trigger value for 'XDEBUG_TRIGGER' not found, falling back to '%s'", trigger_name);
+			trigger_value = xdebug_lib_find_in_globals(trigger_name, &found_in_global);
+		}
+
+		/* Also try PHP_DEBUGGER_SESSION alias */
+		if (!trigger_value && XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG) && (for_mode == XDEBUG_MODE_STEP_DEBUG)) {
+			trigger_name = "PHP_DEBUGGER_SESSION";
 			trigger_value = xdebug_lib_find_in_globals(trigger_name, &found_in_global);
 		}
 	}

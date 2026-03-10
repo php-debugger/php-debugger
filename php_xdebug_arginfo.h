@@ -28,5 +28,11 @@ static const zend_function_entry ext_functions[] = {
 	ZEND_FE(xdebug_info, arginfo_xdebug_info)
 	ZEND_FE(xdebug_is_debugger_active, arginfo_xdebug_is_debugger_active)
 	ZEND_FE(xdebug_notify, arginfo_xdebug_notify)
+	/* php_debugger_* aliases */
+	ZEND_FALIAS(php_debugger_break, xdebug_break, arginfo_xdebug_break)
+	ZEND_FALIAS(php_debugger_connect_to_client, xdebug_connect_to_client, arginfo_xdebug_connect_to_client)
+	ZEND_FALIAS(php_debugger_info, xdebug_info, arginfo_xdebug_info)
+	ZEND_FALIAS(php_debugger_is_debugger_active, xdebug_is_debugger_active, arginfo_xdebug_is_debugger_active)
+	ZEND_FALIAS(php_debugger_notify, xdebug_notify, arginfo_xdebug_notify)
 	ZEND_FE_END
 };

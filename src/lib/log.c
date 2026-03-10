@@ -280,6 +280,7 @@ void xdebug_print_info(void)
 	print_logo();
 
 	php_info_print_table_row(2, "Version", XDEBUG_VERSION);
+	php_info_print_table_row(2, "Based on", "Xdebug by Derick Rethans");
 
 	if (!sapi_module.phpinfo_as_text) {
 		xdebug_info_printf("<tr><td colspan='2' style='background-color: white; text-align: center'>%s</td></tr>\n", "<a style='color: #317E1E; background-color: transparent; font-weight: bold; text-decoration: underline' href='https://xdebug.org/support'>Support Xdebug on Patreon, GitHub, or as a business</a>");
@@ -294,12 +295,12 @@ void xdebug_print_info(void)
 	if (!sapi_module.phpinfo_as_text) {
 		php_info_print_table_colspan_header(
 			3,
-			(char*) (XG_LIB(mode_from_environment) ? "Enabled Features<br/>(through 'XDEBUG_MODE' env variable)" : "Enabled Features<br/>(through 'xdebug.mode' setting)")
+			(char*) (XG_LIB(mode_from_environment) ? "Enabled Features<br/>(through 'XDEBUG_MODE' / 'PHP_DEBUGGER_MODE' env variable)" : "Enabled Features<br/>(through 'xdebug.mode' / 'php_debugger.mode' setting)")
 		);
 	} else {
 		php_info_print_table_colspan_header(
 			2,
-			(char*) (XG_LIB(mode_from_environment) ? "Enabled Features (through 'XDEBUG_MODE' env variable)" : "Enabled Features (through 'xdebug.mode' setting)")
+			(char*) (XG_LIB(mode_from_environment) ? "Enabled Features (through 'XDEBUG_MODE' / 'PHP_DEBUGGER_MODE' env variable)" : "Enabled Features (through 'xdebug.mode' / 'php_debugger.mode' setting)")
 		);
 	}
 

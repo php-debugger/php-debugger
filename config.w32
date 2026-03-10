@@ -1,8 +1,8 @@
 // vim:ft=javascript
 
-ARG_ENABLE("xdebug", "Xdebug support", "no");
+ARG_ENABLE("php-debugger", "PHP Debugger support", "no");
 
-if (PHP_XDEBUG == 'yes') {
+if (PHP_PHP_DEBUGGER == 'yes') {
 	var XDEBUG_BASE_SOURCES="base.c filter.c ctrl_socket.c"
 	var XDEBUG_LIB_SOURCES="usefulstuff.c cmd_parser.c compat.c crc32.c file.c hash.c headers.c lib.c llist.c log.c normalize_path.c set.c str.c timing.c trim.c var.c var_export_html.c var_export_line.c var_export_text.c var_export_xml.c xdebug_strndup.c xml.c"
 	var XDEBUG_LIB_MAPS_SOURCES="maps.c maps_private.c parser.c"
@@ -20,17 +20,17 @@ if (PHP_XDEBUG == 'yes') {
 	}
 
 	if (typeof(ZEND_EXTENSION) == 'undefined') {
-		EXTENSION('xdebug', files);
+		EXTENSION('php_debugger', files);
 	} else {
-		ZEND_EXTENSION('xdebug', files);
+		ZEND_EXTENSION('php_debugger', files);
 	}
-	ADD_FLAG("CFLAGS_XDEBUG", " /I " + configure_module_dirname + " ");
-	ADD_FLAG("CFLAGS_XDEBUG", " /I " + configure_module_dirname + "/src ");
-	ADD_SOURCES(configure_module_dirname + "/src/base", XDEBUG_BASE_SOURCES, "xdebug");
-	ADD_SOURCES(configure_module_dirname + "/src/lib", XDEBUG_LIB_SOURCES, "xdebug");
-	ADD_SOURCES(configure_module_dirname + "/src/lib/maps", XDEBUG_LIB_MAPS_SOURCES, "xdebug");
-	ADD_SOURCES(configure_module_dirname + "/src/debugger", XDEBUG_DEBUGGER_SOURCES, "xdebug");
+	ADD_FLAG("CFLAGS_PHP_DEBUGGER", " /I " + configure_module_dirname + " ");
+	ADD_FLAG("CFLAGS_PHP_DEBUGGER", " /I " + configure_module_dirname + "/src ");
+	ADD_SOURCES(configure_module_dirname + "/src/base", XDEBUG_BASE_SOURCES, "php_debugger");
+	ADD_SOURCES(configure_module_dirname + "/src/lib", XDEBUG_LIB_SOURCES, "php_debugger");
+	ADD_SOURCES(configure_module_dirname + "/src/lib/maps", XDEBUG_LIB_MAPS_SOURCES, "php_debugger");
+	ADD_SOURCES(configure_module_dirname + "/src/debugger", XDEBUG_DEBUGGER_SOURCES, "php_debugger");
 
-	AC_DEFINE("HAVE_XDEBUG_CONTROL_SOCKET_SUPPORT", 1, "Xdebug control socket support");
-	AC_DEFINE("HAVE_XDEBUG", 1, "Xdebug support");
+	AC_DEFINE("HAVE_XDEBUG_CONTROL_SOCKET_SUPPORT", 1, "PHP Debugger control socket support");
+	AC_DEFINE("HAVE_XDEBUG", 1, "PHP Debugger support");
 }
