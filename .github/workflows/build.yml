@@ -100,7 +100,7 @@ jobs:
             -   name: Build extension
                 run: |
                     phpize
-                    configure --with-xdebug --with-prefix=${{ steps.setup-php-sdk.outputs.prefix }}
+                    configure --enable-xdebug --with-prefix=${{ steps.setup-php-sdk.outputs.prefix }}
                     nmake
 
             -   name: Verify extension loads
