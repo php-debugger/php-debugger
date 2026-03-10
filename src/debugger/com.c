@@ -613,15 +613,21 @@ static void xdebug_init_debugger()
 
 	warn_if_opcache_is_loaded_after_xdebug();
 
-	if (strcmp(XINI_DBG(cloud_id), "") != 0) {
-		xdebug_init_cloud_debugger(XINI_DBG(cloud_id));
-		XG_DBG(context).host_type = XDEBUG_CLOUD;
-	} else if (XG_DBG(ide_key) && ide_key_is_cloud_id()) {
-		xdebug_init_cloud_debugger(XG_DBG(ide_key));
-		XG_DBG(context).host_type = XDEBUG_CLOUD_FROM_TRIGGER_VALUE;
+	/* If socket was already established by early connect at RINIT,
+	 * skip straight to protocol initialization */
+	if (XG_DBG(context).socket >= 0) {
+		xdebug_str_add_fmt(connection_attempts, "%s:%ld (through xdebug.client_host/xdebug.client_port)", XINI_DBG(client_host), XINI_DBG(client_port));
 	} else {
-		xdebug_init_normal_debugger(connection_attempts);
-		XG_DBG(context).host_type = XDEBUG_NORMAL;
+		if (strcmp(XINI_DBG(cloud_id), "") != 0) {
+			xdebug_init_cloud_debugger(XINI_DBG(cloud_id));
+			XG_DBG(context).host_type = XDEBUG_CLOUD;
+		} else if (XG_DBG(ide_key) && ide_key_is_cloud_id()) {
+			xdebug_init_cloud_debugger(XG_DBG(ide_key));
+			XG_DBG(context).host_type = XDEBUG_CLOUD_FROM_TRIGGER_VALUE;
+		} else {
+			xdebug_init_normal_debugger(connection_attempts);
+			XG_DBG(context).host_type = XDEBUG_NORMAL;
+		}
 	}
 
 	/* Check whether we're connected, or why not */
@@ -647,6 +653,37 @@ static void xdebug_init_debugger()
 	}
 
 	xdebug_str_free(connection_attempts);
+}
+
+/* Early TCP connect at RINIT — establishes socket before EXT_STMT decision.
+ * Does NOT do DBGp protocol handshake (needs program_name from first op_array).
+ * The handshake happens later in xdebug_debug_init_if_requested_at_startup()
+ * which will see the open socket and skip the connect step. */
+int xdebug_early_connect_to_client(void)
+{
+	xdebug_str *connection_attempts = xdebug_str_new();
+
+	XG_DBG(context).handler = &xdebug_handler_dbgp;
+
+	warn_if_opcache_is_loaded_after_xdebug();
+
+	/* Cloud connections can't be probed early */
+	if (strcmp(XINI_DBG(cloud_id), "") != 0) {
+		xdebug_str_free(connection_attempts);
+		return 1; /* Assume available */
+	}
+	if (XG_DBG(ide_key) && ide_key_is_cloud_id()) {
+		xdebug_str_free(connection_attempts);
+		return 1; /* Assume available */
+	}
+
+	xdebug_init_normal_debugger(connection_attempts);
+	XG_DBG(context).host_type = XDEBUG_NORMAL;
+
+	xdebug_str_free(connection_attempts);
+
+	/* Return whether connection succeeded */
+	return (XG_DBG(context).socket >= 0) ? 1 : 0;
 }
 
 void xdebug_abort_debugger()
