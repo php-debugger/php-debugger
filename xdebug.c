@@ -73,7 +73,7 @@ int xdebug_global_mode = 0;
 
 zend_module_entry xdebug_module_entry = {
 	STANDARD_MODULE_HEADER,
-	"xdebug",
+	"php_debugger",
 	ext_functions,
 	PHP_MINIT(xdebug),
 	PHP_MSHUTDOWN(xdebug),
@@ -88,7 +88,7 @@ zend_module_entry xdebug_module_entry = {
 
 ZEND_DECLARE_MODULE_GLOBALS(xdebug)
 
-#if COMPILE_DL_XDEBUG
+#if COMPILE_DL_PHP_DEBUGGER
 ZEND_GET_MODULE(xdebug)
 # ifdef ZTS
 ZEND_TSRMLS_CACHE_DEFINE();
@@ -220,6 +220,51 @@ ZEND_INI_DISP(display_start_upon_error)
 # define USE_COMPRESSION_DEFAULT "0"
 #endif
 
+
+/*
+ * Wrapper OnUpdate handlers for php_debugger.* INI aliases.
+ * These skip applying the default value (when entry->modified == 0),
+ * so they don't overwrite values set via the canonical xdebug.* entries.
+ * They only apply when the user explicitly sets php_debugger.* in php.ini.
+ */
+static PHP_INI_MH(OnUpdatePhpDebuggerString)
+{
+	if (!entry->modified) return SUCCESS;
+	return OnUpdateString(entry, new_value, mh_arg1, mh_arg2, mh_arg3, stage);
+}
+
+static PHP_INI_MH(OnUpdatePhpDebuggerLong)
+{
+	if (!entry->modified) return SUCCESS;
+	return OnUpdateLong(entry, new_value, mh_arg1, mh_arg2, mh_arg3, stage);
+}
+
+static PHP_INI_MH(OnUpdatePhpDebuggerBool)
+{
+	if (!entry->modified) return SUCCESS;
+	return OnUpdateBool(entry, new_value, mh_arg1, mh_arg2, mh_arg3, stage);
+}
+
+static PHP_INI_MH(OnUpdatePhpDebuggerStartWithRequest)
+{
+	if (!entry->modified) return SUCCESS;
+	return OnUpdateStartWithRequest(entry, new_value, mh_arg1, mh_arg2, mh_arg3, stage);
+}
+
+static PHP_INI_MH(OnUpdatePhpDebuggerStartUponError)
+{
+	if (!entry->modified) return SUCCESS;
+	return OnUpdateStartUponError(entry, new_value, mh_arg1, mh_arg2, mh_arg3, stage);
+}
+
+#if HAVE_XDEBUG_CONTROL_SOCKET_SUPPORT
+static PHP_INI_MH(OnUpdatePhpDebuggerCtrlSocket)
+{
+	if (!entry->modified) return SUCCESS;
+	return OnUpdateCtrlSocket(entry, new_value, mh_arg1, mh_arg2, mh_arg3, stage);
+}
+#endif
+
 PHP_INI_BEGIN()
 	/* Library settings */
 	STD_PHP_INI_ENTRY("xdebug.mode",               "debug",               PHP_INI_SYSTEM,                OnUpdateString, settings.library.requested_mode,   zend_xdebug_globals, xdebug_globals)
@@ -258,6 +303,44 @@ PHP_INI_BEGIN()
 	STD_PHP_INI_ENTRY("xdebug.connect_timeout_ms",      "200",                              PHP_INI_ALL, OnUpdateLong,   settings.debugger.connect_timeout_ms,      zend_xdebug_globals, xdebug_globals)
 
 PHP_INI_END()
+
+/* INI aliases: php_debugger.* -> same storage as xdebug.*
+ * Uses wrapper handlers that only apply when explicitly set by user,
+ * preventing default values from overwriting xdebug.* settings. */
+static const zend_ini_entry_def php_debugger_ini_entries[] = {
+	/* Library settings */
+	STD_PHP_INI_ENTRY("php_debugger.mode",               "debug",               PHP_INI_SYSTEM,                OnUpdatePhpDebuggerString, settings.library.requested_mode,   zend_xdebug_globals, xdebug_globals)
+	PHP_INI_ENTRY_EX( "php_debugger.start_with_request", "default",               PHP_INI_SYSTEM|PHP_INI_PERDIR, OnUpdatePhpDebuggerStartWithRequest, display_start_with_request)
+	PHP_INI_ENTRY_EX( "php_debugger.start_upon_error",   "default",               PHP_INI_SYSTEM|PHP_INI_PERDIR, OnUpdatePhpDebuggerStartUponError,   display_start_upon_error)
+	STD_PHP_INI_ENTRY("php_debugger.output_dir",         XDEBUG_TEMP_DIR,         PHP_INI_ALL,                   OnUpdatePhpDebuggerString, settings.library.output_dir,       zend_xdebug_globals, xdebug_globals)
+	STD_PHP_INI_ENTRY("php_debugger.use_compression",    USE_COMPRESSION_DEFAULT, PHP_INI_ALL,                   OnUpdatePhpDebuggerBool,   settings.library.use_compression,  zend_xdebug_globals, xdebug_globals)
+	STD_PHP_INI_ENTRY("php_debugger.trigger_value",      "",                      PHP_INI_SYSTEM|PHP_INI_PERDIR, OnUpdatePhpDebuggerString, settings.library.trigger_value,    zend_xdebug_globals, xdebug_globals)
+	STD_PHP_INI_ENTRY("php_debugger.file_link_format",   "",                      PHP_INI_ALL,                   OnUpdatePhpDebuggerString, settings.library.file_link_format, zend_xdebug_globals, xdebug_globals)
+	STD_PHP_INI_ENTRY("php_debugger.filename_format",    "",                      PHP_INI_ALL,                   OnUpdatePhpDebuggerString, settings.library.filename_format,  zend_xdebug_globals, xdebug_globals)
+#if HAVE_XDEBUG_CONTROL_SOCKET_SUPPORT
+	PHP_INI_ENTRY_EX("php_debugger.control_socket",      "default",               PHP_INI_ALL,                   OnUpdatePhpDebuggerCtrlSocket, display_control_socket)
+#endif
+	STD_PHP_INI_ENTRY("php_debugger.path_mapping",       "0",                     PHP_INI_ALL,                   OnUpdatePhpDebuggerBool,   settings.library.path_mapping,     zend_xdebug_globals, xdebug_globals)
+	STD_PHP_INI_ENTRY("php_debugger.log",       "",           PHP_INI_ALL, OnUpdatePhpDebuggerString, settings.library.log,       zend_xdebug_globals, xdebug_globals)
+	STD_PHP_INI_ENTRY("php_debugger.log_level", XLOG_DEFAULT, PHP_INI_ALL, OnUpdatePhpDebuggerLong,   settings.library.log_level, zend_xdebug_globals, xdebug_globals)
+	/* Variable display settings */
+	STD_PHP_INI_ENTRY("php_debugger.var_display_max_children", "128",     PHP_INI_ALL,    OnUpdatePhpDebuggerLong,   settings.library.display_max_children, zend_xdebug_globals, xdebug_globals)
+	STD_PHP_INI_ENTRY("php_debugger.var_display_max_data",     "512",     PHP_INI_ALL,    OnUpdatePhpDebuggerLong,   settings.library.display_max_data,     zend_xdebug_globals, xdebug_globals)
+	STD_PHP_INI_ENTRY("php_debugger.var_display_max_depth",    "3",       PHP_INI_ALL,    OnUpdatePhpDebuggerLong,   settings.library.display_max_depth,    zend_xdebug_globals, xdebug_globals)
+	/* Base settings */
+	STD_PHP_INI_ENTRY("php_debugger.max_nesting_level", "512",                PHP_INI_ALL,    OnUpdatePhpDebuggerLong,   settings.base.max_nesting_level, zend_xdebug_globals, xdebug_globals)
+	/* Cloud */
+	STD_PHP_INI_ENTRY("php_debugger.cloud_id", "", PHP_INI_SYSTEM, OnUpdatePhpDebuggerString, settings.debugger.cloud_id, zend_xdebug_globals, xdebug_globals)
+	/* Step debugger settings */
+	STD_PHP_INI_ENTRY("php_debugger.client_host",             "localhost",                        PHP_INI_ALL, OnUpdatePhpDebuggerString, settings.debugger.client_host,             zend_xdebug_globals, xdebug_globals)
+	STD_PHP_INI_ENTRY("php_debugger.client_port",             XDEBUG_CLIENT_PORT_S,               PHP_INI_ALL, OnUpdatePhpDebuggerLong,   settings.debugger.client_port,             zend_xdebug_globals, xdebug_globals)
+	STD_PHP_INI_BOOLEAN("php_debugger.discover_client_host",  "0",                                PHP_INI_ALL, OnUpdatePhpDebuggerBool,   settings.debugger.discover_client_host,    zend_xdebug_globals, xdebug_globals)
+	STD_PHP_INI_ENTRY("php_debugger.client_discovery_header", "HTTP_X_FORWARDED_FOR,REMOTE_ADDR", PHP_INI_ALL, OnUpdatePhpDebuggerString, settings.debugger.client_discovery_header, zend_xdebug_globals, xdebug_globals)
+	STD_PHP_INI_ENTRY("php_debugger.idekey",                  "",                                 PHP_INI_ALL, OnUpdatePhpDebuggerString, settings.debugger.ide_key_setting,         zend_xdebug_globals, xdebug_globals)
+	STD_PHP_INI_ENTRY("php_debugger.connect_timeout_ms",      "200",                              PHP_INI_ALL, OnUpdatePhpDebuggerLong,   settings.debugger.connect_timeout_ms,      zend_xdebug_globals, xdebug_globals)
+	{0}
+};
+
 
 static void xdebug_init_base_globals(xdebug_base_globals_t *xg)
 {
@@ -301,9 +384,12 @@ static void xdebug_env_config(void)
 	xdebug_arg *parts;
 	int			i;
 	/*
-		XDEBUG_CONFIG format:
+		XDEBUG_CONFIG / PHP_DEBUGGER_CONFIG format:
 		XDEBUG_CONFIG=var=val var=val
 	*/
+	if (!config) {
+		config = getenv("PHP_DEBUGGER_CONFIG");
+	}
 	if (!config) {
 		return;
 	}
@@ -382,6 +468,23 @@ PHP_MINIT_FUNCTION(xdebug)
 	ZEND_INIT_MODULE_GLOBALS(xdebug, php_xdebug_init_globals, php_xdebug_shutdown_globals);
 	REGISTER_INI_ENTRIES();
 
+	/* Register "xdebug" as a module alias so extension_loaded('xdebug') still works.
+	 * Uses a separate dummy module entry to avoid double-free in module_registry cleanup. */
+	{
+		static zend_module_entry xdebug_compat_module_entry = {0};
+		xdebug_compat_module_entry.name = "xdebug";
+		xdebug_compat_module_entry.version = XDEBUG_VERSION;
+		xdebug_compat_module_entry.type = MODULE_PERSISTENT;
+		xdebug_compat_module_entry.module_number = module_number;
+		xdebug_compat_module_entry.zend_api = ZEND_MODULE_API_NO;
+		zend_string *alias_name = zend_string_init_interned("xdebug", sizeof("xdebug") - 1, 1);
+		zend_hash_add_ptr(&module_registry, alias_name, &xdebug_compat_module_entry);
+		zend_string_release(alias_name);
+	}
+
+	/* Register php_debugger.* INI aliases pointing to the same storage as xdebug.* */
+	zend_register_ini_entries(php_debugger_ini_entries, module_number);
+
 	xdebug_filter_register_constants(INIT_FUNC_ARGS_PASSTHRU);
 
 	/* Locking in mode as it currently is */
@@ -408,7 +511,7 @@ PHP_MINIT_FUNCTION(xdebug)
 	/* Coverage must be last, as it has a catch all override for opcodes */
 
 	if (zend_xdebug_initialised == 0) {
-		zend_error(E_WARNING, "Xdebug MUST be loaded as a Zend extension");
+		zend_error(E_WARNING, "PHP Debugger MUST be loaded as a Zend extension");
 	}
 
 	return SUCCESS;
@@ -489,15 +592,25 @@ PHP_RINIT_FUNCTION(xdebug)
 		 * For no mode: no debugging will happen.
 		 * Note: xdebug_break() can initiate connections without triggers,
 		 * but it handles re-enabling the observer itself. */
-		int debug_requested =
+		/* Respect start_with_request=no and XDEBUG_IGNORE */
+		int debug_requested = !xdebug_lib_never_start_with_request() && !xdebug_should_ignore() && (
 			xdebug_lib_start_with_request(XDEBUG_MODE_STEP_DEBUG) ||
 			xdebug_lib_start_with_trigger(XDEBUG_MODE_STEP_DEBUG, NULL) ||
 			xdebug_lib_start_upon_error() ||
-			getenv("XDEBUG_SESSION_START") != NULL;
+			getenv("XDEBUG_SESSION_START") != NULL
+		);
 
 		if (debug_requested) {
-			/* Debug session likely: enable extended stmt opcodes */
-			CG(compiler_options) = CG(compiler_options) | ZEND_COMPILE_EXTENDED_STMT;
+			/* Debug session requested: check if a client is actually listening
+			 * before enabling expensive EXT_STMT opcodes. This avoids ~2x
+			 * overhead when triggers are present but no IDE is connected. */
+			if (xdebug_early_connect_to_client()) {
+				CG(compiler_options) = CG(compiler_options) | ZEND_COMPILE_EXTENDED_STMT;
+			} else {
+				/* Trigger present but no client listening — stay dormant */
+				XG_BASE(observer_active) = 0;
+				XG_BASE(statement_handler_enabled) = false;
+			}
 		} else {
 			/* No debug trigger: disable all heavy hooks for near-zero overhead.
 			 * Note: xdebug_break() jit mode won't have full stepping support

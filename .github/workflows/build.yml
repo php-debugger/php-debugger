@@ -20,7 +20,7 @@ on:
                     - '8.5'
 
 jobs:
-    build:
+    build-unix:
         strategy:
             fail-fast: false
             matrix:
@@ -44,17 +44,17 @@ jobs:
             -   name: Build extension
                 run: |
                     phpize
-                    ./configure --enable-xdebug
+                    ./configure --enable-php-debugger
                     make -j$(sysctl -n hw.logicalcpu 2>/dev/null || nproc)
 
             -   name: Verify extension loads
                 run: |
-                    php -dzend_extension=$PWD/modules/xdebug.so -v
-                    php -dzend_extension=$PWD/modules/xdebug.so -r "echo 'xdebug_info() works: ' . (function_exists('xdebug_info') ? 'yes' : 'no') . PHP_EOL;"
+                    php -dzend_extension=$PWD/modules/php_debugger.so -v
+                    php -dzend_extension=$PWD/modules/php_debugger.so -r "echo 'xdebug_info() works: ' . (function_exists('xdebug_info') ? 'yes' : 'no') . PHP_EOL;"
 
             -   name: Smoke test (DBGp)
                 run: |
-                    TEST_PHP_ARGS="-n -dzend_extension=$PWD/modules/xdebug.so"
+                    TEST_PHP_ARGS="-n -dzend_extension=$PWD/modules/php_debugger.so"
                     echo "TEST_PHP_ARGS=$TEST_PHP_ARGS" >> $GITHUB_ENV
                     export TEST_PHP_ARGS
                     php -n run-xdebug-tests.php -q tests/debugger/bug00530.phpt
@@ -65,11 +65,72 @@ jobs:
                     PHP_VER=$(php -r "echo PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION;")
                     OS_TAG=$(echo "${{ matrix.os }}" | sed 's/-latest//')
                     ARCH=$(uname -m)
-                    echo "artifact_name=xdebug-php${PHP_VER}-${OS_TAG}-${ARCH}" >> $GITHUB_OUTPUT
+                    echo "artifact_name=php-debugger-php${PHP_VER}-${OS_TAG}-${ARCH}" >> $GITHUB_OUTPUT
 
             -   name: Upload artifact
                 uses: actions/upload-artifact@v4
                 with:
                     name: ${{ steps.info.outputs.artifact_name }}
-                    path: modules/xdebug.so
+                    path: modules/php_debugger.so
+                    retention-days: 90
+
+    build-windows:
+        runs-on: windows-2022
+        name: "Windows (x64) — PHP ${{ inputs.php-version || '8.5' }}"
+        defaults:
+            run:
+                shell: cmd
+        steps:
+            -   uses: actions/checkout@v6
+
+            -   name: Setup PHP SDK
+                id: setup-php-sdk
+                uses: php/setup-php-sdk@v0.12
+                with:
+                    version: ${{ inputs.php-version || '8.5' }}
+                    arch: x64
+                    ts: nts
+
+            -   name: Enable Developer Command Prompt
+                uses: ilammy/msvc-dev-cmd@v1
+                with:
+                    arch: x64
+                    toolset: ${{ steps.setup-php-sdk.outputs.toolset }}
+
+            -   name: phpize
+                run: phpize
+
+            -   name: configure
+                run: configure.bat --enable-php-debugger --with-prefix=${{ steps.setup-php-sdk.outputs.prefix }}
+
+            -   name: nmake
+                run: nmake
+
+            -   name: Verify extension loads
+                run: |
+                    php -dzend_extension=php_debugger.dll -v
+                    php -dzend_extension=php_debugger.dll -r "echo 'xdebug_info() works: ' . (function_exists('xdebug_info') ? 'yes' : 'no') . PHP_EOL;"
+
+            -   name: Get build info
+                id: info
+                shell: bash
+                run: |
+                    PHP_VER=$(php -r "echo PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION;")
+                    echo "artifact_name=php-debugger-php${PHP_VER}-windows-x64" >> $GITHUB_OUTPUT
+
+            -   name: Find DLL
+                id: find-dll
+                shell: pwsh
+                run: |
+                    $dll = Get-ChildItem -Recurse -Filter 'php_debugger.dll' | Select-Object -First 1
+                    if (-not $dll) { Write-Error 'php_debugger.dll not found'; exit 1 }
+                    Write-Host "Found DLL at: $($dll.FullName)"
+                    echo "dll_path=$($dll.FullName)" >> $env:GITHUB_OUTPUT
+
+            -   name: Upload artifact
+                uses: actions/upload-artifact@v4
+                with:
+                    name: ${{ steps.info.outputs.artifact_name }}
+                    path: ${{ steps.find-dll.outputs.dll_path }}
+                    if-no-files-found: error
                     retention-days: 90

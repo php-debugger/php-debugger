@@ -613,15 +613,21 @@ static void xdebug_init_debugger()
 
 	warn_if_opcache_is_loaded_after_xdebug();
 
-	if (strcmp(XINI_DBG(cloud_id), "") != 0) {
-		xdebug_init_cloud_debugger(XINI_DBG(cloud_id));
-		XG_DBG(context).host_type = XDEBUG_CLOUD;
-	} else if (XG_DBG(ide_key) && ide_key_is_cloud_id()) {
-		xdebug_init_cloud_debugger(XG_DBG(ide_key));
-		XG_DBG(context).host_type = XDEBUG_CLOUD_FROM_TRIGGER_VALUE;
+	/* If socket was already established by early connect at RINIT,
+	 * skip straight to protocol initialization */
+	if (XG_DBG(context).socket >= 0) {
+		xdebug_str_add_fmt(connection_attempts, "%s:%ld (through xdebug.client_host/xdebug.client_port)", XINI_DBG(client_host), XINI_DBG(client_port));
 	} else {
-		xdebug_init_normal_debugger(connection_attempts);
-		XG_DBG(context).host_type = XDEBUG_NORMAL;
+		if (strcmp(XINI_DBG(cloud_id), "") != 0) {
+			xdebug_init_cloud_debugger(XINI_DBG(cloud_id));
+			XG_DBG(context).host_type = XDEBUG_CLOUD;
+		} else if (XG_DBG(ide_key) && ide_key_is_cloud_id()) {
+			xdebug_init_cloud_debugger(XG_DBG(ide_key));
+			XG_DBG(context).host_type = XDEBUG_CLOUD_FROM_TRIGGER_VALUE;
+		} else {
+			xdebug_init_normal_debugger(connection_attempts);
+			XG_DBG(context).host_type = XDEBUG_NORMAL;
+		}
 	}
 
 	/* Check whether we're connected, or why not */
@@ -647,6 +653,37 @@ static void xdebug_init_debugger()
 	}
 
 	xdebug_str_free(connection_attempts);
+}
+
+/* Early TCP connect at RINIT — establishes socket before EXT_STMT decision.
+ * Does NOT do DBGp protocol handshake (needs program_name from first op_array).
+ * The handshake happens later in xdebug_debug_init_if_requested_at_startup()
+ * which will see the open socket and skip the connect step. */
+int xdebug_early_connect_to_client(void)
+{
+	xdebug_str *connection_attempts = xdebug_str_new();
+
+	XG_DBG(context).handler = &xdebug_handler_dbgp;
+
+	warn_if_opcache_is_loaded_after_xdebug();
+
+	/* Cloud connections can't be probed early */
+	if (strcmp(XINI_DBG(cloud_id), "") != 0) {
+		xdebug_str_free(connection_attempts);
+		return 1; /* Assume available */
+	}
+	if (XG_DBG(ide_key) && ide_key_is_cloud_id()) {
+		xdebug_str_free(connection_attempts);
+		return 1; /* Assume available */
+	}
+
+	xdebug_init_normal_debugger(connection_attempts);
+	XG_DBG(context).host_type = XDEBUG_NORMAL;
+
+	xdebug_str_free(connection_attempts);
+
+	/* Return whether connection succeeded */
+	return (XG_DBG(context).socket >= 0) ? 1 : 0;
 }
 
 void xdebug_abort_debugger()
@@ -692,6 +729,9 @@ bool xdebug_should_ignore(void)
 	const char *found_in_global;
 
 	ignore_value = xdebug_lib_find_in_globals("XDEBUG_IGNORE", &found_in_global);
+	if (!ignore_value) {
+		ignore_value = xdebug_lib_find_in_globals("PHP_DEBUGGER_IGNORE", &found_in_global);
+	}
 
 	if (!ignore_value) {
 		return false;
@@ -768,6 +808,12 @@ static int xdebug_handle_start_session()
 			(dummy = zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_GET]), "XDEBUG_SESSION_START", sizeof("XDEBUG_SESSION_START") - 1)) != NULL
 		) || (
 			(dummy = zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_POST]), "XDEBUG_SESSION_START", sizeof("XDEBUG_SESSION_START") - 1)) != NULL
+		) || (
+			(dummy = zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_ENV]), "PHP_DEBUGGER_SESSION_START", sizeof("PHP_DEBUGGER_SESSION_START") - 1)) != NULL
+		) || (
+			(dummy = zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_GET]), "PHP_DEBUGGER_SESSION_START", sizeof("PHP_DEBUGGER_SESSION_START") - 1)) != NULL
+		) || (
+			(dummy = zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_POST]), "PHP_DEBUGGER_SESSION_START", sizeof("PHP_DEBUGGER_SESSION_START") - 1)) != NULL
 		))
 		&& !SG(headers_sent)
 	) {
@@ -779,7 +825,8 @@ static int xdebug_handle_start_session()
 		xdebug_setcookie("XDEBUG_SESSION", sizeof("XDEBUG_SESSION") - 1, Z_STRVAL_P(dummy), Z_STRLEN_P(dummy), 0, "/", 1, NULL, 0, 0, 1, 0);
 		activate_session = 1;
 	} else if (
-		(dummy_env = getenv("XDEBUG_SESSION_START")) != NULL
+		(dummy_env = getenv("XDEBUG_SESSION_START")) != NULL ||
+		(dummy_env = getenv("PHP_DEBUGGER_SESSION_START")) != NULL
 	) {
 		xdebug_log(XLOG_CHAN_DEBUG, XLOG_DEBUG, "Found 'XDEBUG_SESSION_START' ENV variable, with value '%s'", dummy_env);
 
@@ -790,8 +837,8 @@ static int xdebug_handle_start_session()
 		}
 
 		activate_session = 1;
-	} else if (getenv("XDEBUG_CONFIG")) {
-		xdebug_log(XLOG_CHAN_DEBUG, XLOG_DEBUG, "Found 'XDEBUG_CONFIG' ENV variable");
+	} else if (getenv("XDEBUG_CONFIG") || getenv("PHP_DEBUGGER_CONFIG")) {
+		xdebug_log(XLOG_CHAN_DEBUG, XLOG_DEBUG, "Found 'XDEBUG_CONFIG' or 'PHP_DEBUGGER_CONFIG' ENV variable");
 
 		if (XG_DBG(ide_key) && *XG_DBG(ide_key) && !SG(headers_sent)) {
 			xdebug_setcookie("XDEBUG_SESSION", sizeof("XDEBUG_SESSION") - 1, XG_DBG(ide_key), strlen(XG_DBG(ide_key)), 0, "/", 1, NULL, 0, 0, 1, 0);
@@ -816,6 +863,10 @@ static void xdebug_handle_stop_session()
 			zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_GET]), "XDEBUG_SESSION_STOP", sizeof("XDEBUG_SESSION_STOP") - 1) != NULL
 		) || (
 			zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_POST]), "XDEBUG_SESSION_STOP", sizeof("XDEBUG_SESSION_STOP") - 1) != NULL
+		) || (
+			zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_GET]), "PHP_DEBUGGER_SESSION_STOP", sizeof("PHP_DEBUGGER_SESSION_STOP") - 1) != NULL
+		) || (
+			zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_POST]), "PHP_DEBUGGER_SESSION_STOP", sizeof("PHP_DEBUGGER_SESSION_STOP") - 1) != NULL
 		))
 		&& !SG(headers_sent)
 	) {

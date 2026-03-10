@@ -915,6 +915,7 @@ void xdebug_debugger_rinit(void)
 
 	xdebug_mark_debug_connection_not_active();
 
+	XG_DBG(context).socket = -1;
 	XG_DBG(breakpoints_allowed) = 1;
 	XG_DBG(suppress_return_value_step) = 0;
 	XG_DBG(detached) = 0;

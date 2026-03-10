@@ -1,16 +1,16 @@
-dnl config.m4 for extension Xdebug
+dnl config.m4 for extension PHP Debugger (based on Xdebug)
 
-PHP_ARG_ENABLE(xdebug, whether to enable Xdebug support,
-[  --enable-xdebug         Enable Xdebug support])
-PHP_ARG_ENABLE(xdebug-dev, whether to enable Xdebug developer build flags,
-[  --enable-xdebug-dev              Xdebug: Enable developer flags],, no)
+PHP_ARG_ENABLE(php-debugger, whether to enable PHP Debugger support,
+[  --enable-php-debugger   Enable PHP Debugger support])
+PHP_ARG_ENABLE(xdebug-dev, whether to enable PHP Debugger developer build flags,
+[  --enable-xdebug-dev              PHP Debugger: Enable developer flags],, no)
 
 
 
 m4_include([m4/pkg.m4])
 m4_include([m4/clocks.m4])
 
-if test "$PHP_XDEBUG" != "no"; then
+if test "$PHP_PHP_DEBUGGER" != "no"; then
   AC_MSG_CHECKING([for supported PHP version])
   PHP_XDEBUG_FOUND_VERSION=`${PHP_CONFIG} --version`
   PHP_XDEBUG_FOUND_VERNUM=`${PHP_CONFIG} --vernum`
@@ -47,7 +47,7 @@ if test "$PHP_XDEBUG" != "no"; then
   PHP_CHECK_FUNC(res_ninit, resolv)
   PHP_CHECK_FUNC(res_nclose, resolv)
 
-  PHP_CHECK_LIBRARY(m, cos, [ PHP_ADD_LIBRARY(m,, XDEBUG_SHARED_LIBADD) ])
+  PHP_CHECK_LIBRARY(m, cos, [ PHP_ADD_LIBRARY(m,, PHP_DEBUGGER_SHARED_LIBADD) ])
 
 
 
@@ -104,12 +104,12 @@ if test "$PHP_XDEBUG" != "no"; then
 
   XDEBUG_DEBUGGER_SOURCES="src/debugger/com.c src/debugger/debugger.c src/debugger/handler_dbgp.c src/debugger/handlers.c src/debugger/ip_info.c"
 
-  PHP_NEW_EXTENSION(xdebug, xdebug.c $XDEBUG_BASE_SOURCES $XDEBUG_LIB_SOURCES $XDEBUG_LIB_MAPS_SOURCES $XDEBUG_DEBUGGER_SOURCES, $ext_shared,,$PHP_XDEBUG_CFLAGS,,yes)
-  PHP_ADD_BUILD_DIR(PHP_EXT_BUILDDIR(xdebug)[/src/base])
-  PHP_ADD_BUILD_DIR(PHP_EXT_BUILDDIR(xdebug)[/src/lib])
-  PHP_ADD_BUILD_DIR(PHP_EXT_BUILDDIR(xdebug)[/src/lib/maps])
-  PHP_ADD_BUILD_DIR(PHP_EXT_BUILDDIR(xdebug)[/src/debugger])
-  PHP_SUBST(XDEBUG_SHARED_LIBADD)
+  PHP_NEW_EXTENSION(php_debugger, xdebug.c $XDEBUG_BASE_SOURCES $XDEBUG_LIB_SOURCES $XDEBUG_LIB_MAPS_SOURCES $XDEBUG_DEBUGGER_SOURCES, $ext_shared,,$PHP_XDEBUG_CFLAGS,,yes)
+  PHP_ADD_BUILD_DIR(PHP_EXT_BUILDDIR(php_debugger)[/src/base])
+  PHP_ADD_BUILD_DIR(PHP_EXT_BUILDDIR(php_debugger)[/src/lib])
+  PHP_ADD_BUILD_DIR(PHP_EXT_BUILDDIR(php_debugger)[/src/lib/maps])
+  PHP_ADD_BUILD_DIR(PHP_EXT_BUILDDIR(php_debugger)[/src/debugger])
+  PHP_SUBST(PHP_DEBUGGER_SHARED_LIBADD)
   PHP_ADD_MAKEFILE_FRAGMENT
 
   PHP_ADD_INCLUDE($ext_srcdir/src)

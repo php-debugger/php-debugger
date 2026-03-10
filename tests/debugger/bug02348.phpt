@@ -27,7 +27,7 @@ echo file_get_contents( $xdebugLogFileName );
 ?>
 --EXPECTF--
 <?xml version="1.0" encoding="iso-8859-1"?>
-<init xmlns="urn:debugger_protocol_v1" xmlns:xdebug="https://xdebug.org/dbgp/xdebug" fileuri="file://bug02348.inc" language="PHP" xdebug:language_version="" protocol_version="1.0" appid=""><engine version=""><![CDATA[Xdebug]]></engine><author><![CDATA[Derick Rethans]]></author><url><![CDATA[https://xdebug.org]]></url><copyright><![CDATA[Copyright (c) 2002-2099 by Derick Rethans]]></copyright></init>
+<init xmlns="urn:debugger_protocol_v1" xmlns:xdebug="https://xdebug.org/dbgp/xdebug" fileuri="file://bug02348.inc" language="PHP" xdebug:language_version="" protocol_version="1.0" appid=""><engine version=""><![CDATA[PHP Debugger]]></engine><author><![CDATA[Derick Rethans]]></author><url><![CDATA[https://xdebug.org]]></url><copyright><![CDATA[Copyright (c) 2002-2099 by Derick Rethans]]></copyright></init>
 
 -> feature_set -i 1 -n resolved_breakpoints -v 1
 <?xml version="1.0" encoding="iso-8859-1"?>
@@ -48,7 +48,7 @@ echo file_get_contents( $xdebugLogFileName );
 [%d] Log opened at %s
 [%d] [Step Debug] INFO: Connecting to configured address/port: 127.0.0.1:%d.
 [%d] [Step Debug] INFO: Connected to debugging client: 127.0.0.1:%d (through xdebug.client_host/xdebug.client_port).
-[%d] [Step Debug] -> <init xmlns="urn:debugger_protocol_v1" xmlns:xdebug="https://xdebug.org/dbgp/xdebug" fileuri="%sbug02348.inc" language="PHP" xdebug:language_version="%s" protocol_version="1.0" appid="%d"><engine version="%s"><![CDATA[Xdebug]]></engine><author><![CDATA[Derick Rethans]]></author><url><![CDATA[https://xdebug.org]]></url><copyright><![CDATA[%s]]></copyright></init>
+[%d] [Step Debug] -> <init xmlns="urn:debugger_protocol_v1" xmlns:xdebug="https://xdebug.org/dbgp/xdebug" fileuri="%sbug02348.inc" language="PHP" xdebug:language_version="%s" protocol_version="1.0" appid="%d"><engine version="%s"><![CDATA[PHP Debugger]]></engine><author><![CDATA[Derick Rethans]]></author><url><![CDATA[https://xdebug.org]]></url><copyright><![CDATA[%s]]></copyright></init>
 
 [%d] [Step Debug] <- feature_set -i 1 -n resolved_breakpoints -v 1
 [%d] [Step Debug] -> <response xmlns="urn:debugger_protocol_v1" xmlns:xdebug="https://xdebug.org/dbgp/xdebug" command="feature_set" transaction_id="1" feature="resolved_breakpoints" success="1"></response>

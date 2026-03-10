@@ -1,0 +1,116 @@
+# PHP Debugger
+
+A lightweight, high-performance PHP debugger extension. Forked from [Xdebug](https://xdebug.org/) by Derick Rethans, stripped down to pure debugging, and optimized for near-zero overhead when inactive.
+
+## Why PHP Debugger?
+
+- **~10% overhead** when loaded but inactive (vs ~630% before optimization)
+- **Drop-in Xdebug replacement** — existing configs, IDE setups, and workflows work unchanged
+- **Debug-only** — no profiler, no coverage, no tracing. Just debugging, done right.
+- **Full DBGp protocol support** — works with PhpStorm, VS Code, and any DBGp-compatible IDE
+
+### Benchmarks
+
+`bench.php` on Apple Silicon, PHP 8.5.3. No IDE connected — measures pure extension overhead.
+
+| Configuration | Time | Overhead |
+|---|---|---|
+| No debugger | 0.139s | — |
+| Xdebug, no debug trigger | 0.589s¹ | **4.2×** |
+| Xdebug, debug trigger set | 0.589s | **4.2×** |
+| PHP Debugger, no debug trigger | 0.154s | **1.1×** |
+| PHP Debugger, debug trigger set | 0.145s | **1.04×** |
+
+Xdebug enables all hooks at startup regardless of trigger. PHP Debugger activates hooks only when a debug client is actually listening.
+
+¹ Xdebug with `mode=debug` enables `EXT_STMT` unconditionally, so overhead is the same with or without a trigger.
+
+## Installation
+
+### Quick install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/pronskiy/php-debugger-src/main/install.php | php
+```
+
+Installs the extension for the PHP it's run with — detects version and platform automatically.
+
+### PIE (PHP Installer for Extensions)
+
+```bash
+pie install pronskiy/php-debugger
+```
+
+### Manual download
+
+Grab the right binary from [Releases](https://github.com/pronskiy/php-debugger-src/releases), copy it to your extension directory, and add to `php.ini`:
+
+```ini
+zend_extension=php_debugger.so
+```
+
+## Configuration
+
+PHP Debugger accepts both `php_debugger.*` and `xdebug.*` INI prefixes. Existing Xdebug configurations work as-is.
+
+```ini
+; Both of these work:
+php_debugger.mode = debug
+php_debugger.client_host = 127.0.0.1
+php_debugger.client_port = 9003
+php_debugger.start_with_request = trigger
+
+; Xdebug-compatible (also works):
+xdebug.mode = debug
+xdebug.client_host = 127.0.0.1
+xdebug.client_port = 9003
+xdebug.start_with_request = trigger
+```
+
+## IDE Setup
+
+### PhpStorm
+
+Works as-is. PhpStorm connects via DBGp — the same protocol as Xdebug. Just swap the extension and your existing debug configurations work.
+
+### VS Code
+
+Works as-is with the [PHP Debug](https://marketplace.visualstudio.com/items?itemName=xdebug.php-debug) adapter. No changes needed — it speaks DBGp.
+
+## Xdebug Compatibility
+
+PHP Debugger is a drop-in replacement for Xdebug\'s debug mode:
+
+| Feature | PHP Debugger | Xdebug |
+|---|---|---|
+| `extension_loaded("xdebug")` | ✅ true | ✅ true |
+| `extension_loaded("php_debugger")` | ✅ true | ❌ false |
+| `xdebug.*` INI settings | ✅ works | ✅ works |
+| `xdebug_break()` | ✅ works | ✅ works |
+| `XDEBUG_SESSION` trigger | ✅ works | ✅ works |
+| Step debugging (DBGp) | ✅ | ✅ |
+| Profiling | ❌ removed | ✅ |
+| Code coverage | ❌ removed | ✅ |
+| Tracing | ❌ removed | ✅ |
+
+### New names (optional)
+
+You can also use the new names — they work alongside the Xdebug ones:
+
+- **INI:** `php_debugger.mode`, `php_debugger.client_host`, etc.
+- **Functions:** `php_debugger_break()`, `php_debugger_info()`, `php_debugger_connect_to_client()`, `php_debugger_is_debugger_active()`, `php_debugger_notify()`
+- **Triggers:** `PHP_DEBUGGER_SESSION`, `PHP_DEBUGGER_SESSION_START`, `PHP_DEBUGGER_TRIGGER`
+
+## Requirements
+
+- PHP 8.2, 8.3, 8.4, or 8.5
+
+## License
+
+Released under [The Xdebug License](LICENSE), version 1.03 (based on The PHP License).
+
+This product includes Xdebug software, freely available from [https://xdebug.org/](https://xdebug.org/).
+
+## Acknowledgments
+
+PHP Debugger is built on the foundation of [Xdebug](https://xdebug.org/), created and maintained by **Derick Rethans** since 2002. His two decades of work on PHP debugging tools made this project possible. Thank you, Derick.
