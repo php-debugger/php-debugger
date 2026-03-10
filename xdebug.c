@@ -489,15 +489,25 @@ PHP_RINIT_FUNCTION(xdebug)
 		 * For no mode: no debugging will happen.
 		 * Note: xdebug_break() can initiate connections without triggers,
 		 * but it handles re-enabling the observer itself. */
-		int debug_requested =
+		/* Respect start_with_request=no and XDEBUG_IGNORE */
+		int debug_requested = !xdebug_lib_never_start_with_request() && !xdebug_should_ignore() && (
 			xdebug_lib_start_with_request(XDEBUG_MODE_STEP_DEBUG) ||
 			xdebug_lib_start_with_trigger(XDEBUG_MODE_STEP_DEBUG, NULL) ||
 			xdebug_lib_start_upon_error() ||
-			getenv("XDEBUG_SESSION_START") != NULL;
+			getenv("XDEBUG_SESSION_START") != NULL
+		);
 
 		if (debug_requested) {
-			/* Debug session likely: enable extended stmt opcodes */
-			CG(compiler_options) = CG(compiler_options) | ZEND_COMPILE_EXTENDED_STMT;
+			/* Debug session requested: check if a client is actually listening
+			 * before enabling expensive EXT_STMT opcodes. This avoids ~2x
+			 * overhead when triggers are present but no IDE is connected. */
+			if (xdebug_early_connect_to_client()) {
+				CG(compiler_options) = CG(compiler_options) | ZEND_COMPILE_EXTENDED_STMT;
+			} else {
+				/* Trigger present but no client listening — stay dormant */
+				XG_BASE(observer_active) = 0;
+				XG_BASE(statement_handler_enabled) = false;
+			}
 		} else {
 			/* No debug trigger: disable all heavy hooks for near-zero overhead.
 			 * Note: xdebug_break() jit mode won't have full stepping support

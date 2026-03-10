@@ -101,3 +101,4 @@ src/*/*/*.lo
 *.bak
 *.phase1
 .libs/
+php_test_results_*.txt
