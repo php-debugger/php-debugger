@@ -1,13 +1,31 @@
 {
-    "name": "xdebug/xdebug",
+    "name": "pronskiy/php-debugger",
     "type": "php-ext-zend",
     "license": "Xdebug-1.03",
-    "description": "Xdebug is a debugging and productivity extension for PHP",
+    "description": "A lightweight, high-performance PHP debugger. Drop-in Xdebug replacement focused on debugging.",
+    "homepage": "https://github.com/pronskiy/php-debugger-src",
+    "authors": [
+        {
+            "name": "Roman Pronskiy",
+            "role": "lead"
+        },
+        {
+            "name": "Derick Rethans",
+            "homepage": "https://xdebug.org",
+            "role": "original author (Xdebug)"
+        }
+    ],
     "require": {
-        "php": ">=8.0,<8.7"
+        "php": ">=8.2,<8.6"
     },
     "php-ext": {
+        "extension-name": "php_debugger",
         "priority": 90,
-        "configure-options": []
+        "configure-options": [
+            {
+                "name": "enable-php-debugger",
+                "description": "Enable PHP Debugger support"
+            }
+        ]
     }
 }
