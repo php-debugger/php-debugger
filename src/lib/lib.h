@@ -222,6 +222,11 @@ typedef struct _xdebug_library_settings_t {
 	/* Logging settings */
 	char         *log;       /* Filename to log protocol communication to */
 	zend_long     log_level; /* Log level XDEBUG_LOG_{ERR,WARN,INFO,DEBUG} */
+
+	/* Inspection API settings */
+	zend_long     inspect_mode;   /* XDEBUG_INSPECT_OFF|ON|AUTO|TRIGGER */
+	zend_long     inspect_port;   /* TCP port, default 9007 */
+	char         *inspect_socket; /* Unix socket path (empty = use TCP) */
 } xdebug_library_settings_t;
 
 void xdebug_init_library_globals(xdebug_library_globals_t *xg);

@@ -53,6 +53,7 @@
 #endif
 #include "base/filter.h"
 #include "debugger/com.h"
+#include "inspect/inspect_transport.h"
 #include "lib/usefulstuff.h"
 #include "lib/lib.h"
 #include "lib/llist.h"
@@ -265,6 +266,32 @@ static PHP_INI_MH(OnUpdatePhpDebuggerCtrlSocket)
 }
 #endif
 
+static PHP_INI_MH(OnUpdateInspectMode)
+{
+	if (!new_value) {
+		return FAILURE;
+	}
+	XG(settings.library.inspect_mode) = xdebug_inspect_parse_mode(ZSTR_VAL(new_value));
+	return SUCCESS;
+}
+
+ZEND_INI_DISP(display_inspect_mode)
+{
+	char *value;
+	if (type == ZEND_INI_DISPLAY_ORIG && ini_entry->modified) {
+		value = ZSTR_VAL(ini_entry->orig_value);
+	} else if (ini_entry->value) {
+		value = ZSTR_VAL(ini_entry->value);
+	} else {
+		value = NULL;
+	}
+	if (value) {
+		ZEND_PUTS(xdebug_inspect_mode_name(XG(settings.library.inspect_mode)));
+	} else {
+		ZEND_PUTS("?");
+	}
+}
+
 PHP_INI_BEGIN()
 	/* Library settings */
 	STD_PHP_INI_ENTRY("xdebug.mode",               "debug",               PHP_INI_SYSTEM,                OnUpdateString, settings.library.requested_mode,   zend_xdebug_globals, xdebug_globals)
@@ -290,6 +317,11 @@ PHP_INI_BEGIN()
 
 	/* Base settings */
 	STD_PHP_INI_ENTRY("xdebug.max_nesting_level", "512",                PHP_INI_ALL,    OnUpdateLong,   settings.base.max_nesting_level, zend_xdebug_globals, xdebug_globals)
+
+	/* Inspection API settings */
+	PHP_INI_ENTRY_EX("xdebug.inspect",        "off",  PHP_INI_SYSTEM, OnUpdateInspectMode, display_inspect_mode)
+	STD_PHP_INI_ENTRY("xdebug.inspect_port",   "9007", PHP_INI_SYSTEM, OnUpdateLong,   settings.library.inspect_port,   zend_xdebug_globals, xdebug_globals)
+	STD_PHP_INI_ENTRY("xdebug.inspect_socket", "",     PHP_INI_SYSTEM, OnUpdateString, settings.library.inspect_socket, zend_xdebug_globals, xdebug_globals)
 
 	/* Xdebug Cloud */
 	STD_PHP_INI_ENTRY("xdebug.cloud_id", "", PHP_INI_SYSTEM, OnUpdateString, settings.debugger.cloud_id, zend_xdebug_globals, xdebug_globals)
@@ -492,6 +524,11 @@ PHP_MINIT_FUNCTION(xdebug)
 		xdebug_lib_set_mode("debug");
 	}
 
+	/* Initialize Inspection API transport (independent of xdebug.mode) */
+	if (XG(settings.library.inspect_mode) != 0) {
+		inspect_transport_init();
+	}
+
 	if (XDEBUG_MODE_IS_OFF()) {
 		return SUCCESS;
 	}
@@ -519,6 +556,9 @@ PHP_MINIT_FUNCTION(xdebug)
 
 PHP_MSHUTDOWN_FUNCTION(xdebug)
 {
+	/* Always shutdown Inspection API transport (independent of xdebug.mode) */
+	inspect_transport_shutdown();
+
 	if (XDEBUG_MODE_IS_OFF()) {
 #ifdef ZTS
 		ts_free_id(xdebug_globals_id);
@@ -580,6 +620,12 @@ PHP_RINIT_FUNCTION(xdebug)
 	 * {NULL, NULL} for functions first-called when no debugger is connected. */
 	xdebug_base_rinit();
 
+	/* Check for new Inspection API client connections */
+	if (XG(settings.library.inspect_mode) != 0) {
+		inspect_transport_check();
+		inspect_transport_process();
+	}
+
 	if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)) {
 		/* Check early if debugging could be requested this request.
 		 * For start_with_request=default (trigger mode), check if any
@@ -619,6 +665,12 @@ PHP_RINIT_FUNCTION(xdebug)
 			XG_BASE(observer_active) = 0;
 			XG_BASE(statement_handler_enabled) = false;
 		}
+	}
+
+	/* Inspection API: enable EXT_STMT opcodes so the statement handler fires,
+	 * allowing us to poll for inspect client connections and messages. */
+	if (XG(settings.library.inspect_mode) != 0) {
+		CG(compiler_options) = CG(compiler_options) | ZEND_COMPILE_EXTENDED_STMT;
 	}
 
 	return SUCCESS;
@@ -684,6 +736,12 @@ ZEND_DLEXPORT void xdebug_statement_call(zend_execute_data *frame)
 #if HAVE_XDEBUG_CONTROL_SOCKET_SUPPORT
 	xdebug_control_socket_dispatch();
 #endif
+
+	/* Process Inspection API connections and messages */
+	if (XG(settings.library.inspect_mode) != 0) {
+		inspect_transport_check();
+		inspect_transport_process();
+	}
 
 	if (!XG_BASE(statement_handler_enabled)) {
 		return;

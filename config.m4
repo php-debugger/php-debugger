@@ -104,11 +104,14 @@ if test "$PHP_PHP_DEBUGGER" != "no"; then
 
   XDEBUG_DEBUGGER_SOURCES="src/debugger/com.c src/debugger/debugger.c src/debugger/handler_dbgp.c src/debugger/handlers.c src/debugger/ip_info.c"
 
-  PHP_NEW_EXTENSION(php_debugger, xdebug.c $XDEBUG_BASE_SOURCES $XDEBUG_LIB_SOURCES $XDEBUG_LIB_MAPS_SOURCES $XDEBUG_DEBUGGER_SOURCES, $ext_shared,,$PHP_XDEBUG_CFLAGS,,yes)
+  XDEBUG_INSPECT_SOURCES="src/inspect/inspect_transport.c src/inspect/inspect_commands.c"
+
+  PHP_NEW_EXTENSION(php_debugger, xdebug.c $XDEBUG_BASE_SOURCES $XDEBUG_LIB_SOURCES $XDEBUG_LIB_MAPS_SOURCES $XDEBUG_DEBUGGER_SOURCES $XDEBUG_INSPECT_SOURCES, $ext_shared,,$PHP_XDEBUG_CFLAGS,,yes)
   PHP_ADD_BUILD_DIR(PHP_EXT_BUILDDIR(php_debugger)[/src/base])
   PHP_ADD_BUILD_DIR(PHP_EXT_BUILDDIR(php_debugger)[/src/lib])
   PHP_ADD_BUILD_DIR(PHP_EXT_BUILDDIR(php_debugger)[/src/lib/maps])
   PHP_ADD_BUILD_DIR(PHP_EXT_BUILDDIR(php_debugger)[/src/debugger])
+  PHP_ADD_BUILD_DIR(PHP_EXT_BUILDDIR(php_debugger)[/src/inspect])
   PHP_SUBST(PHP_DEBUGGER_SHARED_LIBADD)
   PHP_ADD_MAKEFILE_FRAGMENT
 
