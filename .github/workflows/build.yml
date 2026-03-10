@@ -101,7 +101,7 @@ jobs:
                 run: phpize
 
             -   name: configure
-                run: configure --enable-xdebug --with-prefix=${{ steps.setup-php-sdk.outputs.prefix }}
+                run: configure.bat --enable-xdebug --with-prefix=${{ steps.setup-php-sdk.outputs.prefix }}
 
             -   name: nmake
                 run: nmake
