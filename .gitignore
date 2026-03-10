@@ -98,3 +98,6 @@ src/*/*.dep
 src/*/*.lo
 src/*/*/*.dep
 src/*/*/*.lo
+*.bak
+*.phase1
+.libs/

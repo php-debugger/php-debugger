@@ -3118,13 +3118,7 @@ int xdebug_dbgp_notification(xdebug_con *context, xdebug_str *filename, long lin
 		xdebug_xml_add_attribute_ex(error_container, "type", xdstrdup(type_string), 0, 1);
 	}
 	if (message) {
-		char *tmp_buf;
-
-		if (type == E_ERROR && ((tmp_buf = xdebug_strip_php_stack_trace(message)) != NULL)) {
-			xdebug_xml_add_text(error_container, tmp_buf);
-		} else {
-			xdebug_xml_add_text(error_container, xdstrdup(message));
-		}
+		xdebug_xml_add_text(error_container, xdstrdup(message));
 	}
 	xdebug_xml_add_child(response, error_container);
 

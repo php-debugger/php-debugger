@@ -472,10 +472,41 @@ PHP_RINIT_FUNCTION(xdebug)
 
 	xdebug_init_auto_globals();
 
-	/* Only enabled extended info when it is not disabled */
-	CG(compiler_options) = CG(compiler_options) | ZEND_COMPILE_EXTENDED_STMT;
-
+	/* Early debug init: attempt connection at RINIT so observer_active is set
+	 * before any user code runs. This allows xdebug_observer_init to return
+	 * {NULL, NULL} for functions first-called when no debugger is connected. */
 	xdebug_base_rinit();
+
+	if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)) {
+		/* Check early if debugging could be requested this request.
+		 * For start_with_request=default (trigger mode), check if any
+		 * trigger is present. If not, disable all heavy hooks for
+		 * near-zero overhead. The actual connection happens on first
+		 * function call if triggers are present. */
+		/* Check if debugging could be requested this request.
+		 * For trigger/default mode: check triggers, cookies, env vars.
+		 * For yes mode: always expect a connection.
+		 * For no mode: no debugging will happen.
+		 * Note: xdebug_break() can initiate connections without triggers,
+		 * but it handles re-enabling the observer itself. */
+		int debug_requested =
+			xdebug_lib_start_with_request(XDEBUG_MODE_STEP_DEBUG) ||
+			xdebug_lib_start_with_trigger(XDEBUG_MODE_STEP_DEBUG, NULL) ||
+			xdebug_lib_start_upon_error() ||
+			getenv("XDEBUG_SESSION_START") != NULL;
+
+		if (debug_requested) {
+			/* Debug session likely: enable extended stmt opcodes */
+			CG(compiler_options) = CG(compiler_options) | ZEND_COMPILE_EXTENDED_STMT;
+		} else {
+			/* No debug trigger: disable all heavy hooks for near-zero overhead.
+			 * Note: xdebug_break() jit mode won't have full stepping support
+			 * without EXT_STMT opcodes. Use start_with_request=yes or a trigger
+			 * for full debugging support. */
+			XG_BASE(observer_active) = 0;
+			XG_BASE(statement_handler_enabled) = false;
+		}
+	}
 
 	return SUCCESS;
 }

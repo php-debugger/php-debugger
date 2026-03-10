@@ -666,6 +666,8 @@ void xdebug_mark_debug_connection_active()
 {
 	XG_DBG(remote_connection_enabled) = 1;
 	XG_DBG(remote_connection_pid) = xdebug_get_pid();
+	/* Activate observer when debugger connects (including mid-request via xdebug_connect_to_client) */
+	XG_BASE(observer_active) = 1;
 }
 
 void xdebug_mark_debug_connection_pending()
