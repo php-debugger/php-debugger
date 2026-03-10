@@ -30,7 +30,7 @@ Xdebug enables all hooks at startup regardless of trigger. PHP Debugger activate
 ### Quick install
 
 ```bash
-php -r "copy('https://raw.githubusercontent.com/pronskiy/php-debugger-src/main/install.php','/tmp/i.php');" && php /tmp/i.php
+curl -fsSL https://raw.githubusercontent.com/pronskiy/php-debugger-src/main/install.php | php
 ```
 
 Installs the extension for the PHP it's run with — detects version and platform automatically.
