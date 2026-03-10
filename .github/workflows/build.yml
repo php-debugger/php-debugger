@@ -97,11 +97,14 @@ jobs:
                     arch: x64
                     toolset: ${{ steps.setup-php-sdk.outputs.toolset }}
 
-            -   name: Build extension
-                run: |
-                    phpize
-                    configure --enable-xdebug --with-prefix=${{ steps.setup-php-sdk.outputs.prefix }}
-                    nmake
+            -   name: phpize
+                run: phpize
+
+            -   name: configure
+                run: configure --enable-xdebug --with-prefix=${{ steps.setup-php-sdk.outputs.prefix }}
+
+            -   name: nmake
+                run: nmake
 
             -   name: Verify extension loads
                 run: |
