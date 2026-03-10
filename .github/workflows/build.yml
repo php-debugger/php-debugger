@@ -115,17 +115,10 @@ jobs:
                     PHP_VER=$(php -r "echo PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION;")
                     echo "artifact_name=xdebug-php${PHP_VER}-windows-x64" >> $GITHUB_OUTPUT
 
-            -   name: Find and upload DLL
-                id: find-dll
-                shell: bash
-                run: |
-                    DLL=$(find . -name 'php_xdebug.dll' -type f | head -1)
-                    echo "Found DLL at: $DLL"
-                    echo "dll_path=$DLL" >> $GITHUB_OUTPUT
-
             -   name: Upload artifact
                 uses: actions/upload-artifact@v4
                 with:
                     name: ${{ steps.info.outputs.artifact_name }}
-                    path: ${{ steps.find-dll.outputs.dll_path }}
+                    path: x64/Release*/php_xdebug.dll
+                    if-no-files-found: error
                     retention-days: 90
