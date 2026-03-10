@@ -1,0 +1,51 @@
+name: "Cppcheck Analysis"
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  cppcheck:
+    name: Cppcheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install cppcheck and PHP dev
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cppcheck php8.3-dev
+
+      - name: Generate compile config
+        run: |
+          phpize
+          ./configure --enable-php-debugger
+
+      - name: Run cppcheck
+        run: |
+          cppcheck \
+            --enable=warning,performance,portability \
+            --std=c11 \
+            --error-exitcode=1 \
+            --suppress=missingIncludeSystem \
+            --inline-suppr \
+            --force \
+            --quiet \
+            -I . \
+            -I src/ \
+            -I src/base/ \
+            -I src/debugger/ \
+            -I src/lib/ \
+            -I src/inspect/ \
+            src/ xdebug.c 2>&1 | tee cppcheck-report.txt
+
+      - name: Upload cppcheck report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cppcheck-report
+          path: cppcheck-report.txt

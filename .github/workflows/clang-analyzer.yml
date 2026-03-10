@@ -1,0 +1,35 @@
+name: "Clang Static Analyzer"
+
+on:
+  schedule:
+    - cron: '0 4 * * 0'  # Weekly Sunday 4am UTC
+  workflow_dispatch:
+
+jobs:
+  clang-sa:
+    name: Clang Static Analyzer
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang clang-tools php8.3-dev
+
+      - name: Run scan-build
+        run: |
+          phpize
+          scan-build --status-bugs -o scan-results \
+            ./configure --enable-php-debugger
+          scan-build --status-bugs -o scan-results \
+            make -j$(nproc)
+
+      - name: Upload scan-build report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: clang-sa-report
+          path: scan-results/
