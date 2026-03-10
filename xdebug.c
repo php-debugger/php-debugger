@@ -597,7 +597,8 @@ PHP_RINIT_FUNCTION(xdebug)
 			xdebug_lib_start_with_request(XDEBUG_MODE_STEP_DEBUG) ||
 			xdebug_lib_start_with_trigger(XDEBUG_MODE_STEP_DEBUG, NULL) ||
 			xdebug_lib_start_upon_error() ||
-			getenv("XDEBUG_SESSION_START") != NULL
+			getenv("XDEBUG_SESSION_START") != NULL ||
+			getenv("PHP_DEBUGGER_SESSION_START") != NULL
 		);
 
 		if (debug_requested) {

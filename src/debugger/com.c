@@ -636,8 +636,10 @@ static void xdebug_init_debugger()
 		xdebug_mark_debug_connection_pending();
 
 		if (!XG_DBG(context).handler->remote_init(&(XG_DBG(context)), XDEBUG_REQ)) {
-			/* The request could not be started, ignore it then */
+			/* The request could not be started, close the socket to prevent fd leak */
 			xdebug_log_ex(XLOG_CHAN_DEBUG, XLOG_ERR, "SES-INIT", "The debug session could not be started. Tried: %s.", connection_attempts->d);
+			xdebug_close_socket(XG_DBG(context).socket);
+			XG_DBG(context).socket = -1;
 		} else {
 			/* All is well, turn off script time outs */
 			zend_unset_timeout();
@@ -717,6 +719,7 @@ void xdebug_mark_debug_connection_not_active()
 {
 	if (XG_DBG(remote_connection_enabled)) {
 		xdebug_close_socket(XG_DBG(context).socket);
+		XG_DBG(context).socket = -1;
 	}
 
 	XG_DBG(remote_connection_enabled) = 0;
