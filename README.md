@@ -71,11 +71,11 @@ xdebug.start_with_request = trigger
 
 ### PhpStorm
 
-No changes needed. PhpStorm connects via DBGp — the same protocol as Xdebug. Just swap the extension and your existing debug configurations work.
+Works as-is. PhpStorm connects via DBGp — the same protocol as Xdebug. Just swap the extension and your existing debug configurations work.
 
 ### VS Code
 
-Use the [PHP Debug](https://marketplace.visualstudio.com/items?itemName=xdebug.php-debug) adapter. No changes needed — it speaks DBGp.
+Works as-is with the [PHP Debug](https://marketplace.visualstudio.com/items?itemName=xdebug.php-debug) adapter. No changes needed — it speaks DBGp.
 
 ## Xdebug Compatibility
 
