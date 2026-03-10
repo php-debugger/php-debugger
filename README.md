@@ -15,11 +15,11 @@ A lightweight, high-performance PHP debugger extension. Forked from [Xdebug](htt
 
 | Configuration | Time | Overhead |
 |---|---|---|
-| PHP, no debugger | 0.139s | — |
-| PHP + Xdebug, no debug trigger | 0.589s¹ | **4.2×** |
-| PHP + Xdebug, debug trigger set | 0.589s | **4.2×** |
-| PHP + PHP Debugger, no debug trigger | 0.154s | **1.1×** |
-| PHP + PHP Debugger, debug trigger set | 0.145s | **1.04×** |
+| No debugger | 0.139s | — |
+| Xdebug, no debug trigger | 0.589s¹ | **4.2×** |
+| Xdebug, debug trigger set | 0.589s | **4.2×** |
+| PHP Debugger, no debug trigger | 0.154s | **1.1×** |
+| PHP Debugger, debug trigger set | 0.145s | **1.04×** |
 
 Xdebug enables all hooks at startup regardless of trigger. PHP Debugger activates hooks only when a debug client is actually listening.
 
