@@ -27,26 +27,27 @@ Xdebug enables all hooks at startup regardless of trigger. PHP Debugger activate
 
 ## Installation
 
-### From source
+### Quick install (one-liner)
 
 ```bash
-git clone https://github.com/pronskiy/php-debugger-src.git
-cd php-debugger-src
-phpize
-./configure --enable-php-debugger
-make
-sudo make install
+curl -fsSL https://github.com/pronskiy/php-debugger-src/releases/latest/download/install.sh | bash
 ```
 
-Add to your `php.ini`:
+This detects your PHP version and platform, downloads the right binary, and installs it.
+
+### PIE (PHP Installer for Extensions)
+
+```bash
+pie install pronskiy/php-debugger
+```
+
+### Manual download
+
+Grab the right binary from [Releases](https://github.com/pronskiy/php-debugger-src/releases), copy it to your extension directory, and add to `php.ini`:
 
 ```ini
 zend_extension=php_debugger.so
 ```
-
-### Pre-built binaries
-
-Download from [Releases](https://github.com/pronskiy/php-debugger-src/releases) (Linux x64 + macOS ARM64, PHP 8.2–8.5).
 
 ## Configuration
 
