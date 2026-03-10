@@ -20,16 +20,16 @@ if (PHP_PHP_DEBUGGER == 'yes') {
 	}
 
 	if (typeof(ZEND_EXTENSION) == 'undefined') {
-		EXTENSION('php_debugger', files);
+		EXTENSION('debugger', files);
 	} else {
-		ZEND_EXTENSION('php_debugger', files);
+		ZEND_EXTENSION('debugger', files);
 	}
-	ADD_FLAG("CFLAGS_PHP_DEBUGGER", " /I " + configure_module_dirname + " ");
-	ADD_FLAG("CFLAGS_PHP_DEBUGGER", " /I " + configure_module_dirname + "/src ");
-	ADD_SOURCES(configure_module_dirname + "/src/base", XDEBUG_BASE_SOURCES, "php_debugger");
-	ADD_SOURCES(configure_module_dirname + "/src/lib", XDEBUG_LIB_SOURCES, "php_debugger");
-	ADD_SOURCES(configure_module_dirname + "/src/lib/maps", XDEBUG_LIB_MAPS_SOURCES, "php_debugger");
-	ADD_SOURCES(configure_module_dirname + "/src/debugger", XDEBUG_DEBUGGER_SOURCES, "php_debugger");
+	ADD_FLAG("CFLAGS_DEBUGGER", " /I " + configure_module_dirname + " ");
+	ADD_FLAG("CFLAGS_DEBUGGER", " /I " + configure_module_dirname + "/src ");
+	ADD_SOURCES(configure_module_dirname + "/src/base", XDEBUG_BASE_SOURCES, "debugger");
+	ADD_SOURCES(configure_module_dirname + "/src/lib", XDEBUG_LIB_SOURCES, "debugger");
+	ADD_SOURCES(configure_module_dirname + "/src/lib/maps", XDEBUG_LIB_MAPS_SOURCES, "debugger");
+	ADD_SOURCES(configure_module_dirname + "/src/debugger", XDEBUG_DEBUGGER_SOURCES, "debugger");
 
 	AC_DEFINE("HAVE_XDEBUG_CONTROL_SOCKET_SUPPORT", 1, "PHP Debugger control socket support");
 	AC_DEFINE("HAVE_XDEBUG", 1, "PHP Debugger support");

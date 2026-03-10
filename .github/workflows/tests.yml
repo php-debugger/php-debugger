@@ -29,7 +29,7 @@ jobs:
             -   name: Compile
                 run: |
                     phpize
-                    ./configure --enable-xdebug
+                    ./configure --enable-php-debugger
                     make -j$(nproc)
 
             -   name: Find PHP
@@ -44,7 +44,7 @@ jobs:
                     if [[ "${{ matrix.opcache }}" == "true" ]]; then
                         TEST_PHP_ARGS="$TEST_PHP_ARGS -d zend_extension=opcache.so -d opcache.enable=1 -d opcache.enable_cli=1"
                     fi
-                    TEST_PHP_ARGS="$TEST_PHP_ARGS -d zend_extension=$PWD/modules/xdebug.so"
+                    TEST_PHP_ARGS="$TEST_PHP_ARGS -d zend_extension=$PWD/modules/php_debugger.so"
                     echo "Test PHP arguments: $TEST_PHP_ARGS"
                     echo "TEST_PHP_ARGS=$TEST_PHP_ARGS" >> $GITHUB_ENV
 
