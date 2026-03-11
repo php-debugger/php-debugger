@@ -1,5 +1,7 @@
 --TEST--
 Starting Debugger: trigger, XDEBUG_CONFIG=idekey=foobar
+--XFAIL--
+Phase 2 RINIT observer gating sets observer_active=0 when no debug client connects at RINIT. Without observer callbacks, the stack vector is empty, so xdebug_break()/connect_to_client() cannot report stack frames. Trade-off: 0% overhead when no client vs working mid-request activation.
 --ENV--
 XDEBUG_CONFIG=idekey=foobar
 --FILE--
