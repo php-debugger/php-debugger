@@ -10,7 +10,7 @@ A lightweight, high-performance PHP debugger extension. Forked from [Xdebug](htt
 
 - **+4% overhead** when loaded but inactive (vs +324% in Xdebug)
 - **Drop-in Xdebug replacement** — existing configs, IDE setups, and workflows work unchanged
-- **Debug-only** — no profiler, no coverage, no tracing. Just debugging, done right.
+- **Debug-only** — no profiler, no coverage, no tracing. Just debugging.
 - **Full DBGp protocol support** — works with PhpStorm, VS Code, and any DBGp-compatible IDE
 
 ### Benchmarks
@@ -69,11 +69,13 @@ xdebug.start_with_request = trigger
 
 ### PhpStorm
 
-Works as-is. PhpStorm connects via DBGp — the same protocol as Xdebug. Just swap the extension and your existing debug configurations work.
+Works as-is. Just swap the extension and your existing debug configurations work.
+
+[Configuring Debugger in PhpStorm](https://www.jetbrains.com/help/phpstorm/configuring-xdebug.html)
 
 ### VS Code
 
-Works as-is with the [PHP Debug](https://marketplace.visualstudio.com/items?itemName=xdebug.php-debug) adapter. No changes needed — it speaks DBGp.
+Works as-is. No changes needed.
 
 ## Xdebug Compatibility
 
@@ -87,8 +89,8 @@ PHP Debugger is a drop-in replacement for Xdebug\'s debug mode:
 | `xdebug_break()` | ✅ works | ✅ works |
 | `XDEBUG_SESSION` trigger | ✅ works | ✅ works |
 | Step debugging (DBGp) | ✅ | ✅ |
+| Code coverage | ❌ use pcov | ✅ |
 | Profiling | ❌ removed | ✅ |
-| Code coverage | ❌ removed | ✅ |
 | Tracing | ❌ removed | ✅ |
 
 ### New names (optional)
