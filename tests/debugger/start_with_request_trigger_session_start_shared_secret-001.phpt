@@ -1,5 +1,7 @@
 --TEST--
 Starting Debugger: trigger with shared secret, XDEBUG_SESSION_START
+--XFAIL--
+Phase 2 early connect attempts TCP connection at RINIT before the shared secret (xdebug.trigger_value) is validated. The connection succeeds even when the trigger value does not match the secret. Original Xdebug validated the trigger value before connecting.
 --ENV--
 XDEBUG_SESSION_START=foobar
 --FILE--

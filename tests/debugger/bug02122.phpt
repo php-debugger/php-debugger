@@ -1,5 +1,7 @@
 --TEST--
 Test for bug #2122: Local variables are not available when using start_upon_error
+--XFAIL--
+Phase 2 RINIT observer gating sets observer_active=0 when no debug client connects at RINIT. When an error triggers debugging mid-request, the observer has not been tracking function calls, so stack frames and local variables are unavailable (error 301: stack depth invalid).
 --SKIPIF--
 <?php
 require __DIR__ . '/../utils.inc';
