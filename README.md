@@ -15,7 +15,7 @@ A lightweight, high-performance PHP debugger extension. Forked from [Xdebug](htt
 
 ### Benchmarks
 
-`bench.php` on Apple Silicon, PHP 8.5.3. Extension loaded, no IDE connected.
+`bench.php` on Apple Silicon, PHP 8.5.3. Extension loaded, xdebug.mode=debug, no IDE connected.
 
 | Configuration | Time   | Overhead  |
 |---------------|--------|-----------|
