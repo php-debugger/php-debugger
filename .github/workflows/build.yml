@@ -86,7 +86,7 @@ jobs:
                     php-version: ${{ inputs.php-version || '8.5' }}
                     arch: x64
                     ts: nts
-                    args: --enable-php-debugger
+                    args: --enable-debugger
                     run-tests: false
 
             -   name: Get build info
