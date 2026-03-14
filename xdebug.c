@@ -566,7 +566,7 @@ PHP_RINIT_FUNCTION(xdebug)
 	xdebug_library_rinit();
 
 	if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)) {
-		xdebug_debugger_rinit();
+		xdebug_debugger_rinit_early();
 
 		if (xdebug_debugger_bailout_if_no_exec_requested()) {
 			zend_bailout();
@@ -581,18 +581,10 @@ PHP_RINIT_FUNCTION(xdebug)
 	xdebug_base_rinit();
 
 	if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)) {
-		/* Check early if debugging could be requested this request.
-		 * For start_with_request=default (trigger mode), check if any
-		 * trigger is present. If not, disable all heavy hooks for
-		 * near-zero overhead. The actual connection happens on first
-		 * function call if triggers are present. */
 		/* Check if debugging could be requested this request.
 		 * For trigger/default mode: check triggers, cookies, env vars.
 		 * For yes mode: always expect a connection.
-		 * For no mode: no debugging will happen.
-		 * Note: xdebug_break() can initiate connections without triggers,
-		 * but it handles re-enabling the observer itself. */
-		/* Respect start_with_request=no and XDEBUG_IGNORE */
+		 * For no mode: no debugging will happen. */
 		int debug_requested = !xdebug_lib_never_start_with_request() && !xdebug_should_ignore() && (
 			xdebug_lib_start_with_request(XDEBUG_MODE_STEP_DEBUG) ||
 			xdebug_lib_start_with_trigger(XDEBUG_MODE_STEP_DEBUG, NULL) ||
@@ -605,17 +597,18 @@ PHP_RINIT_FUNCTION(xdebug)
 			 * before enabling expensive EXT_STMT opcodes. This avoids ~2x
 			 * overhead when triggers are present but no IDE is connected. */
 			if (xdebug_early_connect_to_client()) {
+				/* Client connected — do full debugger init (opcache disable,
+				 * breakable lines map, etc.) */
+				xdebug_debugger_rinit();
 				CG(compiler_options) = CG(compiler_options) | ZEND_COMPILE_EXTENDED_STMT;
 			} else {
-				/* Trigger present but no client listening — stay dormant */
+				/* Trigger present but no client listening — stay dormant.
+				 * Skip heavy debugger init (breakable_lines_map, opcache disable). */
 				XG_BASE(observer_active) = 0;
 				XG_BASE(statement_handler_enabled) = false;
 			}
 		} else {
-			/* No debug trigger: disable all heavy hooks for near-zero overhead.
-			 * Note: xdebug_break() jit mode won't have full stepping support
-			 * without EXT_STMT opcodes. Use start_with_request=yes or a trigger
-			 * for full debugging support. */
+			/* No debug trigger: disable all heavy hooks for near-zero overhead. */
 			XG_BASE(observer_active) = 0;
 			XG_BASE(statement_handler_enabled) = false;
 		}

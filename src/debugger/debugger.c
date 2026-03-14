@@ -874,13 +874,11 @@ void xdebug_debugger_minfo(void)
 	php_info_print_table_end();
 }
 
-void xdebug_debugger_rinit(void)
+void xdebug_debugger_rinit_early(void)
 {
 	char *idekey;
 
-	xdebug_disable_opcache_optimizer();
-
-	/* Get the ide key for this session */
+	/* Get the ide key for this session (needed for early connection check) */
 	XG_DBG(ide_key) = NULL;
 	idekey = xdebug_debugger_get_ide_key();
 	if (idekey && *idekey) {
@@ -919,7 +917,7 @@ void xdebug_debugger_rinit(void)
 	XG_DBG(breakpoints_allowed) = 1;
 	XG_DBG(suppress_return_value_step) = 0;
 	XG_DBG(detached) = 0;
-	XG_DBG(breakable_lines_map) = xdebug_hash_alloc(2048, (xdebug_hash_dtor_t) xdebug_line_list_dtor);
+	XG_DBG(breakable_lines_map) = NULL;
 	XG_DBG(function_count) = 0;
 	XG_DBG(class_count) = 0;
 
@@ -938,6 +936,13 @@ void xdebug_debugger_rinit(void)
 	XG_DBG(context).connected_hostname = NULL;
 	XG_DBG(context).connected_port = 0;
 	XG_DBG(context).detached_message = NULL;
+}
+
+void xdebug_debugger_rinit(void)
+{
+	xdebug_disable_opcache_optimizer();
+
+	XG_DBG(breakable_lines_map) = xdebug_hash_alloc(2048, (xdebug_hash_dtor_t) xdebug_line_list_dtor);
 }
 
 void xdebug_debugger_post_deactivate(void)
@@ -960,8 +965,10 @@ void xdebug_debugger_post_deactivate(void)
 		XG_DBG(context).list.last_filename = NULL;
 	}
 
-	xdebug_hash_destroy(XG_DBG(breakable_lines_map));
-	XG_DBG(breakable_lines_map) = NULL;
+	if (XG_DBG(breakable_lines_map)) {
+		xdebug_hash_destroy(XG_DBG(breakable_lines_map));
+		XG_DBG(breakable_lines_map) = NULL;
+	}
 
 	if (XG_DBG(context).connected_hostname) {
 		xdfree(XG_DBG(context).connected_hostname);

@@ -608,6 +608,13 @@ static void xdebug_init_debugger()
 {
 	xdebug_str *connection_attempts = xdebug_str_new();
 
+	/* Lazy init: allocate breakable_lines_map if deferred from RINIT
+	 * (happens when debug session is initiated mid-request via xdebug_break()
+	 * or start_upon_error, after the early connection check failed) */
+	if (!XG_DBG(breakable_lines_map)) {
+		xdebug_debugger_rinit();
+	}
+
 	/* Get handler from mode */
 	XG_DBG(context).handler = &xdebug_handler_dbgp;
 

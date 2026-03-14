@@ -90,6 +90,7 @@ void xdebug_debugger_zend_startup(void);
 void xdebug_debugger_zend_shutdown(void);
 void xdebug_debugger_minit(void);
 void xdebug_debugger_minfo(void);
+void xdebug_debugger_rinit_early(void);
 void xdebug_debugger_rinit(void);
 void xdebug_debugger_post_deactivate(void);
 
