@@ -4,7 +4,7 @@ A lightweight, high-performance PHP debugger extension. Forked from [Xdebug](htt
 
 > [!NOTE]
 > **🧪 This project is an experiment to show how fast the PHP community can move using AI tools.**  
-> The entire extension — fork, strip, optimize, rename — was built in days, not months, using PhpStorm, Claude Code, OpenClaw. We're here to move fast, adapt to change, and prove that PHP tooling doesn't need to be gatekept.
+> The entire extension — fork, strip, optimize, rename — was built in days, not months, using PhpStorm, Claude Code, OpenClaw. We're here to move fast, adapt to change, and prove that PHP tooling can be the best in the industry.
 
 ## Why PHP Debugger?
 
