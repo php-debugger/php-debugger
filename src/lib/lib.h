@@ -230,6 +230,7 @@ void xdebug_library_zend_startup(void);
 void xdebug_library_zend_shutdown(void);
 void xdebug_library_minit(void);
 void xdebug_library_mshutdown(void);
+void xdebug_library_rinit_dormant(void);
 void xdebug_library_rinit(void);
 void xdebug_library_post_deactivate(void);
 

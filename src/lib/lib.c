@@ -80,6 +80,19 @@ void xdebug_library_mshutdown(void)
 	xdebug_set_free(XG_LIB(opcode_handlers_set));
 }
 
+void xdebug_library_rinit_dormant(void)
+{
+	/* Minimal init when no debug session will happen.
+	 * Skip heavy allocations (headers, trait_location_map, path_mapping).
+	 * NULL pointers are handled by cleanup code. */
+	XG_LIB(diagnosis_buffer) = NULL;
+	XG_LIB(headers) = NULL;
+	XG_LIB(dumped) = 0;
+	XG_LIB(do_collect_errors) = 0;
+	XG_LIB(trait_location_map) = NULL;
+	XG_LIB(path_mapping_information) = NULL;
+}
+
 void xdebug_library_rinit(void)
 {
 	XG_LIB(diagnosis_buffer) = xdebug_str_new();
@@ -118,14 +131,20 @@ void xdebug_library_rinit(void)
 void xdebug_library_post_deactivate(void)
 {
 	/* Clean up collected headers */
-	xdebug_llist_destroy(XG_LIB(headers), NULL);
-	XG_LIB(headers) = NULL;
+	if (XG_LIB(headers)) {
+		xdebug_llist_destroy(XG_LIB(headers), NULL);
+		XG_LIB(headers) = NULL;
+	}
 
-	xdebug_hash_destroy(XG_LIB(trait_location_map));
+	if (XG_LIB(trait_location_map)) {
+		xdebug_hash_destroy(XG_LIB(trait_location_map));
+	}
 
 	xdebug_close_log();
-	xdebug_str_free(XG_LIB(diagnosis_buffer));
-	XG_LIB(diagnosis_buffer) = NULL;
+	if (XG_LIB(diagnosis_buffer)) {
+		xdebug_str_free(XG_LIB(diagnosis_buffer));
+		XG_LIB(diagnosis_buffer) = NULL;
+	}
 
 	if (XG_LIB(path_mapping_information)) {
 		xdebug_path_maps_dtor(XG_LIB(path_mapping_information));

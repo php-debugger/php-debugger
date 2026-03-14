@@ -22,6 +22,7 @@ void xdebug_base_mshutdown();
 
 void xdebug_base_post_startup();
 
+void xdebug_base_rinit_dormant();
 void xdebug_base_rinit();
 void xdebug_base_post_deactivate();
 void xdebug_base_rshutdown();

@@ -563,24 +563,19 @@ PHP_RINIT_FUNCTION(xdebug)
 	   this can override the idekey if one is set */
 	xdebug_env_config();
 
-	xdebug_library_rinit();
-
 	if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)) {
+		/* Minimal debugger setup: IDE key, no_exec check, context init.
+		 * Heavy allocations are deferred until we know a debugger will connect. */
 		xdebug_debugger_rinit_early();
 
 		if (xdebug_debugger_bailout_if_no_exec_requested()) {
 			zend_bailout();
 		}
-	}
 
-	xdebug_init_auto_globals();
+		/* Initialize auto globals early — needed for trigger check
+		 * (xdebug_lib_find_in_globals accesses _GET, _POST, _COOKIE, _ENV) */
+		xdebug_init_auto_globals();
 
-	/* Early debug init: attempt connection at RINIT so observer_active is set
-	 * before any user code runs. This allows xdebug_observer_init to return
-	 * {NULL, NULL} for functions first-called when no debugger is connected. */
-	xdebug_base_rinit();
-
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)) {
 		/* Check if debugging could be requested this request.
 		 * For trigger/default mode: check triggers, cookies, env vars.
 		 * For yes mode: always expect a connection.
@@ -592,26 +587,24 @@ PHP_RINIT_FUNCTION(xdebug)
 			getenv("XDEBUG_SESSION_START") != NULL
 		);
 
-		if (debug_requested) {
-			/* Debug session requested: check if a client is actually listening
-			 * before enabling expensive EXT_STMT opcodes. This avoids ~2x
-			 * overhead when triggers are present but no IDE is connected. */
-			if (xdebug_early_connect_to_client()) {
-				/* Client connected — do full debugger init (opcache disable,
-				 * breakable lines map, etc.) */
-				xdebug_debugger_rinit();
-				CG(compiler_options) = CG(compiler_options) | ZEND_COMPILE_EXTENDED_STMT;
-			} else {
-				/* Trigger present but no client listening — stay dormant.
-				 * Skip heavy debugger init (breakable_lines_map, opcache disable). */
-				XG_BASE(observer_active) = 0;
-				XG_BASE(statement_handler_enabled) = false;
-			}
+		if (debug_requested && xdebug_early_connect_to_client()) {
+			/* Client connected — do full init */
+			xdebug_library_rinit();
+			xdebug_debugger_rinit();
+			xdebug_base_rinit();
+			CG(compiler_options) = CG(compiler_options) | ZEND_COMPILE_EXTENDED_STMT;
 		} else {
-			/* No debug trigger: disable all heavy hooks for near-zero overhead. */
-			XG_BASE(observer_active) = 0;
-			XG_BASE(statement_handler_enabled) = false;
+			/* Dormant: no debugger will connect this request.
+			 * Skip heavy allocations (library, debugger, base init).
+			 * Set minimal flags for correctness. */
+			xdebug_library_rinit_dormant();
+			xdebug_base_rinit_dormant();
 		}
+	} else {
+		/* Non-debug mode (shouldn't happen since profiler/coverage are stripped,
+		 * but handle gracefully) */
+		xdebug_library_rinit();
+		xdebug_base_rinit();
 	}
 
 	return SUCCESS;

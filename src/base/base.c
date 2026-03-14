@@ -1056,7 +1056,14 @@ static xdebug_vector *find_stack_for_fiber(zend_string *fiber_key, zend_fiber_co
 static void xdebug_fiber_switch_observer(zend_fiber_context *from, zend_fiber_context *to)
 {
 	xdebug_vector *current_stack;
-	zend_string   *to_key = create_key_for_fiber(to);
+	zend_string   *to_key;
+
+	/* Skip fiber tracking when dormant (fiber_stacks not allocated) */
+	if (!XG_BASE(fiber_stacks)) {
+		return;
+	}
+
+	to_key = create_key_for_fiber(to);
 
 	if (from->status == ZEND_FIBER_STATUS_DEAD) {
 		zend_string *from_key = create_key_for_fiber(from);
@@ -1205,6 +1212,27 @@ void xdebug_base_post_startup()
 	zend_compile_file = xdebug_compile_file;
 }
 
+void xdebug_base_rinit_dormant()
+{
+	/* Minimal init when no debug session will happen.
+	 * Skip heavy allocations (fiber_stacks, stack, filters, control socket).
+	 * NULL pointers are handled by cleanup code. */
+	XG_BASE(fiber_stacks) = NULL;
+	XG_BASE(stack) = NULL;
+	XG_BASE(in_debug_info) = 0;
+	XG_BASE(prev_memory) = 0;
+	XG_BASE(function_count) = -1;
+	XG_BASE(last_eval_statement) = NULL;
+	XG_BASE(last_exception_trace) = NULL;
+	XG_BASE(statement_handler_enabled) = false;
+	XG_BASE(in_var_serialisation) = 0;
+	XG_BASE(in_execution) = 1;
+	XG_BASE(observer_active) = 0;
+	XG_BASE(needs_debug_init) = 0;
+	XG_BASE(filter_type_stack) = XDEBUG_FILTER_NONE;
+	XG_BASE(filters_stack) = NULL;
+}
+
 void xdebug_base_rinit()
 {
 	/* Hack: We check for a soap header here, if that's existing, we don't use
@@ -1287,8 +1315,10 @@ void xdebug_base_rinit()
 
 void xdebug_base_post_deactivate()
 {
-	xdebug_hash_destroy(XG_BASE(fiber_stacks));
-	XG_BASE(fiber_stacks) = NULL;
+	if (XG_BASE(fiber_stacks)) {
+		xdebug_hash_destroy(XG_BASE(fiber_stacks));
+		XG_BASE(fiber_stacks) = NULL;
+	}
 	XG_BASE(stack) = NULL;
 
 	XG_BASE(in_debug_info)    = 0;
@@ -1303,7 +1333,9 @@ void xdebug_base_post_deactivate()
 	}
 
 	/* filters */
-	xdebug_llist_destroy(XG_BASE(filters_stack), NULL);
+	if (XG_BASE(filters_stack)) {
+		xdebug_llist_destroy(XG_BASE(filters_stack), NULL);
+	}
 
 #if HAVE_XDEBUG_CONTROL_SOCKET_SUPPORT
 	/* Close Down Control Socket */
