@@ -80,12 +80,20 @@ void xdebug_library_mshutdown(void)
 	xdebug_set_free(XG_LIB(opcode_handlers_set));
 }
 
+void xdebug_library_rinit_log(void)
+{
+	/* Open log and diagnosis buffer early, before trigger/connection check.
+	 * This ensures all log messages during trigger evaluation and
+	 * connection attempts are captured. */
+	XG_LIB(diagnosis_buffer) = xdebug_str_new();
+	xdebug_open_log();
+}
+
 void xdebug_library_rinit_dormant(void)
 {
 	/* Minimal init when no debug session will happen.
-	 * Skip heavy allocations (headers, trait_location_map, path_mapping).
-	 * NULL pointers are handled by cleanup code. */
-	XG_LIB(diagnosis_buffer) = NULL;
+	 * Log and diagnosis_buffer already opened by rinit_log().
+	 * Skip heavy allocations (headers, trait_location_map, path_mapping). */
 	XG_LIB(headers) = NULL;
 	XG_LIB(dumped) = 0;
 	XG_LIB(do_collect_errors) = 0;
@@ -95,8 +103,7 @@ void xdebug_library_rinit_dormant(void)
 
 void xdebug_library_rinit(void)
 {
-	XG_LIB(diagnosis_buffer) = xdebug_str_new();
-	xdebug_open_log();
+	/* Log and diagnosis_buffer already opened by rinit_log(). */
 
 	XG_LIB(headers) = xdebug_llist_alloc(xdebug_llist_string_dtor);
 

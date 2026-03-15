@@ -563,6 +563,10 @@ PHP_RINIT_FUNCTION(xdebug)
 	   this can override the idekey if one is set */
 	xdebug_env_config();
 
+	/* Open log and diagnosis buffer early — needed for trigger check
+	 * and connection logging. Remaining library init is deferred. */
+	xdebug_library_rinit_log();
+
 	if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)) {
 		/* Minimal debugger setup: IDE key, no_exec check, context init.
 		 * Heavy allocations are deferred until we know a debugger will connect. */
