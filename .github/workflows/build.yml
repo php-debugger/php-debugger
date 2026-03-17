@@ -75,8 +75,14 @@ jobs:
                     retention-days: 90
 
     build-windows:
+        strategy:
+            fail-fast: false
+            matrix:
+                ts:
+                    - nts
+                    - ts
         runs-on: windows-2022
-        name: "Windows (x64) — PHP ${{ inputs.php-version || '8.5' }}"
+        name: "Windows (x64) — PHP ${{ inputs.php-version || '8.5' }} — ${{ matrix.ts == 'ts' && 'TS' || 'NTS' }}"
         steps:
             -   uses: actions/checkout@v6
 
@@ -85,7 +91,7 @@ jobs:
                 with:
                     php-version: ${{ inputs.php-version || '8.5' }}
                     arch: x64
-                    ts: nts
+                    ts: ${{ matrix.ts }}
                     args: --enable-debugger
                     run-tests: false
 
@@ -94,7 +100,8 @@ jobs:
                 shell: bash
                 run: |
                     PHP_VER="${{ inputs.php-version || '8.5' }}"
-                    echo "artifact_name=php-debugger-php${PHP_VER}-windows-x64" >> $GITHUB_OUTPUT
+                    TS_TAG="${{ matrix.ts }}"
+                    echo "artifact_name=php-debugger-php${PHP_VER}-${TS_TAG}-windows-x64" >> $GITHUB_OUTPUT
 
             -   name: Find DLL
                 id: find-dll

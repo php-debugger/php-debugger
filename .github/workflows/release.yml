@@ -76,8 +76,11 @@ jobs:
                     - '8.3'
                     - '8.4'
                     - '8.5'
+                ts:
+                  - nts
+                  - ts
         runs-on: windows-2022
-        name: "Windows — PHP ${{ matrix.php-version }}"
+        name: "Windows — PHP ${{ matrix.php-version }} — ${{ matrix.ts == 'ts' && 'TS' || 'NTS' }}"
         steps:
             -   uses: actions/checkout@v6
 
@@ -86,7 +89,7 @@ jobs:
                 with:
                     php-version: ${{ matrix.php-version }}
                     arch: x64
-                    ts: nts
+                    ts: ${{ matrix.ts }}
                     args: --enable-debugger
                     run-tests: false
 
@@ -95,7 +98,8 @@ jobs:
                 shell: pwsh
                 run: |
                     $phpVer = "${{ matrix.php-version }}"
-                    $assetName = "php-debugger-php${phpVer}-windows-x64.dll"
+                    $tsTag = "${{ matrix.ts }}"
+                    $assetName = "php-debugger-php${phpVer}-${tsTag}-windows-x64.dll"
                     $dll = Get-ChildItem -Path $env:RUNNER_TEMP -Recurse -Filter 'php_debugger.dll' -ErrorAction SilentlyContinue | Select-Object -First 1
                     if (-not $dll) {
                         $dll = Get-ChildItem -Recurse -Filter 'php_debugger.dll' -ErrorAction SilentlyContinue | Select-Object -First 1
