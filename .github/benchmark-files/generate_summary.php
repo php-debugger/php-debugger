@@ -5,7 +5,7 @@
  *
  * This script reads benchmark results from the results directory, merges them
  * into a single directory, and generates a markdown summary with performance
- * metrics for different PHP versions, commands, and Xdebug modes.
+ * metrics for different PHP versions, commands, and Php-Debugger modes.
  */
 
 // Create merged directory and copy all result files into it
@@ -67,32 +67,32 @@ $matrixValues = $allMatrixValues;
 // Extract unique values for each dimension
 $commands = [];
 $phpVersions = [];
-$xdebugModes = [];
+$phpDebuggerModes = [];
 
 foreach ($matrixValues as $line) {
-    [$php, $command, $xdebug] = explode(',', $line);
+    [$php, $command, $phpDebugger] = explode(',', $line);
     $phpVersions[$php] = true;
     $commands[$command] = true;
-    $xdebugModes[$xdebug] = true;
+    $phpDebuggerModes[$phpDebugger] = true;
 }
 
 // Sort the arrays
 $commands = array_keys($commands);
 $phpVersions = array_keys($phpVersions);
-$xdebugModes = array_keys($xdebugModes);
+$phpDebuggerModes = array_keys($phpDebuggerModes);
 sort($commands);
 sort($phpVersions);
 
-// Sort xdebug modes according to the defined order, leaving only those which actually exist in the data
-$xdebugModeOrder = ["no", "off", "coverage", "debug", "develop", "gcstats", "profile", "trace"];
-$xdebugModes = array_values(array_filter($xdebugModeOrder, function($mode) use ($xdebugModes) {
-    return in_array($mode, $xdebugModes);
+// Sort Php-Debugger modes according to the defined order, leaving only those which actually exist in the data
+$phpDebuggerModeOrder = ["no", "off", "debug"];
+$phpDebuggerModes = array_values(array_filter($phpDebuggerModeOrder, function($mode) use ($phpDebuggerModes) {
+    return in_array($mode, $phpDebuggerModes);
 }));
 
 // Start building the markdown summary and CSV data
 $output = "# 🕒 Performance Results\n";
 $csvData = [];
-$csvData[] = ['command', 'php', 'xdebug_mode', 'instructions', 'slowdown'];
+$csvData[] = ['command', 'php', 'php_debugger_mode', 'instructions', 'slowdown'];
 
 // Loop through each command
 foreach ($commands as $command) {
@@ -101,11 +101,11 @@ foreach ($commands as $command) {
     // Loop through each PHP version
     foreach ($phpVersions as $php) {
         $output .= "\n### **PHP Version:** `$php`\n\n";
-        $output .= "| Xdebug | Instructions | Slowdown | Δ Instructions |\n";
-        $output .= "|--------|-------------:|---------:|---------------:|\n";
+        $output .= "| Php-Debugger | Instructions | Slowdown | Improvement |\n";
+        $output .= "|--------------|-------------:|---------:|------------:|\n";
 
-        // Get base value (when Xdebug mode is "no")
-        $baseFile = "merged/php-{$php}_cmd-{$command}_xdebug-no.txt";
+        // Get base value (when Php-Debugger mode is "no")
+        $baseFile = "merged/php-{$php}_cmd-{$command}_php_debugger-no.txt";
         if (!file_exists($baseFile)) {
             fwrite(STDERR, "Warning: Base file not found: $baseFile\n");
             continue;
@@ -113,9 +113,9 @@ foreach ($commands as $command) {
 
         $baseValue = (int)trim(file_get_contents($baseFile));
 
-        // Loop through each Xdebug mode
-        foreach ($xdebugModes as $xdebug) {
-            $file = "merged/php-{$php}_cmd-{$command}_xdebug-{$xdebug}.txt";
+        // Loop through each Php-Debugger mode
+        foreach ($phpDebuggerModes as $phpDebugger) {
+            $file = "merged/php-{$php}_cmd-{$command}_php_debugger-{$phpDebugger}.txt";
 
             if (!file_exists($file)) {
                 continue;
@@ -124,7 +124,7 @@ foreach ($commands as $command) {
             $value = (int)trim(file_get_contents($file));
 
             // Calculate slowdown
-            if ($xdebug === 'no') {
+            if ($phpDebugger === 'no') {
                 $slowdown = '0%';
                 $slowdownPercent = 0.0;
             } else {
@@ -137,19 +137,21 @@ foreach ($commands as $command) {
 
             // Calculate performance change compared to previous results
             $performanceChange = '--';
-            $key = $command . '-' . $php . '-' . $xdebug;
+            $key = $command . '-' . $php . '-' . $phpDebugger;
             if (isset($previousResults[$key])) {
-                $previousValue = $previousResults[$key];
-                // Calculate percentage change: (new - old) / old * 100
-                // Positive means slower (more instructions), negative means faster
-                $changePercent = (($value - $previousValue) * 100) / $previousValue;
-                $performanceChange = sprintf('%+.1f%%', $changePercent);
+                $previousSlowdown = $previousResults[$key];
+                $performanceChange = '0%';
+                if ($previousSlowdown !== 0) {
+                    $currentSlowdown = sprintf('%.1f', $slowdownPercent);
+                    $changePercent = (($previousSlowdown - $currentSlowdown) * 100) / $previousSlowdown;
+                    $performanceChange = sprintf('%+.1f%%', $changePercent);
+                }
             }
 
-            $output .= "| $xdebug | $formattedValue | $slowdown | $performanceChange |\n";
+            $output .= "| $phpDebugger | $formattedValue | $slowdown | $performanceChange |\n";
 
             // Add to CSV data (with raw numbers, not formatted)
-            $csvData[] = [$command, $php, $xdebug, $value, sprintf('%.1f', $slowdownPercent)];
+            $csvData[] = [$command, $php, $phpDebugger, $value, sprintf('%.1f', $slowdownPercent)];
         }
     }
 }
@@ -158,15 +160,15 @@ foreach ($commands as $command) {
 $output .= "\n# Performance Results Summary\n";
 $output .= "\nThese tables show aggregated results across all PHP versions:\n";
 
-// Aggregate data across all PHP versions for each command and xdebug mode
+// Aggregate data across all PHP versions for each command and Php-Debugger mode
 foreach ($commands as $command) {
     $output .= "\n## **Command:** `$command`\n\n";
-    $output .= "| Xdebug | Slowdown | Δ Instructions |\n";
-    $output .= "|--------|---------:|---------------:|\n";
+    $output .= "| Php-Debugger | Slowdown | Improvement |\n";
+    $output .= "|--------------|---------:|------------:|\n";
 
-    // Calculate aggregated values for each xdebug mode
+    // Calculate aggregated values for each Php-Debugger mode
     $aggregatedData = [];
-    foreach ($xdebugModes as $xdebug) {
+    foreach ($phpDebuggerModes as $phpDebugger) {
         $totalInstructions = 0;
         $totalBaseInstructions = 0;
         $count = 0;
@@ -174,8 +176,8 @@ foreach ($commands as $command) {
         $performanceChangeCount = 0;
 
         foreach ($phpVersions as $php) {
-            $file = "merged/php-{$php}_cmd-{$command}_xdebug-{$xdebug}.txt";
-            $baseFile = "merged/php-{$php}_cmd-{$command}_xdebug-no.txt";
+            $file = "merged/php-{$php}_cmd-{$command}_php_debugger-{$phpDebugger}.txt";
+            $baseFile = "merged/php-{$php}_cmd-{$command}_php_debugger-no.txt";
 
             if (file_exists($file) && file_exists($baseFile)) {
                 $value = (int)trim(file_get_contents($file));
@@ -185,11 +187,17 @@ foreach ($commands as $command) {
                 $totalBaseInstructions += $baseValue;
                 $count++;
 
+                $slowdownPercent = (($value - $baseValue) * 100) / $baseValue;
+
                 // Calculate performance change if previous data exists
-                $key = $command . '-' . $php . '-' . $xdebug;
+                $key = $command . '-' . $php . '-' . $phpDebugger;
                 if (isset($previousResults[$key])) {
-                    $previousValue = $previousResults[$key];
-                    $changePercent = (($value - $previousValue) * 100) / $previousValue;
+                    $previousSlowdown = $previousResults[$key];
+                    $changePercent = 0;
+                    if ($previousSlowdown !== 0) {
+                        $currentSlowdown = sprintf('%.1f', $slowdownPercent);
+                        $changePercent = (($previousSlowdown - $currentSlowdown) * 100) / $previousSlowdown;
+                    }
                     $totalPerformanceChange += $changePercent;
                     $performanceChangeCount++;
                 }
@@ -198,7 +206,7 @@ foreach ($commands as $command) {
 
         if ($count > 0) {
             // Calculate average slowdown
-            if ($xdebug === 'no') {
+            if ($phpDebugger === 'no') {
                 $avgSlowdown = '0%';
             } else {
                 $avgSlowdownPercent = (($totalInstructions - $totalBaseInstructions) * 100) / $totalBaseInstructions;
@@ -212,7 +220,7 @@ foreach ($commands as $command) {
                 $performanceChange = sprintf('%+.1f%%', $avgPerformanceChange);
             }
 
-            $output .= "| $xdebug | $avgSlowdown | $performanceChange |\n";
+            $output .= "| $phpDebugger | $avgSlowdown | $performanceChange |\n";
         }
     }
 }
@@ -278,13 +286,20 @@ function githubApiRequest(string $url): string|false {
 /**
  * Fetches benchmark results from the latest successful run of the benchmark workflow on the base branch.
  *
- * @return array Array indexed by "command-php-xdebug" with instruction counts, or empty array if not found
+ * @return array Array indexed by "command-php-php_debugger" with instruction counts, or empty array if not found
  */
 function fetchPreviousBenchmarkResults(): array {
     // Determine the base branch for comparison
-    // For pull requests, use GITHUB_BASE_REF
+    // If COMPARISON_BRANCH is set, use it explicitly
+    // Otherwise for pull requests, use GITHUB_BASE_REF
     // For other actions, use GITHUB_REF_NAME (current branch)
-    $baseBranch = getenv('GITHUB_BASE_REF') ?: getenv('GITHUB_REF_NAME');
+    $comparisonBranch = getenv('COMPARISON_BRANCH');
+    if ($comparisonBranch !== false && $comparisonBranch !== '') {
+        $baseBranch = $comparisonBranch;
+    } else {
+        $baseBranch = getenv('GITHUB_BASE_REF') ?: getenv('GITHUB_REF_NAME');
+    }
+
     if (!$baseBranch) {
         fwrite(STDERR, "Warning: Could not determine base branch for comparison\n");
         return [];
@@ -389,9 +404,9 @@ function fetchPreviousBenchmarkResults(): array {
         }
 
         if (count($fields) >= 4) {
-            // Fields: command, php, xdebug_mode, instructions, slowdown
+            // Fields: command, php, php_debugger_mode, instructions, slowdown
             $key = $fields[0] . '-' . $fields[1] . '-' . $fields[2];
-            $previousData[$key] = (int)$fields[3];
+            $previousData[$key] = (int)$fields[4];
         }
     }
 
