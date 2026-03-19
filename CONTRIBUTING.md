@@ -1,5 +1,4 @@
-CONTRIBUTING.md
-Contributing to PHP Debugger
+# Contributing to PHP Debugger
 Thank you for your interest in contributing to PHP Debugger! This project is an experiment in rapid PHP tool development, and we welcome community involvement to keep PHP tooling at the top of the industry.
 
 PR Process
