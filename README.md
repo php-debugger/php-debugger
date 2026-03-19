@@ -8,20 +8,52 @@ A lightweight, high-performance PHP debugger extension. Forked from [Xdebug](htt
 
 ## Why PHP Debugger?
 
-- **+4% overhead** when loaded but inactive (vs +324% in Xdebug)
+- **97% performance improvement over Xdebug** when loaded but inactive
 - **Drop-in Xdebug replacement** — existing configs, IDE setups, and workflows work unchanged
 - **Debug-only** — no profiler, no coverage, no tracing. Just debugging.
 - **Full DBGp protocol support** — works with PhpStorm, VS Code, and any DBGp-compatible IDE
 
 ### Benchmarks
 
-`bench.php` on Apple Silicon, PHP 8.5.3. Extension loaded, xdebug.mode=debug, no IDE connected.
+The following benchmarks were run in GitHub's CI (GitHub Actions) environment using a standard Ubuntu runner. 
+The performance was measured using Valgrind to count the number of executed instructions.
+This is much more precise and reproducible than timing execution runs. All measuremments were done
+using all supported PHP versions (the number shown is the average), with the extension loaded and
+no IDE connected.
 
-| Configuration | Time   | Overhead  |
-|---------------|--------|-----------|
-| No debugger   | 0.139s | —         |
-| PHP Debugger  | 0.145s | **+4%**   |
-| Xdebug        | 0.589s | **+324%** |
+We measured three different scenarios which we believe represent a good mix of typical PHP operations:
+
+- `bench.php`: a syntetic benchmark that runs a number of computationally heavy functions
+
+| Configuration |    Overhead |
+|---------------|------------:|
+| No debugger   |           — |
+| Xdebug        | **+661.6%** |
+| PHP Debugger  |  **+12.9%** |
+
+Improvement: **98.0%**
+
+- `Rector`: running a RectorPHP rule on a PHP file
+
+| Configuration |    Overhead |
+|---------------|------------:|
+| No debugger   |           — |
+| Xdebug        | **+124.5%** |
+| PHP Debugger  |   **+3.6%** |
+
+Improvement: **97.1%**
+
+- `Symfony`: running a basic request on a Symfony demo project
+
+| Configuration |   Overhead |
+|---------------|-----------:|
+| No debugger   |          — |
+| Xdebug        | **+35.3%** |
+| PHP Debugger  |  **+1.3%** |
+
+Improvement: **96.1%**
+
+Overall improvement: **97.1%**
 
 ## Installation
 

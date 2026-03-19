@@ -5,7 +5,7 @@
  *
  * This script reads benchmark results from the results directory, merges them
  * into a single directory, and generates a markdown summary with performance
- * metrics for different PHP versions, commands, and Php-Debugger modes.
+ * metrics for different PHP versions, commands, and PHP Debugger modes.
  */
 
 // Create merged directory and copy all result files into it
@@ -83,7 +83,7 @@ $phpDebuggerModes = array_keys($phpDebuggerModes);
 sort($commands);
 sort($phpVersions);
 
-// Sort Php-Debugger modes according to the defined order, leaving only those which actually exist in the data
+// Sort PHP Debugger modes according to the defined order, leaving only those which actually exist in the data
 $phpDebuggerModeOrder = ["no", "off", "debug"];
 $phpDebuggerModes = array_values(array_filter($phpDebuggerModeOrder, function($mode) use ($phpDebuggerModes) {
     return in_array($mode, $phpDebuggerModes);
@@ -92,7 +92,7 @@ $phpDebuggerModes = array_values(array_filter($phpDebuggerModeOrder, function($m
 // Start building the markdown summary and CSV data
 $output = "# 🕒 Performance Results\n";
 $csvData = [];
-$csvData[] = ['command', 'php', 'php_debugger_mode', 'instructions', 'slowdown'];
+$csvData[] = ['command', 'php', 'php_debugger_mode', 'instructions', 'overhead'];
 
 // Loop through each command
 foreach ($commands as $command) {
@@ -101,10 +101,10 @@ foreach ($commands as $command) {
     // Loop through each PHP version
     foreach ($phpVersions as $php) {
         $output .= "\n### **PHP Version:** `$php`\n\n";
-        $output .= "| Php-Debugger | Instructions | Slowdown | Improvement |\n";
+        $output .= "| PHP Debugger | Instructions | Overhead | Improvement |\n";
         $output .= "|--------------|-------------:|---------:|------------:|\n";
 
-        // Get base value (when Php-Debugger mode is "no")
+        // Get base value (when PHP Debugger mode is "no")
         $baseFile = "merged/php-{$php}_cmd-{$command}_php_debugger-no.txt";
         if (!file_exists($baseFile)) {
             fwrite(STDERR, "Warning: Base file not found: $baseFile\n");
@@ -113,7 +113,7 @@ foreach ($commands as $command) {
 
         $baseValue = (int)trim(file_get_contents($baseFile));
 
-        // Loop through each Php-Debugger mode
+        // Loop through each PHP Debugger mode
         foreach ($phpDebuggerModes as $phpDebugger) {
             $file = "merged/php-{$php}_cmd-{$command}_php_debugger-{$phpDebugger}.txt";
 
@@ -123,13 +123,13 @@ foreach ($commands as $command) {
 
             $value = (int)trim(file_get_contents($file));
 
-            // Calculate slowdown
+            // Calculate overhead
             if ($phpDebugger === 'no') {
-                $slowdown = '0%';
-                $slowdownPercent = 0.0;
+                $overhead = '0%';
+                $overheadPercent = 0.0;
             } else {
-                $slowdownPercent = (($value - $baseValue) * 100) / $baseValue;
-                $slowdown = sprintf('%.1f%%', $slowdownPercent);
+                $overheadPercent = (($value - $baseValue) * 100) / $baseValue;
+                $overhead = sprintf('%.1f%%', $overheadPercent);
             }
 
             // Format the value with thousands separators for markdown
@@ -139,19 +139,19 @@ foreach ($commands as $command) {
             $performanceChange = '--';
             $key = $command . '-' . $php . '-' . $phpDebugger;
             if (isset($previousResults[$key])) {
-                $previousSlowdown = $previousResults[$key];
+                $previousOverhead = $previousResults[$key];
                 $performanceChange = '0%';
-                if ($previousSlowdown !== 0) {
-                    $currentSlowdown = sprintf('%.1f', $slowdownPercent);
-                    $changePercent = (($previousSlowdown - $currentSlowdown) * 100) / $previousSlowdown;
+                if ($previousOverhead !== 0) {
+                    $currentOverhead = sprintf('%.1f', $overheadPercent);
+                    $changePercent = (($previousOverhead - $currentOverhead) * 100) / $previousOverhead;
                     $performanceChange = sprintf('%+.1f%%', $changePercent);
                 }
             }
 
-            $output .= "| $phpDebugger | $formattedValue | $slowdown | $performanceChange |\n";
+            $output .= "| $phpDebugger | $formattedValue | $overhead | $performanceChange |\n";
 
             // Add to CSV data (with raw numbers, not formatted)
-            $csvData[] = [$command, $php, $phpDebugger, $value, sprintf('%.1f', $slowdownPercent)];
+            $csvData[] = [$command, $php, $phpDebugger, $value, sprintf('%.1f', $overheadPercent)];
         }
     }
 }
@@ -160,13 +160,13 @@ foreach ($commands as $command) {
 $output .= "\n# Performance Results Summary\n";
 $output .= "\nThese tables show aggregated results across all PHP versions:\n";
 
-// Aggregate data across all PHP versions for each command and Php-Debugger mode
+// Aggregate data across all PHP versions for each command and PHP Debugger mode
 foreach ($commands as $command) {
     $output .= "\n## **Command:** `$command`\n\n";
-    $output .= "| Php-Debugger | Slowdown | Improvement |\n";
+    $output .= "| PHP Debugger | Overhead | Improvement |\n";
     $output .= "|--------------|---------:|------------:|\n";
 
-    // Calculate aggregated values for each Php-Debugger mode
+    // Calculate aggregated values for each PHP Debugger mode
     $aggregatedData = [];
     foreach ($phpDebuggerModes as $phpDebugger) {
         $totalInstructions = 0;
@@ -187,16 +187,16 @@ foreach ($commands as $command) {
                 $totalBaseInstructions += $baseValue;
                 $count++;
 
-                $slowdownPercent = (($value - $baseValue) * 100) / $baseValue;
+                $overheadPercent = (($value - $baseValue) * 100) / $baseValue;
 
                 // Calculate performance change if previous data exists
                 $key = $command . '-' . $php . '-' . $phpDebugger;
                 if (isset($previousResults[$key])) {
-                    $previousSlowdown = $previousResults[$key];
+                    $previousOverhead = $previousResults[$key];
                     $changePercent = 0;
-                    if ($previousSlowdown !== 0) {
-                        $currentSlowdown = sprintf('%.1f', $slowdownPercent);
-                        $changePercent = (($previousSlowdown - $currentSlowdown) * 100) / $previousSlowdown;
+                    if ($previousOverhead !== 0) {
+                        $currentOverhead = sprintf('%.1f', $overheadPercent);
+                        $changePercent = (($previousOverhead - $currentOverhead) * 100) / $previousOverhead;
                     }
                     $totalPerformanceChange += $changePercent;
                     $performanceChangeCount++;
@@ -205,12 +205,12 @@ foreach ($commands as $command) {
         }
 
         if ($count > 0) {
-            // Calculate average slowdown
+            // Calculate average overhead
             if ($phpDebugger === 'no') {
-                $avgSlowdown = '0%';
+                $avgOverhead = '0%';
             } else {
-                $avgSlowdownPercent = (($totalInstructions - $totalBaseInstructions) * 100) / $totalBaseInstructions;
-                $avgSlowdown = sprintf('%.1f%%', $avgSlowdownPercent);
+                $avgOverheadPercent = (($totalInstructions - $totalBaseInstructions) * 100) / $totalBaseInstructions;
+                $avgOverhead = sprintf('%.1f%%', $avgOverheadPercent);
             }
 
             // Calculate average performance change
@@ -220,7 +220,7 @@ foreach ($commands as $command) {
                 $performanceChange = sprintf('%+.1f%%', $avgPerformanceChange);
             }
 
-            $output .= "| $phpDebugger | $avgSlowdown | $performanceChange |\n";
+            $output .= "| $phpDebugger | $avgOverhead | $performanceChange |\n";
         }
     }
 }
@@ -404,7 +404,7 @@ function fetchPreviousBenchmarkResults(): array {
         }
 
         if (count($fields) >= 4) {
-            // Fields: command, php, php_debugger_mode, instructions, slowdown
+            // Fields: command, php, php_debugger_mode, instructions, overhead
             $key = $fields[0] . '-' . $fields[1] . '-' . $fields[2];
             $previousData[$key] = (int)$fields[4];
         }

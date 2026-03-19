@@ -1,4 +1,4 @@
-name: Benchmark Php-Debugger performance
+name: Benchmark PHP Debugger performance
 
 on:
     # This workflow runs on three triggers: Weekly on schedule, manually, or when pull requests are labeled
@@ -95,7 +95,7 @@ jobs:
                     sudo cp ./.github/benchmark-files/php-debugger-benchmark.ini /etc/php/${{ matrix.php }}/cli/conf.d
                     sudo cp ./.github/benchmark-files/php-debugger-benchmark.ini /etc/php/${{ matrix.php }}/cgi/conf.d
     
-            -   name: Set Php-Debugger mode
+            -   name: Set PHP Debugger mode
                 run: echo "PHP_DEBUGGER_MODE=${{ matrix.php_debugger_mode }}" >> $GITHUB_ENV
 
             -   name: Confirm PHP setup
@@ -126,7 +126,7 @@ jobs:
 
             -   name: benchmark rector.php
                 if: matrix.command == 'rector' 
-                # Rector needs to be run with the --xdebug flag so that it does not try to disable Php-Debugger and also with
+                # Rector needs to be run with the --xdebug flag so that it does not try to disable PHP Debugger and also with
                 # the --debug flag so that it does not try to run several threads in parallel
                 run: valgrind --tool=callgrind --dump-instr=yes --callgrind-out-file=callgrind.out -- php vendor/bin/rector --dry-run --xdebug --debug || true
 
@@ -146,7 +146,7 @@ jobs:
                     path: results/
 
     performance:
-        # After running all benchmarks for all commands, PHP versions and Php-Debugger modes, we run a new job that builds a
+        # After running all benchmarks for all commands, PHP versions and PHP Debugger modes, we run a new job that builds a
         # summary of all execution times
         needs: run-benchmark
         runs-on: ubuntu-latest
