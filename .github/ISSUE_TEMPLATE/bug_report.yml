@@ -1,0 +1,53 @@
+name:  Bug Report
+description: File a report to help us improve PHP Debugger
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+  - type: input
+    id: php_version
+    attributes:
+      label: PHP Version
+      placeholder: e.g. 8.2.10
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      placeholder: e.g. Ubuntu 22.04, macOS Sonoma, Windows 11
+    validations:
+      required: true
+  - type: input
+    id: extension_version
+    attributes:
+      label: Extension Version
+      placeholder: e.g. 1.0.0 or git commit hash
+    validations:
+      required: true
+  - type: textarea
+    id: config
+    attributes:
+      label: php.ini Configuration
+      description: Relevant settings from your php.ini
+      render: ini
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: How do we trigger this bug?
+      placeholder: |
+        1. Install extension...
+        2. Run script X...
+        3. Observe crash...
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected vs Actual Behavior
+      description: What did you expect to happen, and what happened instead?
+    validations:
+      required: true
