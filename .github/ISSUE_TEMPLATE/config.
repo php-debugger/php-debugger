@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Questions & Discussions
+    url: https://github.com/pronskiy/php-debugger/discussions
+    about: Please ask questions or start discussions here instead of opening a bug report.
