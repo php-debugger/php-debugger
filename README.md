@@ -1,5 +1,3 @@
-# PHP Debugger
-
 <img width="720" alt="php-debugger-lockup" src="https://github.com/user-attachments/assets/7c0b65ee-602a-4cfe-a029-b953ec2e19bd" />
 
 A lightweight, high-performance PHP debugger extension. Forked from [Xdebug](https://xdebug.org/) by Derick Rethans, stripped down to pure debugging, and optimized for near-zero overhead when inactive.
