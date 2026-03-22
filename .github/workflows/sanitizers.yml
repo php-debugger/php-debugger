@@ -61,7 +61,7 @@ jobs:
             --enable-opcache=no \
             --without-pear
 
-          make -j$(nproc)
+          make -j1
           make install
 
       - name: Build extension with sanitizers
@@ -72,7 +72,7 @@ jobs:
           CFLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer -g" \
           LDFLAGS="-fsanitize=address,undefined" \
           ./configure --enable-php-debugger --with-php-config=$HOME/php-install/bin/php-config
-          make -j$(nproc)
+          make -j1
 
       - name: Verify extension loads
         run: |
@@ -84,7 +84,7 @@ jobs:
           export PATH="$HOME/php-install/bin:$PATH"
           export TEST_PHP_EXECUTABLE=$(which php)
           export TEST_PHP_ARGS="-n -d session.save_path=/tmp -d zend_extension=$PWD/modules/php_debugger.so"
-          php -n run-xdebug-tests.php --asan -j$(nproc) -q --show-diff tests/debugger/
+          php -n run-xdebug-tests.php --asan -j1 -q --show-diff tests/debugger/
 
       - name: Upload test logs on failure
         if: failure()
