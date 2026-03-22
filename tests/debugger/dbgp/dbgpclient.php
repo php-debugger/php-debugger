@@ -118,7 +118,7 @@ class DebugClient
 
 	function doRead( $conn, ?string $transaction_id = null )
 	{
-		stream_set_timeout( $conn, 3 );
+		stream_set_timeout( $conn, getenv('DBGP_TIMEOUT') ?: 3 );
 		do {
 			$trans_id = null;
 			$length = 0;
@@ -190,7 +190,7 @@ class DebugClient
 			return false;
 		}
 		$this->php = $this->launchPhp( $this->ppipes, $filename, $ini_options, $options );
-		$conn = @stream_socket_accept( $this->socket, isset( $options['timeout'] ) ? $options['timeout'] : 5 );
+		$conn = @stream_socket_accept( $this->socket, isset( $options['timeout'] ) ? $options['timeout'] : (getenv('DBGP_TIMEOUT') ?: 5) );
 
 		if ( $conn === false )
 		{

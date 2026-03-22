@@ -18,6 +18,7 @@ jobs:
     env:
       ASAN_OPTIONS: "detect_leaks=1:detect_stack_use_after_return=1:abort_on_error=1"
       UBSAN_OPTIONS: "print_stacktrace=1:halt_on_error=1"
+      DBGP_TIMEOUT: "10"
 
     steps:
       - name: Checkout extension
