@@ -168,7 +168,7 @@ function main(): void
     /** @var JUnit $junit */
     global $junit;
 
-    define('IS_WINDOWS', substr(PHP_OS, 0, 3) == "WIN");
+    define('IS_WINDOWS', str_starts_with(PHP_OS, "WIN"));
 
     $workerID = 0;
     if (getenv("TEST_PHP_WORKER")) {
@@ -2992,7 +2992,10 @@ function error(string $message): void
 function settings2array(array $settings, array &$ini_settings): void
 {
     foreach ($settings as $setting) {
-        if (strpos($setting, '=') !== false) {
+        if ($setting === null) {
+            continue;
+        }
+        if (str_contains($setting, '=')) {
             $setting = explode("=", $setting, 2);
             $name = trim($setting[0]);
             $value = trim($setting[1]);
