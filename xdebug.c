@@ -223,44 +223,57 @@ ZEND_INI_DISP(display_start_upon_error)
 
 /*
  * Wrapper OnUpdate handlers for php_debugger.* INI aliases.
- * These skip applying the default value (when entry->modified == 0),
- * so they don't overwrite values set via the canonical xdebug.* entries.
- * They only apply when the user explicitly sets php_debugger.* in php.ini.
+ *
+ * These must not overwrite values set via the canonical xdebug.* entries
+ * when the user has not explicitly set a php_debugger.* directive.
+ *
+ * During zend_register_ini_entries() (MINIT stage), entry->modified is
+ * always 0, even when the user passed -dphp_debugger.foo=bar on the CLI.
+ * We therefore check zend_get_configuration_directive() which returns
+ * non-NULL when the value was explicitly set via php.ini, -d, or per-dir.
  */
+
+static inline bool php_debugger_ini_is_explicitly_set(zend_ini_entry *entry)
+{
+	/* After MINIT, entry->modified is reliable */
+	if (entry->modified) return true;
+	/* During MINIT, check whether the INI scanner saw this directive */
+	return zend_get_configuration_directive(entry->name) != NULL;
+}
 static PHP_INI_MH(OnUpdatePhpDebuggerString)
 {
-	if (!entry->modified) return SUCCESS;
+	if (!php_debugger_ini_is_explicitly_set(entry)) return SUCCESS;
 	return OnUpdateString(entry, new_value, mh_arg1, mh_arg2, mh_arg3, stage);
 }
 
 static PHP_INI_MH(OnUpdatePhpDebuggerLong)
 {
-	if (!entry->modified) return SUCCESS;
+	if (!php_debugger_ini_is_explicitly_set(entry)) return SUCCESS;
 	return OnUpdateLong(entry, new_value, mh_arg1, mh_arg2, mh_arg3, stage);
 }
 
 static PHP_INI_MH(OnUpdatePhpDebuggerBool)
 {
-	if (!entry->modified) return SUCCESS;
+	if (!php_debugger_ini_is_explicitly_set(entry)) return SUCCESS;
 	return OnUpdateBool(entry, new_value, mh_arg1, mh_arg2, mh_arg3, stage);
 }
 
 static PHP_INI_MH(OnUpdatePhpDebuggerStartWithRequest)
 {
-	if (!entry->modified) return SUCCESS;
+	if (!php_debugger_ini_is_explicitly_set(entry)) return SUCCESS;
 	return OnUpdateStartWithRequest(entry, new_value, mh_arg1, mh_arg2, mh_arg3, stage);
 }
 
 static PHP_INI_MH(OnUpdatePhpDebuggerStartUponError)
 {
-	if (!entry->modified) return SUCCESS;
+	if (!php_debugger_ini_is_explicitly_set(entry)) return SUCCESS;
 	return OnUpdateStartUponError(entry, new_value, mh_arg1, mh_arg2, mh_arg3, stage);
 }
 
 #if HAVE_XDEBUG_CONTROL_SOCKET_SUPPORT
 static PHP_INI_MH(OnUpdatePhpDebuggerCtrlSocket)
 {
-	if (!entry->modified) return SUCCESS;
+	if (!php_debugger_ini_is_explicitly_set(entry)) return SUCCESS;
 	return OnUpdateCtrlSocket(entry, new_value, mh_arg1, mh_arg2, mh_arg3, stage);
 }
 #endif
