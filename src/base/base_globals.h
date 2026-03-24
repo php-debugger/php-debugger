@@ -56,6 +56,7 @@ typedef struct _xdebug_base_globals_t {
 	zend_string  *last_eval_statement;
 	char         *last_exception_trace;
 	zend_bool     statement_handler_enabled;
+	zend_bool	  early_connection;
 
 	/* in-execution checking */
 	zend_bool  in_execution;

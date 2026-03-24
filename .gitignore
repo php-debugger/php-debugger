@@ -83,6 +83,7 @@ phpt.*
 !run-xdebug-tests.php
 !make-release.php
 !bench.php
+!test-ini.php
 !rector.php
 !generate_summary.php
 !tests/debugger/dbgp/dbgpclient.php

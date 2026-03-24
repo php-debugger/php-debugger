@@ -25,7 +25,11 @@ $commands = array(
 	'detach'
 );
 
-dbgpRunFile( $filename, $commands );
+$settings = [
+	'xdebug.jit_debugging_enabled' => 1
+];
+
+dbgpRunFile( $filename, $commands, $settings );
 ?>
 --EXPECTF--
 <?xml version="1.0" encoding="iso-8859-1"?>

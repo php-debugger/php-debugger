@@ -715,8 +715,10 @@ static void xdebug_execute_user_code_begin(zend_execute_data *execute_data)
 
 		/* After first-call init, deactivate observer if no debugger connected */
 		if (!xdebug_is_debug_connection_active()) {
-			XG_BASE(observer_active) = 0;
-			return;
+			if (!XINI_DBG(jit_debugging_enabled)) {
+				XG_BASE(observer_active) = 0;
+				return;
+			}
 		}
 	}
 
@@ -1206,16 +1208,8 @@ void xdebug_base_post_startup()
 
 void xdebug_base_rinit()
 {
-	/* Hack: We check for a soap header here, if that's existing, we don't use
-	 * Xdebug's error handler to keep soap fault from fucking up. */
-	if (
-		(XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG))
-		&&
-		(zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_SERVER]), "HTTP_SOAPACTION", sizeof("HTTP_SOAPACTION") - 1) == NULL)
-	) {
-		xdebug_base_use_xdebug_error_cb();
-		xdebug_base_use_xdebug_throw_exception_hook();
-	}
+	XG_BASE(statement_handler_enabled) = true;
+	XG_BASE(observer_active) = true;
 
 	{
 		zend_string *fiber_key = create_key_for_fiber(EG(main_fiber_context));
@@ -1230,12 +1224,6 @@ void xdebug_base_rinit()
 	XG_BASE(function_count) = -1;
 	XG_BASE(last_eval_statement) = NULL;
 	XG_BASE(last_exception_trace) = NULL;
-
-	/* Enable statement handler only when needed */
-	XG_BASE(statement_handler_enabled) = false;
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)) {
-		XG_BASE(statement_handler_enabled) = true;
-	}
 
 	/* Initialize start time */
 	XG_BASE(start_nanotime) = xdebug_get_nanotime();
@@ -1270,9 +1258,6 @@ void xdebug_base_rinit()
 	/* Signal that we're in a request now */
 	XG_BASE(in_execution) = 1;
 
-	/* Observer starts active to allow first-call debug init check */
-	XG_BASE(observer_active) = XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG);
-
 	/* filters */
 	XG_BASE(filter_type_stack)         = XDEBUG_FILTER_NONE;
 	XG_BASE(filters_stack)             = xdebug_llist_alloc(xdebug_llist_string_dtor);
@@ -1280,6 +1265,23 @@ void xdebug_base_rinit()
 	/* Warn about Private Temp Directory */
 	if (XG_BASE(private_tmp)) {
 		xdebug_log_ex(XLOG_CHAN_CONFIG, XLOG_INFO, "PRIVTMP", "Systemd Private Temp Directory is enabled (%s)", XG_BASE(private_tmp));
+	}
+}
+
+void xdebug_base_rinit_if_enabled()
+{
+	CG(compiler_options) = CG(compiler_options) | ZEND_COMPILE_EXTENDED_STMT;
+	xdebug_disable_opcache_optimizer();
+
+	/* Hack: We check for a soap header here, if that's existing, we don't use
+	 * Xdebug's error handler to keep soap fault from fucking up. */
+	if (
+		(XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG))
+		&&
+		(zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_SERVER]), "HTTP_SOAPACTION", sizeof("HTTP_SOAPACTION") - 1) == NULL)
+	) {
+		xdebug_base_use_xdebug_error_cb();
+		xdebug_base_use_xdebug_throw_exception_hook();
 	}
 }
 
