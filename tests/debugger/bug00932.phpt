@@ -4,10 +4,9 @@ Test for bug #932: Show an error if Xdebug can't open the remote debug log
 <?php
 require __DIR__ . '/../utils.inc';
 check_reqs('dbgp; !win');
-if (is_stripped_debugger()) die('skip Needs develop mode');
 ?>
 --INI--
-xdebug.mode=develop
+xdebug.mode=debug
 xdebug.log=/doesnotexist/bug932.log
 --FILE--
 <?php

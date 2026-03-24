@@ -305,6 +305,7 @@ PHP_INI_BEGIN()
 	STD_PHP_INI_ENTRY("xdebug.client_discovery_header", "HTTP_X_FORWARDED_FOR,REMOTE_ADDR", PHP_INI_ALL, OnUpdateString, settings.debugger.client_discovery_header, zend_xdebug_globals, xdebug_globals)
 	STD_PHP_INI_ENTRY("xdebug.idekey",                  "",                                 PHP_INI_ALL, OnUpdateString, settings.debugger.ide_key_setting,         zend_xdebug_globals, xdebug_globals)
 	STD_PHP_INI_ENTRY("xdebug.connect_timeout_ms",      "200",                              PHP_INI_ALL, OnUpdateLong,   settings.debugger.connect_timeout_ms,      zend_xdebug_globals, xdebug_globals)
+	STD_PHP_INI_BOOLEAN("xdebug.jit_debugging_enabled", "0",                                PHP_INI_SYSTEM, OnUpdateBool,settings.debugger.jit_debugging_enabled,   zend_xdebug_globals, xdebug_globals)
 
 PHP_INI_END()
 
@@ -340,6 +341,7 @@ static const zend_ini_entry_def php_debugger_ini_entries[] = {
 	STD_PHP_INI_ENTRY("php_debugger.client_discovery_header", "HTTP_X_FORWARDED_FOR,REMOTE_ADDR", PHP_INI_ALL, OnUpdatePhpDebuggerString, settings.debugger.client_discovery_header, zend_xdebug_globals, xdebug_globals)
 	STD_PHP_INI_ENTRY("php_debugger.idekey",                  "",                                 PHP_INI_ALL, OnUpdatePhpDebuggerString, settings.debugger.ide_key_setting,         zend_xdebug_globals, xdebug_globals)
 	STD_PHP_INI_ENTRY("php_debugger.connect_timeout_ms",      "200",                              PHP_INI_ALL, OnUpdatePhpDebuggerLong,   settings.debugger.connect_timeout_ms,      zend_xdebug_globals, xdebug_globals)
+	STD_PHP_INI_BOOLEAN("php_debugger.jit_debugging_enabled", "0",                                PHP_INI_SYSTEM, OnUpdatePhpDebuggerBool,settings.debugger.jit_debugging_enabled,   zend_xdebug_globals, xdebug_globals)
 	{0}
 };
 
@@ -354,6 +356,7 @@ static void xdebug_init_base_globals(xdebug_base_globals_t *xg)
 	xg->error_reporting_override   = 0;
 	xg->error_reporting_overridden = 0;
 	xg->statement_handler_enabled  = false;
+	xg->early_connection = false;
 
 	xg->filter_type_stack         = XDEBUG_FILTER_NONE;
 	xg->filters_stack             = NULL;
@@ -415,6 +418,9 @@ static void xdebug_env_config(void)
 
 		if (strcasecmp(envvar, "discover_client_host") == 0) {
 			name = "xdebug.discover_client_host";
+		} else
+		if (strcasecmp(envvar, "jit_debugging_enabled") == 0) {
+			name = "xdebug.jit_debugging_enabled";
 		} else
 		if (strcasecmp(envvar, "client_port") == 0) {
 			name = "xdebug.client_port";
@@ -577,11 +583,11 @@ PHP_RINIT_FUNCTION(xdebug)
 
 	xdebug_init_auto_globals();
 
+	xdebug_base_rinit();
+
 	/* Early debug init: attempt connection at RINIT so observer_active is set
 	 * before any user code runs. This allows xdebug_observer_init to return
 	 * {NULL, NULL} for functions first-called when no debugger is connected. */
-	xdebug_base_rinit();
-
 	if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)) {
 		/* Check early if debugging could be requested this request.
 		 * For start_with_request=default (trigger mode), check if any
@@ -603,26 +609,25 @@ PHP_RINIT_FUNCTION(xdebug)
 			getenv("PHP_DEBUGGER_SESSION_START") != NULL
 		);
 
+		int connected = false;
 		if (debug_requested) {
 			/* Debug session requested: check if a client is actually listening
 			 * before enabling expensive EXT_STMT opcodes. This avoids ~2x
 			 * overhead when triggers are present but no IDE is connected. */
 			if (xdebug_early_connect_to_client()) {
-				CG(compiler_options) = CG(compiler_options) | ZEND_COMPILE_EXTENDED_STMT;
-			} else {
-				/* Trigger present but no client listening — stay dormant */
-				XG_BASE(observer_active) = 0;
-				XG_BASE(statement_handler_enabled) = false;
+				connected = true;
 			}
-		} else {
-			/* No debug trigger: disable all heavy hooks for near-zero overhead.
-			 * Note: xdebug_break() jit mode won't have full stepping support
-			 * without EXT_STMT opcodes. Use start_with_request=yes or a trigger
-			 * for full debugging support. */
-			XG_BASE(observer_active) = 0;
+			XG_BASE(early_connection) = 1;
+		}
+		if (!connected) {
+			if (!XINI_DBG(jit_debugging_enabled)) {
+                XG_BASE(observer_active) = false;
+                return SUCCESS;
+		    }
 			XG_BASE(statement_handler_enabled) = false;
 		}
 	}
+	xdebug_base_rinit_if_enabled();
 
 	return SUCCESS;
 }
@@ -680,6 +685,10 @@ ZEND_DLEXPORT void xdebug_statement_call(zend_execute_data *frame)
 		return;
 	}
 
+	if (!XG_BASE(statement_handler_enabled)) {
+		return;
+	}
+
 	if (!EG(current_execute_data)) {
 		return;
 	}
@@ -687,10 +696,6 @@ ZEND_DLEXPORT void xdebug_statement_call(zend_execute_data *frame)
 #if HAVE_XDEBUG_CONTROL_SOCKET_SUPPORT
 	xdebug_control_socket_dispatch();
 #endif
-
-	if (!XG_BASE(statement_handler_enabled)) {
-		return;
-	}
 
 	op_array = &frame->func->op_array;
 	lineno = EG(current_execute_data)->opline->lineno;
@@ -736,14 +741,6 @@ ZEND_DLEXPORT void xdebug_zend_shutdown(zend_extension *extension)
 	xdebug_library_zend_shutdown();
 }
 
-ZEND_DLEXPORT void xdebug_init_oparray(zend_op_array *op_array)
-{
-	if (XDEBUG_MODE_IS_OFF()) {
-		return;
-	}
-
-}
-
 #ifndef ZEND_EXT_API
 #define ZEND_EXT_API    ZEND_DLEXPORT
 #endif
@@ -765,7 +762,7 @@ ZEND_DLEXPORT zend_extension zend_extension_entry = {
 	xdebug_statement_call, /* statement_handler_func_t */
 	NULL,           /* fcall_begin_handler_func_t */
 	NULL,           /* fcall_end_handler_func_t */
-	xdebug_init_oparray,   /* op_array_ctor_func_t */
+	NULL,           /* op_array_ctor_func_t */
 	NULL,           /* op_array_dtor_func_t */
 	STANDARD_ZEND_EXTENSION_PROPERTIES
 };
