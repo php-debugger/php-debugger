@@ -222,60 +222,51 @@ ZEND_INI_DISP(display_start_upon_error)
 
 
 /*
- * Wrapper OnUpdate handlers for php_debugger.* INI aliases.
- *
- * These must not overwrite values set via the canonical xdebug.* entries
- * when the user has not explicitly set a php_debugger.* directive.
- *
- * During zend_register_ini_entries() (MINIT stage), entry->modified is
- * always 0, even when the user passed -dphp_debugger.foo=bar on the CLI.
- * We therefore check zend_get_configuration_directive() which returns
- * non-NULL when the value was explicitly set via php.ini, -d, or per-dir.
+ * php_debugger.* INI alias wrappers.
+ * Only apply when the user explicitly set the directive; skip defaults
+ * to avoid overwriting xdebug.* values. On success, sync the canonical
+ * xdebug.* entry so ini_get() reflects the effective value.
  */
 
 static inline bool php_debugger_ini_is_explicitly_set(zend_ini_entry *entry)
 {
-	/* After MINIT, entry->modified is reliable */
 	if (entry->modified) return true;
-	/* During MINIT, check whether the INI scanner saw this directive */
+	/* During MINIT entry->modified is always 0; fall back to config scanner */
 	return zend_get_configuration_directive(entry->name) != NULL;
 }
-static PHP_INI_MH(OnUpdatePhpDebuggerString)
-{
-	if (!php_debugger_ini_is_explicitly_set(entry)) return SUCCESS;
-	return OnUpdateString(entry, new_value, mh_arg1, mh_arg2, mh_arg3, stage);
-}
 
-static PHP_INI_MH(OnUpdatePhpDebuggerLong)
+static void php_debugger_sync_canonical(zend_ini_entry *alias_entry, zend_string *new_value)
 {
-	if (!php_debugger_ini_is_explicitly_set(entry)) return SUCCESS;
-	return OnUpdateLong(entry, new_value, mh_arg1, mh_arg2, mh_arg3, stage);
-}
+	const char *alias_name = ZSTR_VAL(alias_entry->name);
+	if (strncmp(alias_name, "php_debugger.", sizeof("php_debugger.") - 1) != 0) return;
 
-static PHP_INI_MH(OnUpdatePhpDebuggerBool)
-{
-	if (!php_debugger_ini_is_explicitly_set(entry)) return SUCCESS;
-	return OnUpdateBool(entry, new_value, mh_arg1, mh_arg2, mh_arg3, stage);
-}
+	char canonical[128];
+	snprintf(canonical, sizeof(canonical), "xdebug.%s", alias_name + sizeof("php_debugger.") - 1);
 
-static PHP_INI_MH(OnUpdatePhpDebuggerStartWithRequest)
-{
-	if (!php_debugger_ini_is_explicitly_set(entry)) return SUCCESS;
-	return OnUpdateStartWithRequest(entry, new_value, mh_arg1, mh_arg2, mh_arg3, stage);
-}
+	zend_string *key = zend_string_init(canonical, strlen(canonical), 0);
+	zend_ini_entry *canon = zend_hash_find_ptr(EG(ini_directives), key);
+	zend_string_release(key);
+	if (!canon) return;
 
-static PHP_INI_MH(OnUpdatePhpDebuggerStartUponError)
-{
-	if (!php_debugger_ini_is_explicitly_set(entry)) return SUCCESS;
-	return OnUpdateStartUponError(entry, new_value, mh_arg1, mh_arg2, mh_arg3, stage);
+	if (canon->value) zend_string_release(canon->value);
+	canon->value = zend_string_copy(new_value);
 }
+#define PHP_DEBUGGER_INI_WRAPPER(name, delegate) \
+	static PHP_INI_MH(name) { \
+		if (!php_debugger_ini_is_explicitly_set(entry)) return SUCCESS; \
+		int rc = delegate(entry, new_value, mh_arg1, mh_arg2, mh_arg3, stage); \
+		if (rc == SUCCESS) php_debugger_sync_canonical(entry, new_value); \
+		return rc; \
+	}
+
+PHP_DEBUGGER_INI_WRAPPER(OnUpdatePhpDebuggerString,           OnUpdateString)
+PHP_DEBUGGER_INI_WRAPPER(OnUpdatePhpDebuggerLong,             OnUpdateLong)
+PHP_DEBUGGER_INI_WRAPPER(OnUpdatePhpDebuggerBool,             OnUpdateBool)
+PHP_DEBUGGER_INI_WRAPPER(OnUpdatePhpDebuggerStartWithRequest, OnUpdateStartWithRequest)
+PHP_DEBUGGER_INI_WRAPPER(OnUpdatePhpDebuggerStartUponError,   OnUpdateStartUponError)
 
 #if HAVE_XDEBUG_CONTROL_SOCKET_SUPPORT
-static PHP_INI_MH(OnUpdatePhpDebuggerCtrlSocket)
-{
-	if (!php_debugger_ini_is_explicitly_set(entry)) return SUCCESS;
-	return OnUpdateCtrlSocket(entry, new_value, mh_arg1, mh_arg2, mh_arg3, stage);
-}
+PHP_DEBUGGER_INI_WRAPPER(OnUpdatePhpDebuggerCtrlSocket,       OnUpdateCtrlSocket)
 #endif
 
 PHP_INI_BEGIN()
@@ -317,9 +308,7 @@ PHP_INI_BEGIN()
 
 PHP_INI_END()
 
-/* INI aliases: php_debugger.* -> same storage as xdebug.*
- * Uses wrapper handlers that only apply when explicitly set by user,
- * preventing default values from overwriting xdebug.* settings. */
+/* php_debugger.* INI aliases — same storage as xdebug.* */
 static const zend_ini_entry_def php_debugger_ini_entries[] = {
 	/* Library settings */
 	STD_PHP_INI_ENTRY("php_debugger.mode",               "debug",               PHP_INI_SYSTEM,                OnUpdatePhpDebuggerString, settings.library.requested_mode,   zend_xdebug_globals, xdebug_globals)
