@@ -116,11 +116,7 @@ jobs:
                     export SCRIPT_FILENAME="$(realpath public/index.php)"
                     # Symfony also needs this to be set to a non empty value
                     export APP_SECRET=APP_SECRET
-                    # We run the web page twice so that the files have already been compiled into the opcache in order
-                    # to remove the compilation time from the equation. This also better reflects the normal situation
-                    # in a web server
-                    php-cgi public/index.php
-                    valgrind --tool=callgrind --dump-instr=yes --callgrind-out-file=callgrind.out -- php-cgi public/index.php
+                    valgrind --tool=callgrind --dump-instr=yes --callgrind-out-file=callgrind.out -- php public/index.php
                     mv callgrind.out ..
                     cd ..
 
