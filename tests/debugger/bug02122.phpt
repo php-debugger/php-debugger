@@ -18,7 +18,7 @@ $commands = array(
 	'detach',
 );
 
-dbgpRunFile( $filename, $commands, [ 'xdebug.start_with_request' => 'default', 'xdebug.start_upon_error' => 'yes' ] );
+dbgpRunFile( $filename, $commands, [ 'xdebug.start_with_request' => 'trigger', 'xdebug.start_upon_error' => 'yes' ] );
 ?>
 --EXPECTF--
 <?xml version="1.0" encoding="iso-8859-1"?>
