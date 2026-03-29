@@ -39,7 +39,7 @@ You can run the test suite using the provided run-xdebug-tests.php script:
 TEST_PHP_ARGS='-dzend_extension=modules/php_debugger.so' php run-xdebug-tests.php -q tests/debugger/
 ```
 ## Getting Started
-Check our [Issue Tracker] (https://github.com/pronskiy/php-debugger/issues) for "good first issue" labels to start contributing.
+Check our [Issue Tracker](https://github.com/php-debugger/php-debugger/issues) for "good first issue" labels to start contributing.
 
 ## License
 By contributing to this project, you agree that your contributions will be licensed under The Xdebug License. You can find the full text of the license here: [LICENSE](https://github.com/pronskiy/php-debugger/blob/main/LICENSE)
