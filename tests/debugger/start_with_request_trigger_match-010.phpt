@@ -36,8 +36,8 @@ Hi!
 
 
 [%d] Log opened at %s
-[%d] [Config] DEBUG: Checking if trigger 'XDEBUG_TRIGGER' is enabled for mode 'debug'
+[%d] [Config] DEBUG: Checking if trigger 'XDEBUG_TRIGGER' is enabled
 [%d] [Config] INFO: Trigger value for 'XDEBUG_TRIGGER' not found, falling back to 'XDEBUG_SESSION'
-[%d] [Config] DEBUG: The shared secret (xdebug.trigger_value) is multi-value for mode 'debug'
-[%d] [Config] WARN: The trigger value 'value3', as set through 'XDEBUG_SESSION', did not match any of the shared secrets (xdebug.trigger_value) for mode 'debug'
+[%d] [Config] DEBUG: The shared secret (xdebug.trigger_value) is multi-value
+[%d] [Config] WARN: The trigger value 'value3', as set through 'XDEBUG_SESSION', did not match any of the shared secrets (xdebug.trigger_value)
 [%d] Log closed at %s
