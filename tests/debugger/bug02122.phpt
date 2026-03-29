@@ -17,7 +17,7 @@ $commands = array(
 );
 
 dbgpRunFile( $filename, $commands, [
-	'xdebug.start_with_request' => 'default',
+	'xdebug.start_with_request' => 'trigger',
 	'xdebug.start_upon_error' => 'yes',
 	'xdebug.on_demand_debugging_enabled' => 1
 ]);

@@ -37,7 +37,7 @@ Hi!
 [%d] Log opened at %s
 [%d] [Step Debug] DEBUG: Found 'XDEBUG_SESSION_START' ENV variable, with value 'foobar'
 [%d] [Step Debug] INFO: Not activating through legacy method because xdebug.trigger_value is set
-[%d] [Config] DEBUG: Checking if trigger 'XDEBUG_TRIGGER' is enabled for mode 'debug'
+[%d] [Config] DEBUG: Checking if trigger 'XDEBUG_TRIGGER' is enabled
 [%d] [Config] INFO: Trigger value for 'XDEBUG_TRIGGER' not found, falling back to 'XDEBUG_SESSION'
 [%d] [Config] INFO: Trigger value for 'XDEBUG_SESSION' not found, so not activating
 [%d] Log closed at %s
