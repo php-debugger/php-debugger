@@ -42,4 +42,4 @@ TEST_PHP_ARGS='-dzend_extension=modules/php_debugger.so' php run-xdebug-tests.ph
 Check our [Issue Tracker](https://github.com/php-debugger/php-debugger/issues) for "good first issue" labels to start contributing.
 
 ## License
-By contributing to this project, you agree that your contributions will be licensed under The Xdebug License. You can find the full text of the license here: [LICENSE](https://github.com/pronskiy/php-debugger/blob/main/LICENSE)
+By contributing to this project, you agree that your contributions will be licensed under the project [LICENSE](LICENSE).
