@@ -11,21 +11,6 @@ Thank you for your interest in contributing to PHP Debugger! This project is an 
 
 * Diff Quality: Review your own diff before submitting. Every change should be intentional. Do not include tooling artifacts (.idea/, .vscode/, etc.) or reformat untouched code.
 
-## Branching Guidelines
-Create a branch from main using the following prefixes and kebab-case:
-
-* feature/ (e.g., feature/file-exchange)
-
-* fix/ (e.g., fix/path-traversal)
-
-* docs/
-
-* refactor/
-
-* chore/
-
-* test/
-
 ## Development Setup
 ### How to Build
 To compile the extension from source, ensure you have the PHP development headers installed, then run the following commands:
