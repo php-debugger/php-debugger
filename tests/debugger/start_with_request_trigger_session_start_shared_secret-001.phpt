@@ -20,7 +20,7 @@ dbgpRunFile(
 		'variables_order' => 'PGCS',
 		'xdebug.log' => $xdebugLogFileName, 'xdebug.log_level' => 10,
 		'xdebug.control_socket' => 'off', 'xdebug.path_mapping' => 'off',
-		'xdebug.jit_debugging_enabled' => 1
+		'xdebug.on_demand_debugging_enabled' => 1
 	],
 	['timeout' => 1]
 );

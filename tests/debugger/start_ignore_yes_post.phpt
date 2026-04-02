@@ -13,7 +13,7 @@ dbgpRunFile(
 	[
 		'xdebug.mode' => 'debug', 'xdebug.start_with_request' => 'yes',
 		'xdebug.log' => $xdebugLogFileName, 'xdebug.log_level' => 10,
-		'xdebug.jit_debugging_enabled' => 1
+		'xdebug.on_demand_debugging_enabled' => 1
 	],
 	['timeout' => 1, 'env' => [ 'XDEBUG_IGNORE' => 'yes' ], 'auto_prepend' => '<?php $_POST["XDEBUG_IGNORE"] = "yes";']
 );

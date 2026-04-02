@@ -11,7 +11,7 @@ dbgpRunFile(
 		'xdebug.mode' => 'debug',
 		'xdebug.start_with_request' => 'trigger',
 		'xdebug.start_upon_error' => 'yes',
-		'xdebug.jit_debugging_enabled' => 1
+		'xdebug.on_demand_debugging_enabled' => 1
 	],
 	['timeout' => 1]
 );

@@ -715,7 +715,7 @@ static void xdebug_execute_user_code_begin(zend_execute_data *execute_data)
 
 		/* After first-call init, deactivate observer if no debugger connected */
 		if (!xdebug_is_debug_connection_active()) {
-			if (!XINI_DBG(jit_debugging_enabled)) {
+			if (!XINI_DBG(on_demand_debugging_enabled)) {
 				XG_BASE(observer_active) = 0;
 				return;
 			}
