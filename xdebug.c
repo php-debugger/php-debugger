@@ -305,7 +305,7 @@ PHP_INI_BEGIN()
 	STD_PHP_INI_ENTRY("xdebug.client_discovery_header", "HTTP_X_FORWARDED_FOR,REMOTE_ADDR", PHP_INI_ALL, OnUpdateString, settings.debugger.client_discovery_header, zend_xdebug_globals, xdebug_globals)
 	STD_PHP_INI_ENTRY("xdebug.idekey",                  "",                                 PHP_INI_ALL, OnUpdateString, settings.debugger.ide_key_setting,         zend_xdebug_globals, xdebug_globals)
 	STD_PHP_INI_ENTRY("xdebug.connect_timeout_ms",      "200",                              PHP_INI_ALL, OnUpdateLong,   settings.debugger.connect_timeout_ms,      zend_xdebug_globals, xdebug_globals)
-	STD_PHP_INI_BOOLEAN("xdebug.jit_debugging_enabled", "0",                                PHP_INI_SYSTEM, OnUpdateBool,settings.debugger.jit_debugging_enabled,   zend_xdebug_globals, xdebug_globals)
+	STD_PHP_INI_BOOLEAN("xdebug.on_demand_debugging_enabled", "0",                                PHP_INI_SYSTEM, OnUpdateBool,settings.debugger.on_demand_debugging_enabled,   zend_xdebug_globals, xdebug_globals)
 
 PHP_INI_END()
 
@@ -341,7 +341,7 @@ static const zend_ini_entry_def php_debugger_ini_entries[] = {
 	STD_PHP_INI_ENTRY("php_debugger.client_discovery_header", "HTTP_X_FORWARDED_FOR,REMOTE_ADDR", PHP_INI_ALL, OnUpdatePhpDebuggerString, settings.debugger.client_discovery_header, zend_xdebug_globals, xdebug_globals)
 	STD_PHP_INI_ENTRY("php_debugger.idekey",                  "",                                 PHP_INI_ALL, OnUpdatePhpDebuggerString, settings.debugger.ide_key_setting,         zend_xdebug_globals, xdebug_globals)
 	STD_PHP_INI_ENTRY("php_debugger.connect_timeout_ms",      "200",                              PHP_INI_ALL, OnUpdatePhpDebuggerLong,   settings.debugger.connect_timeout_ms,      zend_xdebug_globals, xdebug_globals)
-	STD_PHP_INI_BOOLEAN("php_debugger.jit_debugging_enabled", "0",                                PHP_INI_SYSTEM, OnUpdatePhpDebuggerBool,settings.debugger.jit_debugging_enabled,   zend_xdebug_globals, xdebug_globals)
+	STD_PHP_INI_BOOLEAN("php_debugger.on_demand_debugging_enabled", "0",                                PHP_INI_SYSTEM, OnUpdatePhpDebuggerBool,settings.debugger.on_demand_debugging_enabled,   zend_xdebug_globals, xdebug_globals)
 	{0}
 };
 
@@ -419,8 +419,8 @@ static void xdebug_env_config(void)
 		if (strcasecmp(envvar, "discover_client_host") == 0) {
 			name = "xdebug.discover_client_host";
 		} else
-		if (strcasecmp(envvar, "jit_debugging_enabled") == 0) {
-			name = "xdebug.jit_debugging_enabled";
+		if (strcasecmp(envvar, "on_demand_debugging_enabled") == 0) {
+			name = "xdebug.on_demand_debugging_enabled";
 		} else
 		if (strcasecmp(envvar, "client_port") == 0) {
 			name = "xdebug.client_port";
@@ -620,7 +620,7 @@ PHP_RINIT_FUNCTION(xdebug)
 			XG_BASE(early_connection) = 1;
 		}
 		if (!connected) {
-			if (!XINI_DBG(jit_debugging_enabled)) {
+			if (!XINI_DBG(on_demand_debugging_enabled)) {
                 XG_BASE(observer_active) = false;
                 return SUCCESS;
 		    }

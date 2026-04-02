@@ -84,7 +84,7 @@ sort($commands);
 sort($phpVersions);
 
 // Sort PHP Debugger modes according to the defined order, leaving only those which actually exist in the data
-$phpDebuggerModeOrder = ["no", "off", "debug", "debug-jit"];
+$phpDebuggerModeOrder = ["no", "off", "debug", "debug-on-demand"];
 $phpDebuggerModes = array_values(array_filter($phpDebuggerModeOrder, function($mode) use ($phpDebuggerModes) {
     return in_array($mode, $phpDebuggerModes);
 }));
@@ -139,7 +139,7 @@ foreach ($commands as $command) {
             $performanceChange = '--';
             $key = $command . '-' . $php . '-' . $phpDebugger;
             $comparisonBranch = getenv('COMPARISON_BRANCH');
-            if ($phpDebugger == 'debug-jit' && $comparisonBranch !== false && $comparisonBranch !== '') {
+            if ($phpDebugger == 'debug-on-demand' && $comparisonBranch !== false && $comparisonBranch !== '') {
                 $key = $command . '-' . $php . '-debug';
             }
             if (isset($previousResults[$key])) {
@@ -196,7 +196,7 @@ foreach ($commands as $command) {
                 // Calculate performance change if previous data exists
                 $key = $command . '-' . $php . '-' . $phpDebugger;
                 $comparisonBranch = getenv('COMPARISON_BRANCH');
-                if ($phpDebugger == 'debug-jit' && $comparisonBranch !== false && $comparisonBranch !== '') {
+                if ($phpDebugger == 'debug-on-demand' && $comparisonBranch !== false && $comparisonBranch !== '') {
                     $key = $command . '-' . $php . '-debug';
                 }
                 if (isset($previousResults[$key])) {

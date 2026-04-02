@@ -19,7 +19,7 @@ $commands = array(
 
 dbgpRunFile( $filename, $commands, [
 	'xdebug.start_with_request' => 'trigger',
-	'xdebug.jit_debugging_enabled' => 1
+	'xdebug.on_demand_debugging_enabled' => 1
 ]);
 ?>
 --EXPECT--

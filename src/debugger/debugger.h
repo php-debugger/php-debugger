@@ -59,7 +59,7 @@ typedef struct _xdebug_debugger_settings_t {
 
 	char         *ide_key_setting; /* Set through php.ini and friends */
 
-	zend_bool     jit_debugging_enabled; /* Enable JIT debugging */
+	zend_bool     on_demand_debugging_enabled; /* Enable on-demand debugging */
 } xdebug_debugger_settings_t;
 
 PHP_INI_MH(OnUpdateDebugMode);
