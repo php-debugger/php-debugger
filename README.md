@@ -1,16 +1,15 @@
 # PHP Debugger
 
-A lightweight, high-performance PHP debugger extension. Forked from [Xdebug](https://xdebug.org/) by Derick Rethans, stripped down to pure debugging, and optimized for near-zero overhead when inactive.
+A PHP debugger extension focused on step debugging with near-zero overhead. Forked from [Xdebug](https://xdebug.org/), with profiling, coverage, and tracing removed.
 
 > [!NOTE]
-> **🧪 This project is an experiment to show how fast the PHP community can move using AI tools.**  
-> The entire extension — fork, strip, optimize, rename — was built in days, not months, using PhpStorm, Claude Code, OpenClaw. We're here to move fast, adapt to change, and prove that PHP tooling can be the best in the industry.
+> **🧪 This project is an experiment** exploring minimal-overhead PHP debugging.
 
 ## Why PHP Debugger?
 
-- **97% performance improvement over Xdebug** when loaded but inactive
-- **Drop-in Xdebug replacement** — existing configs, IDE setups, and workflows work unchanged
-- **Debug-only** — no profiler, no coverage, no tracing. Just debugging.
+- **Near-zero overhead** when loaded but no debug client is connected
+- **Xdebug-compatible** — existing configs, IDE setups, and workflows work unchanged
+- **Debug-only** — focused exclusively on step debugging
 - **Full DBGp protocol support** — works with PhpStorm, VS Code, and any DBGp-compatible IDE
 
 ### Benchmarks
@@ -31,8 +30,6 @@ We measured three different scenarios which we believe represent a good mix of t
 | Xdebug        | **+661.6%** |
 | PHP Debugger  |  **+12.9%** |
 
-Improvement: **98.0%**
-
 - `Rector`: running a RectorPHP rule on a PHP file
 
 | Configuration |    Overhead |
@@ -41,8 +38,6 @@ Improvement: **98.0%**
 | Xdebug        | **+124.5%** |
 | PHP Debugger  |   **+3.6%** |
 
-Improvement: **97.1%**
-
 - `Symfony`: running a basic request on a Symfony demo project
 
 | Configuration |   Overhead |
@@ -50,10 +45,6 @@ Improvement: **97.1%**
 | No debugger   |          — |
 | Xdebug        | **+35.3%** |
 | PHP Debugger  |  **+1.3%** |
-
-Improvement: **96.1%**
-
-Overall improvement: **97.1%**
 
 ## Installation
 
@@ -101,7 +92,7 @@ xdebug.start_with_request = trigger
 
 ### PhpStorm
 
-Works as-is. Just swap the extension and your existing debug configurations work.
+Works with existing PhpStorm debug configurations. No IDE changes needed.
 
 [Configuring Debugger in PhpStorm](https://www.jetbrains.com/help/phpstorm/configuring-xdebug.html)
 
@@ -111,7 +102,7 @@ Works as-is. No changes needed.
 
 ## Xdebug Compatibility
 
-PHP Debugger is a drop-in replacement for Xdebug\'s debug mode:
+PHP Debugger maintains compatibility with Xdebug's debug mode:
 
 | Feature                            | PHP Debugger | Xdebug  |
 |------------------------------------|--------------|---------|
