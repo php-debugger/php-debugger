@@ -470,20 +470,15 @@ static int trigger_enabled(char **found_trigger_value)
 
 	/* If not found, try the PHP_DEBUGGER_TRIGGER alias */
 	if (!trigger_value) {
+		trigger_name = "PHP_DEBUGGER_TRIGGER";
 		trigger_value = xdebug_lib_find_in_globals("PHP_DEBUGGER_TRIGGER", &found_in_global);
-		if (trigger_value) {
-			trigger_name = "PHP_DEBUGGER_TRIGGER";
-		}
 	}
 
 	/* If not found, we fall back to the per-mode name for backwards compatibility reasons */
 	if (!trigger_value) {
 		trigger_name = "XDEBUG_SESSION";
-
-		if (trigger_name) {
-			xdebug_log(XLOG_CHAN_CONFIG, XLOG_INFO, "Trigger value for 'XDEBUG_TRIGGER' not found, falling back to '%s'", trigger_name);
-			trigger_value = xdebug_lib_find_in_globals(trigger_name, &found_in_global);
-		}
+		xdebug_log(XLOG_CHAN_CONFIG, XLOG_INFO, "Trigger value for 'XDEBUG_TRIGGER' not found, falling back to '%s'", trigger_name);
+		trigger_value = xdebug_lib_find_in_globals(trigger_name, &found_in_global);
 
 		/* Also try PHP_DEBUGGER_SESSION alias */
 		if (!trigger_value) {
@@ -535,8 +530,7 @@ int xdebug_lib_start_with_trigger(char **found_trigger_value)
 	return is_mode_trigger_and_enabled(0, found_trigger_value);
 }
 
-/* Returns 1 if the mode is 'trigger', or 'default', where the default mode for
- * a feature is to trigger. Does not check whether a trigger is present. */
+/* Returns 1 if the mode is 'trigger'. Does not check whether a trigger is present. */
 int xdebug_lib_start_if_mode_is_trigger()
 {
 	return is_mode_trigger_and_enabled(1, NULL);

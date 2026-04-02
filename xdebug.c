@@ -174,7 +174,7 @@ ZEND_INI_DISP(display_control_socket)
 }
 #endif
 
-static const char *xdebug_start_with_request_types[5] = { "", "yes", "no", "trigger" };
+static const char *xdebug_start_with_request_types[4] = { "", "yes", "no", "trigger" };
 
 ZEND_INI_DISP(display_start_with_request)
 {
