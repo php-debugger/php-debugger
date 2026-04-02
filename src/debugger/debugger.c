@@ -1222,6 +1222,12 @@ PHP_FUNCTION(xdebug_break)
 	RETURN_FALSE_IF_MODE_IS_NOT(XDEBUG_MODE_STEP_DEBUG);
 
 	if (!xdebug_is_debug_connection_active() && !XINI_DBG(jit_debugging_enabled)) {
+		xdebug_log_ex(XLOG_CHAN_DEBUG, XLOG_INFO, "JIT-OFF",
+				"xdebug_break() ignored: no active debug connection and "
+				"xdebug.jit_debugging_enabled is not enabled");
+		php_error(E_NOTICE,
+				"xdebug_break() ignored: no active debug session and JIT debugging is disabled. "
+				"Set xdebug.jit_debugging_enabled=1 to enable mid-request debugging");
 		RETURN_FALSE;
 	}
 
@@ -1242,6 +1248,11 @@ PHP_FUNCTION(xdebug_connect_to_client)
 	RETURN_FALSE_IF_MODE_IS_NOT(XDEBUG_MODE_STEP_DEBUG);
 
 	if (!XINI_DBG(jit_debugging_enabled)) {
+		xdebug_log_ex(XLOG_CHAN_DEBUG, XLOG_INFO, "JIT-OFF",
+				"xdebug_connect_to_client() ignored: xdebug.jit_debugging_enabled is not enabled");
+		php_error(E_NOTICE,
+				"xdebug_connect_to_client() ignored: JIT debugging is disabled. "
+				"Set xdebug.jit_debugging_enabled=1 to enable mid-request debugging");
 		RETURN_FALSE;
 	}
 
