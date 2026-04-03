@@ -1,0 +1,104 @@
+name: "Sanitizer Tests (ASAN + UBSAN)"
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  sanitizers:
+    name: "ASAN + UBSAN — PHP ${{ matrix.php }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.3', '8.4']
+
+    env:
+      ASAN_OPTIONS: "detect_leaks=1:detect_stack_use_after_return=1:abort_on_error=1"
+      UBSAN_OPTIONS: "print_stacktrace=1:halt_on_error=1"
+      DBGP_TIMEOUT: "10"
+
+    steps:
+      - name: Checkout extension
+        uses: actions/checkout@v6
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential autoconf automake libtool re2c bison \
+            clang llvm libxml2-dev libsqlite3-dev pkg-config
+
+      - name: Cache PHP build
+        uses: actions/cache@v4
+        id: php-cache
+        with:
+          path: ~/php-install
+          key: php-asan-${{ matrix.php }}-${{ hashFiles('.github/workflows/sanitizers.yml') }}
+
+      - name: Build PHP with sanitizers
+        if: steps.php-cache.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth=1 --branch="PHP-${{ matrix.php }}" \
+            https://github.com/php/php-src.git ~/php-src
+
+          cd ~/php-src
+          ./buildconf --force
+
+          CC=clang CXX=clang++ \
+          ./configure \
+            --prefix=$HOME/php-install \
+            --enable-debug \
+            --enable-address-sanitizer \
+            --enable-undefined-sanitizer \
+            --disable-all \
+            --enable-cli \
+            --enable-session \
+            --enable-xml \
+            --with-libxml \
+            --enable-opcache=no \
+            --without-pear
+
+          make -j4
+          make install
+
+      - name: Build extension with sanitizers
+        run: |
+          export PATH="$HOME/php-install/bin:$PATH"
+          phpize
+          CC=clang CXX=clang++ \
+          CFLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer -g" \
+          LDFLAGS="-fsanitize=address,undefined" \
+          ./configure --enable-php-debugger --with-php-config=$HOME/php-install/bin/php-config
+          make -j4
+
+      - name: Verify extension loads
+        run: |
+          export PATH="$HOME/php-install/bin:$PATH"
+          php -d "zend_extension=$PWD/modules/php_debugger.so" -v
+
+      - name: Run tests under sanitizers
+        run: |
+          export PATH="$HOME/php-install/bin:$PATH"
+          export TEST_PHP_EXECUTABLE=$(which php)
+          export TEST_PHP_ARGS="-n -d session.save_path=/tmp -d zend_extension=$PWD/modules/php_debugger.so"
+          php -n run-xdebug-tests.php --asan -j4 -q --show-diff tests/debugger/ 2>&1 | tee test-output.log || true
+
+          # Fail only on real sanitizer errors, not test output mismatches
+          if grep -qE "(AddressSanitizer|LeakSanitizer|runtime error|SUMMARY.*Sanitizer)" test-output.log; then
+            echo "::error::Sanitizer errors detected!"
+            grep -E "(AddressSanitizer|LeakSanitizer|runtime error|SUMMARY)" test-output.log
+            exit 1
+          fi
+          echo "No sanitizer errors found"
+
+      - name: Upload test logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sanitizer-logs-${{ matrix.php }}
+          path: |
+            tests/debugger/*.log
+            tests/debugger/*.diff
