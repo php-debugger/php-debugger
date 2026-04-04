@@ -714,7 +714,6 @@ static void xdebug_execute_user_code_begin(zend_execute_data *execute_data)
 		}
 
 		/* After first-call init, deactivate observer if no debugger connected */
-		XG_BASE(needs_debug_init) = 0;
 		if (!xdebug_is_debug_connection_active()) {
 			XG_BASE(observer_active) = 0;
 			return;
@@ -1273,7 +1272,6 @@ void xdebug_base_rinit()
 
 	/* Observer starts active to allow first-call debug init check */
 	XG_BASE(observer_active) = XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG);
-	XG_BASE(needs_debug_init) = XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG);
 
 	/* filters */
 	XG_BASE(filter_type_stack)         = XDEBUG_FILTER_NONE;
