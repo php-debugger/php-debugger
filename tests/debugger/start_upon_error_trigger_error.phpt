@@ -1,7 +1,5 @@
 --TEST--
 Starting Debugger: trigger, error, start_up_error=yes
---XFAIL--
-Phase 2 RINIT observer gating sets observer_active=0 when no debug client connects at RINIT. When an error triggers debugging mid-request, the observer has not been tracking function calls, so stack frames and local variables are unavailable (error 301: stack depth invalid).
 --FILE--
 <?php
 require 'dbgp/dbgpclient.php';
@@ -9,7 +7,12 @@ require 'dbgp/dbgpclient.php';
 dbgpRunFile(
 	dirname(__FILE__) . '/break-with-error.inc',
 	['stack_get', 'step_into', 'detach'],
-	['xdebug.mode' => 'debug', 'xdebug.start_with_request' => 'trigger', 'xdebug.start_upon_error' => 'yes'],
+	[
+		'xdebug.mode' => 'debug',
+		'xdebug.start_with_request' => 'trigger',
+		'xdebug.start_upon_error' => 'yes',
+		'xdebug.on_demand_debugging_enabled' => 1
+	],
 	['timeout' => 1]
 );
 ?>

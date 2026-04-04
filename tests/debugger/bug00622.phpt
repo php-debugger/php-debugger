@@ -25,7 +25,11 @@ $commands = array(
 	'detach'
 );
 
-dbgpRunFile( $filename, $commands );
+$settings = [
+	'xdebug.on_demand_debugging_enabled' => 1
+];
+
+dbgpRunFile( $filename, $commands, $settings );
 ?>
 --EXPECTF--
 <?xml version="1.0" encoding="iso-8859-1"?>

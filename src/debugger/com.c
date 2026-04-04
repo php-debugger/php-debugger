@@ -615,7 +615,7 @@ static void xdebug_init_debugger()
 
 	/* If socket was already established by early connect at RINIT,
 	 * skip straight to protocol initialization */
-	if (XG_DBG(context).socket >= 0) {
+	if (XG_BASE(early_connection)) {
 		xdebug_str_add_fmt(connection_attempts, "%s:%ld (through xdebug.client_host/xdebug.client_port)", XINI_DBG(client_host), XINI_DBG(client_port));
 	} else {
 		if (strcmp(XINI_DBG(cloud_id), "") != 0) {
@@ -653,6 +653,8 @@ static void xdebug_init_debugger()
 	} else if (XG_DBG(context).socket == -3) {
 		xdebug_log_ex(XLOG_CHAN_DEBUG, XLOG_ERR, "NOPERM", "No permission connecting to debugging client (%s). This could be SELinux related.", connection_attempts->d);
 	}
+
+	XG_BASE(statement_handler_enabled) = XG_DBG(remote_connection_enabled);
 
 	xdebug_str_free(connection_attempts);
 }

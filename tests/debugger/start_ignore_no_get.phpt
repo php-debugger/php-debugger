@@ -1,7 +1,5 @@
 --TEST--
 Starting Debugger: overridden GET ignore value is 'no'
---XFAIL--
-Phase 2 RINIT gating calls xdebug_should_ignore() at RINIT time. These tests use auto_prepend_file PHP code to set $_COOKIE/$_GET/$_POST, which only executes after RINIT. At RINIT, only getenv() works, so the superglobal override is never seen. Real HTTP headers in CGI/FPM ARE available at RINIT and work correctly.
 --FILE--
 <?php
 require 'dbgp/dbgpclient.php';
@@ -15,6 +13,7 @@ dbgpRunFile(
 	[
 		'xdebug.mode' => 'debug', 'xdebug.start_with_request' => 'yes',
 		'xdebug.log' => $xdebugLogFileName, 'xdebug.log_level' => 10,
+		'xdebug.on_demand_debugging_enabled' => 1
 	],
 	['timeout' => 1, 'env' => [ 'XDEBUG_IGNORE' => 'yes' ], 'auto_prepend' => '<?php $_GET["XDEBUG_IGNORE"] = "no";']
 );

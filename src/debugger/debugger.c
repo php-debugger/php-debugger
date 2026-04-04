@@ -878,8 +878,6 @@ void xdebug_debugger_rinit(void)
 {
 	char *idekey;
 
-	xdebug_disable_opcache_optimizer();
-
 	/* Get the ide key for this session */
 	XG_DBG(ide_key) = NULL;
 	idekey = xdebug_debugger_get_ide_key();
@@ -1223,6 +1221,16 @@ PHP_FUNCTION(xdebug_break)
 {
 	RETURN_FALSE_IF_MODE_IS_NOT(XDEBUG_MODE_STEP_DEBUG);
 
+	if (!xdebug_is_debug_connection_active() && !XINI_DBG(on_demand_debugging_enabled)) {
+		xdebug_log_ex(XLOG_CHAN_DEBUG, XLOG_INFO, "JIT-OFF",
+				"xdebug_break() ignored: no active debug connection and "
+				"xdebug.on_demand_debugging_enabled is not enabled");
+		php_error(E_NOTICE,
+				"xdebug_break() ignored: no active debug session and on-demand debugging is disabled. "
+				"Set xdebug.on_demand_debugging_enabled=1 to enable mid-request debugging");
+		RETURN_FALSE;
+	}
+
 	xdebug_debug_init_if_requested_on_xdebug_break();
 
 	if (!xdebug_is_debug_connection_active()) {
@@ -1239,7 +1247,18 @@ PHP_FUNCTION(xdebug_connect_to_client)
 {
 	RETURN_FALSE_IF_MODE_IS_NOT(XDEBUG_MODE_STEP_DEBUG);
 
+	if (!XINI_DBG(on_demand_debugging_enabled)) {
+		xdebug_log_ex(XLOG_CHAN_DEBUG, XLOG_INFO, "ON-DEMAND-OFF",
+				"xdebug_connect_to_client() ignored: xdebug.on_demand_debugging_enabled is not enabled");
+		php_error(E_NOTICE,
+				"xdebug_connect_to_client() ignored: On-demand debugging is disabled. "
+				"Set xdebug.on_demand_debugging_enabled=1 to enable mid-request debugging");
+		RETURN_FALSE;
+	}
+
 	XG_DBG(context).do_connect_to_client = 1;
+
+    XG_BASE(statement_handler_enabled) = true;
 
 	RETURN_TRUE;
 }

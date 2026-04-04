@@ -58,6 +58,8 @@ typedef struct _xdebug_debugger_settings_t {
 	zend_long     connect_timeout_ms; /* Timeout in MS for remote connections */
 
 	char         *ide_key_setting; /* Set through php.ini and friends */
+
+	zend_bool     on_demand_debugging_enabled; /* Enable on-demand debugging */
 } xdebug_debugger_settings_t;
 
 PHP_INI_MH(OnUpdateDebugMode);

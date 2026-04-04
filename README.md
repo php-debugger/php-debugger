@@ -46,6 +46,25 @@ We measured three different scenarios which we believe represent a good mix of t
 | Xdebug        | **+35.3%** |
 | PHP Debugger  |  **+1.3%** |
 
+### On-Demand Debugging
+
+To improve the performance of code running with the PHP Debugger enabled, several features required for on-demand
+debugging are disabled if the debugger does not connect to a client at startup.
+
+On-demand debugging allows the debugger to connect later during execution—for example, via `xdebug_connect_to_client()`,
+`xdebug_break()`, or when an error or exception occurs.
+
+We consider on-demand debugging to be a relatively uncommon use case, and we want to avoid degrading performance for
+the majority of users. However, since some users rely on this functionality, we provide an INI setting to enable
+it when needed.
+
+INI setting: `php_debugger.on_demand_debugging_enabled` (default: false)
+
+When this setting is enabled, on-demand debugging features remain active even if no client is connected at startup. 
+Note that this has a significant performance impact: instead of achieving up to a 97% performance improvement, the average improvement drops to around 60%.
+
+For this reason, we recommend enabling this setting only if you specifically require on-demand debugging.
+
 ## Installation
 
 ### Manual download

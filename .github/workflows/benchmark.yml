@@ -24,7 +24,7 @@ jobs:
             matrix:
                 command: ["bench", "symfony", "rector"]
                 php: ["8.2", "8.3", "8.4", "8.5"]
-                php_debugger_mode: ["no", "off", "debug"]
+                php_debugger_mode: ["no", "off", "debug", "debug-on-demand"]
         steps:
             -   uses: actions/checkout@v6
 
@@ -90,13 +90,24 @@ jobs:
                     sudo cp ./.github/benchmark-files/benchmark.ini /etc/php/${{ matrix.php }}/cgi/conf.d
 
             -   name: Copy php_debugger ini file
-                if: matrix.php_debugger_mode != 'no'
+                if: matrix.php_debugger_mode != 'no' && matrix.php_debugger_mode != 'debug-on-demand'
                 run: |
                     sudo cp ./.github/benchmark-files/php-debugger-benchmark.ini /etc/php/${{ matrix.php }}/cli/conf.d
                     sudo cp ./.github/benchmark-files/php-debugger-benchmark.ini /etc/php/${{ matrix.php }}/cgi/conf.d
-    
+
+            -   name: Copy on-demand php_debugger ini file
+                if: matrix.php_debugger_mode == 'debug-on-demand'
+                run: |
+                    sudo cp ./.github/benchmark-files/php-debugger-on-demand-benchmark.ini /etc/php/${{ matrix.php }}/cli/conf.d
+                    sudo cp ./.github/benchmark-files/php-debugger-on-demand-benchmark.ini /etc/php/${{ matrix.php }}/cgi/conf.d
+
             -   name: Set PHP Debugger mode
+                if: matrix.php_debugger_mode != 'debug-on-demand'
                 run: echo "PHP_DEBUGGER_MODE=${{ matrix.php_debugger_mode }}" >> $GITHUB_ENV
+
+            -   name: Set PHP on-demand Debugger mode
+                if: matrix.php_debugger_mode == 'debug-on-demand'
+                run: echo "PHP_DEBUGGER_MODE=debug" >> $GITHUB_ENV
 
             -   name: Confirm PHP setup
                 run: | 

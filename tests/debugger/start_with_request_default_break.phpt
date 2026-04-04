@@ -1,7 +1,5 @@
 --TEST--
 Starting Debugger: default, break
---XFAIL--
-Phase 2 RINIT observer gating sets observer_active=0 when no debug client connects at RINIT. Without observer callbacks, the stack vector is empty, so xdebug_break()/connect_to_client() cannot report stack frames. Trade-off: 0% overhead when no client vs working mid-request activation.
 --FILE--
 <?php
 require 'dbgp/dbgpclient.php';
@@ -9,7 +7,11 @@ require 'dbgp/dbgpclient.php';
 dbgpRunFile(
 	dirname(__FILE__) . '/break-echo.inc',
 	['stack_get', 'step_into', 'detach'],
-	['xdebug.mode' => 'debug', 'xdebug.start_with_request' => 'default']
+	[
+		'xdebug.mode' => 'debug',
+		'xdebug.start_with_request' => 'default',
+		'xdebug.on_demand_debugging_enabled' => 1
+	]
 );
 ?>
 --EXPECTF--
