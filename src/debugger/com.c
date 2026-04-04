@@ -754,8 +754,6 @@ bool xdebug_should_ignore(void)
 
 void xdebug_debug_init_if_requested_on_connect_to_client(void)
 {
-	RETURN_IF_MODE_IS_NOT(XDEBUG_MODE_STEP_DEBUG);
-
 	if (xdebug_should_ignore()) {
 		return;
 	}
@@ -767,8 +765,6 @@ void xdebug_debug_init_if_requested_on_connect_to_client(void)
 
 void xdebug_debug_init_if_requested_on_error(void)
 {
-	RETURN_IF_MODE_IS_NOT(XDEBUG_MODE_STEP_DEBUG);
-
 	if (!xdebug_lib_start_upon_error()) {
 		return;
 	}
@@ -780,8 +776,6 @@ void xdebug_debug_init_if_requested_on_error(void)
 
 void xdebug_debug_init_if_requested_on_xdebug_break(void)
 {
-	RETURN_IF_MODE_IS_NOT(XDEBUG_MODE_STEP_DEBUG);
-
 	if (xdebug_is_debug_connection_active()) {
 		return;
 	}

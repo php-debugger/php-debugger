@@ -218,18 +218,6 @@ CTRL_FUNC(pause)
 	xdebug_xml_add_text(pid, pid_str);
 	xdebug_xml_add_child(response, pid);
 
-	if (!XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)) {
-		xdebug_xml_node *error;
-
-		error = xdebug_xml_node_init("error");
-		xdebug_xml_add_attribute_ex(error, "code", xdebug_sprintf("%lu", XDEBUG_ERROR_STEP_DEBUG_MODE_NOT_ENABLED), 0, 1);
-		ADD_REASON_MESSAGE(XDEBUG_ERROR_STEP_DEBUG_MODE_NOT_ENABLED);
-		xdebug_xml_add_child(*retval, error);
-
-		xdebug_xml_add_child(*retval, response);
-		return;
-	}
-
 	if (!xdebug_is_debug_connection_active()) {
 		action = xdebug_xml_node_init("action");
 		xdebug_xml_add_text(action, xdstrdup("IDE Connection Signalled"));

@@ -379,9 +379,7 @@ static void php_xdebug_init_globals(zend_xdebug_globals *xg)
 	xdebug_init_library_globals(&xg->globals.library);
 	xdebug_init_base_globals(&xg->globals.base);
 
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)) {
-		xdebug_init_debugger_globals(&xg->globals.debugger);
-	}
+	xdebug_init_debugger_globals(&xg->globals.debugger);
 }
 
 static void php_xdebug_shutdown_globals(zend_xdebug_globals *xg)
@@ -513,14 +511,10 @@ PHP_MINIT_FUNCTION(xdebug)
 	xdebug_library_minit();
 	xdebug_base_minit(INIT_FUNC_ARGS_PASSTHRU);
 
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)) {
-		xdebug_debugger_minit();
-	}
+	xdebug_debugger_minit();
 
 	/* Overload the "include_or_eval" opcode if the mode is 'debug' or 'trace' */
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)) {
-		xdebug_register_with_opcode_multi_handler(ZEND_INCLUDE_OR_EVAL, xdebug_include_or_eval_handler);
-	}
+	xdebug_register_with_opcode_multi_handler(ZEND_INCLUDE_OR_EVAL, xdebug_include_or_eval_handler);
 
 	/* Coverage must be last, as it has a catch all override for opcodes */
 
@@ -565,6 +559,9 @@ static void xdebug_init_auto_globals(void)
 
 PHP_RINIT_FUNCTION(xdebug)
 {
+	int debug_requested;
+	int connected;
+
 #if defined(ZTS) && defined(COMPILE_DL_XDEBUG)
 	ZEND_TSRMLS_CACHE_UPDATE();
 #endif
@@ -579,60 +576,53 @@ PHP_RINIT_FUNCTION(xdebug)
 
 	xdebug_library_rinit();
 
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)) {
-		xdebug_debugger_rinit();
+	xdebug_debugger_rinit();
 
-		if (xdebug_debugger_bailout_if_no_exec_requested()) {
-			zend_bailout();
-		}
+	if (xdebug_debugger_bailout_if_no_exec_requested()) {
+		zend_bailout();
 	}
 
 	xdebug_init_auto_globals();
 
 	xdebug_base_rinit();
 
-	/* Early debug init: attempt connection at RINIT so observer_active is set
-	 * before any user code runs. This allows xdebug_observer_init to return
-	 * {NULL, NULL} for functions first-called when no debugger is connected. */
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)) {
-		/* Check early if debugging could be requested this request.
-		 * Check if start_with_request=trigger and any trigger is present
-		 * or if start_with_request=yes.
-		 * If not, disable all heavy hooks for
-		 * near-zero overhead. The actual connection happens on first
-		 * function call if triggers are present. */
-		/* Check if debugging could be requested this request.
-		 * For trigger/default mode: check triggers, cookies, env vars.
-		 * For yes mode: always expect a connection.
-		 * For no mode: no debugging will happen.
-		 * Note: xdebug_break() can initiate connections without triggers,
-		 * but it handles re-enabling the observer itself. */
-		/* Respect start_with_request=no and XDEBUG_IGNORE */
-		int debug_requested = !xdebug_lib_never_start_with_request() && !xdebug_should_ignore() && (
-			xdebug_lib_start_with_request() ||
-			xdebug_lib_start_with_trigger(NULL) ||
-			xdebug_lib_start_upon_error() ||
-			getenv("XDEBUG_SESSION_START") != NULL ||
-			getenv("PHP_DEBUGGER_SESSION_START") != NULL
-		);
+	/* Check early if debugging could be requested this request.
+	 * Check if start_with_request=trigger and any trigger is present
+	 * or if start_with_request=yes.
+	 * If not, disable all heavy hooks for
+	 * near-zero overhead. The actual connection happens on first
+	 * function call if triggers are present. */
+	/* Check if debugging could be requested this request.
+	 * For trigger/default mode: check triggers, cookies, env vars.
+	 * For yes mode: always expect a connection.
+	 * For no mode: no debugging will happen.
+	 * Note: xdebug_break() can initiate connections without triggers,
+	 * but it handles re-enabling the observer itself. */
+	/* Respect start_with_request=no and XDEBUG_IGNORE */
+	debug_requested = !xdebug_lib_never_start_with_request() && !xdebug_should_ignore() && (
+		xdebug_lib_start_with_request() ||
+		xdebug_lib_start_with_trigger(NULL) ||
+		xdebug_lib_start_upon_error() ||
+		getenv("XDEBUG_SESSION_START") != NULL ||
+		getenv("PHP_DEBUGGER_SESSION_START") != NULL
+	);
 
-		int connected = false;
-		if (debug_requested) {
-			/* Debug session requested: check if a client is actually listening
-			 * before enabling expensive EXT_STMT opcodes. This avoids ~2x
-			 * overhead when triggers are present but no IDE is connected. */
-			if (xdebug_early_connect_to_client()) {
-				connected = true;
-			}
-			XG_BASE(early_connection) = 1;
+	connected = false;
+	if (debug_requested) {
+		/* Debug session requested: check if a client is actually listening
+		 * before enabling expensive EXT_STMT opcodes. This avoids ~2x
+		 * overhead when triggers are present but no IDE is connected. */
+		if (xdebug_early_connect_to_client()) {
+			connected = true;
 		}
-		if (!connected) {
-			if (!XINI_DBG(on_demand_debugging_enabled)) {
-				XG_BASE(observer_active) = false;
-				return SUCCESS;
-			}
-			XG_BASE(statement_handler_enabled) = false;
+		XG_BASE(early_connection) = 1;
+	}
+	if (!connected) {
+		if (!XINI_DBG(on_demand_debugging_enabled)) {
+			XG_BASE(observer_active) = false;
+			return SUCCESS;
 		}
+		XG_BASE(statement_handler_enabled) = false;
 	}
 	xdebug_base_rinit_if_enabled();
 
@@ -645,9 +635,7 @@ ZEND_MODULE_POST_ZEND_DEACTIVATE_D(xdebug)
 		return SUCCESS;
 	}
 
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)) {
-		xdebug_debugger_post_deactivate();
-	}
+	xdebug_debugger_post_deactivate();
 
 	xdebug_base_post_deactivate();
 	xdebug_library_post_deactivate();
@@ -676,9 +664,7 @@ PHP_MINFO_FUNCTION(xdebug)
 		php_info_print_table_end();
 	}
 
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)) {
-		xdebug_debugger_minfo();
-	}
+	xdebug_debugger_minfo();
 
 	DISPLAY_INI_ENTRIES();
 }
@@ -707,9 +693,7 @@ ZEND_DLEXPORT void xdebug_statement_call(zend_execute_data *frame)
 	op_array = &frame->func->op_array;
 	lineno = EG(current_execute_data)->opline->lineno;
 
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)) {
-		xdebug_debugger_statement_call(op_array->filename, lineno);
-	}
+	xdebug_debugger_statement_call(op_array->filename, lineno);
 }
 
 ZEND_DLEXPORT int xdebug_zend_startup(zend_extension *extension)

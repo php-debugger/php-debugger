@@ -437,10 +437,8 @@ static void xdebug_execute_user_code_begin(zend_execute_data *execute_data)
 	}
 
 	if (XG_BASE(in_execution) && XDEBUG_VECTOR_COUNT(XG_BASE(stack)) == 0 && ((EG(flags) & EG_FLAGS_IN_SHUTDOWN) == 0)) {
-		if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)) {
-			xdebug_debugger_set_program_name(op_array->filename);
-			xdebug_debug_init_if_requested_at_startup();
-		}
+		xdebug_debugger_set_program_name(op_array->filename);
+		xdebug_debug_init_if_requested_at_startup();
 
 		/* After first-call init, deactivate observer if no debugger connected */
 		if (!xdebug_is_debug_connection_active()) {
@@ -468,35 +466,28 @@ static void xdebug_execute_user_code_begin(zend_execute_data *execute_data)
 		fse->symbol_table = execute_data->symbol_table;
 	}
 
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)) {
-		/* If we're in an eval, we need to create an ID for it. */
-		if (fse->function.type == XFUNC_EVAL) {
-			xdebug_debugger_register_eval(fse);
-		}
-
-		/* Check for entry breakpoints */
-		xdebug_debugger_handle_breakpoints(fse, XDEBUG_BREAKPOINT_TYPE_CALL|XDEBUG_BREAKPOINT_TYPE_EXTERNAL, NULL);
+	/* If we're in an eval, we need to create an ID for it. */
+	if (fse->function.type == XFUNC_EVAL) {
+		xdebug_debugger_register_eval(fse);
 	}
+
+	/* Check for entry breakpoints */
+	xdebug_debugger_handle_breakpoints(fse, XDEBUG_BREAKPOINT_TYPE_CALL|XDEBUG_BREAKPOINT_TYPE_EXTERNAL, NULL);
 
 }
 
 static void xdebug_execute_user_code_end(zend_execute_data *execute_data, zval *retval)
 {
 	zend_op_array        *op_array = &(execute_data->func->op_array);
-	function_stack_entry *fse;
+	function_stack_entry *fse = XDEBUG_VECTOR_TAIL(XG_BASE(stack));
+	zval *return_value = NULL;
 
-	fse = XDEBUG_VECTOR_TAIL(XG_BASE(stack));
-
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)) {
-		zval *return_value = NULL;
-
-		if (!fse->is_trampoline && retval && !(op_array->fn_flags & ZEND_ACC_GENERATOR)) {
-			return_value = execute_data->return_value;
-		}
-
-		/* Check for return breakpoints */
-		xdebug_debugger_handle_breakpoints(fse, XDEBUG_BREAKPOINT_TYPE_RETURN|XDEBUG_BREAKPOINT_TYPE_EXTERNAL, return_value);
+	if (!fse->is_trampoline && retval && !(op_array->fn_flags & ZEND_ACC_GENERATOR)) {
+		return_value = execute_data->return_value;
 	}
+
+	/* Check for return breakpoints */
+	xdebug_debugger_handle_breakpoints(fse, XDEBUG_BREAKPOINT_TYPE_RETURN|XDEBUG_BREAKPOINT_TYPE_EXTERNAL, return_value);
 
 	if (XG_BASE(stack)) {
 		xdebug_vector_pop(XG_BASE(stack));
@@ -581,10 +572,8 @@ static void xdebug_execute_internal_begin(zend_execute_data *execute_data)
 		fse->symbol_table = execute_data->symbol_table;
 	}
 
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)) {
-		/* Check for entry breakpoints */
-		xdebug_debugger_handle_breakpoints(fse, XDEBUG_BREAKPOINT_TYPE_CALL, NULL);
-	}
+	/* Check for entry breakpoints */
+	xdebug_debugger_handle_breakpoints(fse, XDEBUG_BREAKPOINT_TYPE_CALL, NULL);
 
 	/* Check for SOAP */
 	if (check_soap_call(fse, execute_data)) {
@@ -607,10 +596,8 @@ static void xdebug_execute_internal_end(zend_execute_data *execute_data, zval *r
 		zend_error_cb = fse->soap_error_cb;
 	}
 
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)) {
-		/* Check for return breakpoints */
-		xdebug_debugger_handle_breakpoints(fse, XDEBUG_BREAKPOINT_TYPE_RETURN, return_value);
-	}
+	/* Check for return breakpoints */
+	xdebug_debugger_handle_breakpoints(fse, XDEBUG_BREAKPOINT_TYPE_RETURN, return_value);
 
 	if (XG_BASE(stack)) {
 		xdebug_vector_pop(XG_BASE(stack));
@@ -660,8 +647,8 @@ static void xdebug_execute_end(zend_execute_data *execute_data, zval *retval)
 
 static zend_observer_fcall_handlers xdebug_observer_init(zend_execute_data *execute_data)
 {
-	/* If debug mode is not enabled or observer is deactivated (no debugger connected), skip */
-	if (!XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG) || !XG_BASE(observer_active)) {
+	/* If observer is deactivated (no debugger connected), skip */
+	if (!XG_BASE(observer_active)) {
 			return (zend_observer_fcall_handlers){NULL, NULL};
 	}
 	return (zend_observer_fcall_handlers){xdebug_execute_begin, xdebug_execute_end};
@@ -988,6 +975,9 @@ void xdebug_base_rinit(void)
 	/* Signal that we're in a request now */
 	XG_BASE(in_execution) = 1;
 
+	/* Observer starts active to allow first-call debug init check */
+	XG_BASE(observer_active) = 1;
+
 	/* filters */
 	XG_BASE(filter_type_stack)         = XDEBUG_FILTER_NONE;
 	XG_BASE(filters_stack)             = xdebug_llist_alloc(xdebug_llist_string_dtor);
@@ -1005,11 +995,7 @@ void xdebug_base_rinit_if_enabled(void)
 
 	/* Hack: We check for a soap header here, if that's existing, we don't use
 	 * Xdebug's error handler to keep soap fault from fucking up. */
-	if (
-		(XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG))
-		&&
-		(zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_SERVER]), "HTTP_SOAPACTION", sizeof("HTTP_SOAPACTION") - 1) == NULL)
-	) {
+	if (zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_SERVER]), "HTTP_SOAPACTION", sizeof("HTTP_SOAPACTION") - 1) == NULL) {
 		xdebug_base_use_xdebug_error_cb();
 		xdebug_base_use_xdebug_throw_exception_hook();
 	}
@@ -1051,28 +1037,24 @@ void xdebug_base_rshutdown(void)
 #if PHP_VERSION_ID >= 80100
 static void xdebug_error_cb(int orig_type, zend_string *error_filename, const unsigned int error_lineno, zend_string *message)
 {
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)) {
-		int type                        = orig_type & E_ALL;
-		char *error_type_str            = xdebug_error_type(type);
+	int type                        = orig_type & E_ALL;
+	char *error_type_str            = xdebug_error_type(type);
 
-		xdebug_debugger_error_cb(error_filename, error_lineno, type, error_type_str, ZSTR_VAL(message));
+	xdebug_debugger_error_cb(error_filename, error_lineno, type, error_type_str, ZSTR_VAL(message));
 
-		xdfree(error_type_str);
-	}
+	xdfree(error_type_str);
 }
 #else
 static void xdebug_error_cb(int orig_type, const char *error_filename, const unsigned int error_lineno, zend_string *message)
 {
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)) {
-		int type                        = orig_type & E_ALL;
-		char *error_type_str            = xdebug_error_type(type);
-		zend_string *tmp_error_filename = zend_string_init(error_filename, strlen(error_filename), 0);
+	int type                        = orig_type & E_ALL;
+	char *error_type_str            = xdebug_error_type(type);
+	zend_string *tmp_error_filename = zend_string_init(error_filename, strlen(error_filename), 0);
 
-		xdebug_debugger_error_cb(tmp_error_filename, error_lineno, type, error_type_str, ZSTR_VAL(message));
+	xdebug_debugger_error_cb(tmp_error_filename, error_lineno, type, error_type_str, ZSTR_VAL(message));
 
-		zend_string_release(tmp_error_filename);
-		xdfree(error_type_str);
-	}
+	zend_string_release(tmp_error_filename);
+	xdfree(error_type_str);
 }
 #endif
 
@@ -1092,10 +1074,6 @@ static void xdebug_throw_exception_hook(zend_object *exception)
 	zend_class_entry *exception_ce;
 	char *code_str = NULL;
 	zval dummy;
-
-	if (!XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)) {
-		return;
-	}
 
 	if (!exception) {
 		return;
@@ -1133,9 +1111,7 @@ static void xdebug_throw_exception_hook(zend_object *exception)
 	convert_to_string_ex(file);
 	convert_to_long_ex(line);
 
-	if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)) {
-		xdebug_debugger_throw_exception_hook(exception, file, line, code, code_str, message);
-	}
+	xdebug_debugger_throw_exception_hook(exception, file, line, code, code_str, message);
 
 	/* Free code_str if necessary */
 	if (code_str) {

@@ -1121,8 +1121,6 @@ void xdebug_debugger_compile_file(zend_op_array *op_array)
 	zend_class_entry *class_entry;
 	xdebug_lines_list *file_function_lines_list;
 
-	RETURN_IF_MODE_IS_NOT(XDEBUG_MODE_STEP_DEBUG);
-
 	/* The breakable_lines_map can not be set if another extension compiles
 	 * scripts during RINIT */
 	if (!XG_DBG(breakable_lines_map)) {

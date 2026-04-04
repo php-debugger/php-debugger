@@ -153,9 +153,6 @@ static int xdebug_lib_set_mode_item(const char *mode, int len)
 		xdebug_global_mode |= XDEBUG_MODE_STEP_DEBUG;
 		return 1;
 	}
-	if (strncmp(mode, "trace", len) == 0) {
-		return 1;
-	}
 
 	return 0;
 }
@@ -314,7 +311,6 @@ const char *xdebug_lib_mode_from_value(int mode)
 	switch (mode) {
 		case XDEBUG_MODE_STEP_DEBUG:
 			return "debug";
-			return "trace";
 		default:
 			return "?";
 	}
