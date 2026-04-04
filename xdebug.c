@@ -174,7 +174,7 @@ ZEND_INI_DISP(display_control_socket)
 }
 #endif
 
-static const char *xdebug_start_with_request_types[5] = { "", "default", "yes", "no", "trigger" };
+static const char *xdebug_start_with_request_types[4] = { "", "yes", "no", "trigger" };
 
 ZEND_INI_DISP(display_start_with_request)
 {
@@ -271,8 +271,8 @@ PHP_DEBUGGER_INI_WRAPPER(OnUpdatePhpDebuggerCtrlSocket,       OnUpdateCtrlSocket
 
 PHP_INI_BEGIN()
 	/* Library settings */
-	STD_PHP_INI_ENTRY("xdebug.mode",               "debug",               PHP_INI_SYSTEM,                OnUpdateString, settings.library.requested_mode,   zend_xdebug_globals, xdebug_globals)
-	PHP_INI_ENTRY_EX( "xdebug.start_with_request", "default",               PHP_INI_SYSTEM|PHP_INI_PERDIR, OnUpdateStartWithRequest, display_start_with_request)
+	STD_PHP_INI_ENTRY("xdebug.mode",               "debug",                 PHP_INI_SYSTEM,                OnUpdateString, settings.library.requested_mode,   zend_xdebug_globals, xdebug_globals)
+	PHP_INI_ENTRY_EX( "xdebug.start_with_request", "yes",                   PHP_INI_SYSTEM|PHP_INI_PERDIR, OnUpdateStartWithRequest, display_start_with_request)
 	PHP_INI_ENTRY_EX( "xdebug.start_upon_error",   "default",               PHP_INI_SYSTEM|PHP_INI_PERDIR, OnUpdateStartUponError,   display_start_upon_error)
 	STD_PHP_INI_ENTRY("xdebug.output_dir",         XDEBUG_TEMP_DIR,         PHP_INI_ALL,                   OnUpdateString, settings.library.output_dir,       zend_xdebug_globals, xdebug_globals)
 	STD_PHP_INI_ENTRY("xdebug.use_compression",    USE_COMPRESSION_DEFAULT, PHP_INI_ALL,                   OnUpdateBool,   settings.library.use_compression,  zend_xdebug_globals, xdebug_globals)
@@ -311,8 +311,8 @@ PHP_INI_END()
 /* php_debugger.* INI aliases — same storage as xdebug.* */
 static const zend_ini_entry_def php_debugger_ini_entries[] = {
 	/* Library settings */
-	STD_PHP_INI_ENTRY("php_debugger.mode",               "debug",               PHP_INI_SYSTEM,                OnUpdatePhpDebuggerString, settings.library.requested_mode,   zend_xdebug_globals, xdebug_globals)
-	PHP_INI_ENTRY_EX( "php_debugger.start_with_request", "default",               PHP_INI_SYSTEM|PHP_INI_PERDIR, OnUpdatePhpDebuggerStartWithRequest, display_start_with_request)
+	STD_PHP_INI_ENTRY("php_debugger.mode",               "debug",                 PHP_INI_SYSTEM,                OnUpdatePhpDebuggerString, settings.library.requested_mode,   zend_xdebug_globals, xdebug_globals)
+	PHP_INI_ENTRY_EX( "php_debugger.start_with_request", "yes",                   PHP_INI_SYSTEM|PHP_INI_PERDIR, OnUpdatePhpDebuggerStartWithRequest, display_start_with_request)
 	PHP_INI_ENTRY_EX( "php_debugger.start_upon_error",   "default",               PHP_INI_SYSTEM|PHP_INI_PERDIR, OnUpdatePhpDebuggerStartUponError,   display_start_upon_error)
 	STD_PHP_INI_ENTRY("php_debugger.output_dir",         XDEBUG_TEMP_DIR,         PHP_INI_ALL,                   OnUpdatePhpDebuggerString, settings.library.output_dir,       zend_xdebug_globals, xdebug_globals)
 	STD_PHP_INI_ENTRY("php_debugger.use_compression",    USE_COMPRESSION_DEFAULT, PHP_INI_ALL,                   OnUpdatePhpDebuggerBool,   settings.library.use_compression,  zend_xdebug_globals, xdebug_globals)
@@ -584,8 +584,9 @@ PHP_RINIT_FUNCTION(xdebug)
 
 	if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)) {
 		/* Check early if debugging could be requested this request.
-		 * For start_with_request=default (trigger mode), check if any
-		 * trigger is present. If not, disable all heavy hooks for
+		 * Check if start_with_request=trigger and any trigger is present
+		 * or if start_with_request=yes.
+		 * If not, disable all heavy hooks for
 		 * near-zero overhead. The actual connection happens on first
 		 * function call if triggers are present. */
 		/* Check if debugging could be requested this request.
@@ -596,8 +597,8 @@ PHP_RINIT_FUNCTION(xdebug)
 		 * but it handles re-enabling the observer itself. */
 		/* Respect start_with_request=no and XDEBUG_IGNORE */
 		int debug_requested = !xdebug_lib_never_start_with_request() && !xdebug_should_ignore() && (
-			xdebug_lib_start_with_request(XDEBUG_MODE_STEP_DEBUG) ||
-			xdebug_lib_start_with_trigger(XDEBUG_MODE_STEP_DEBUG, NULL) ||
+			xdebug_lib_start_with_request() ||
+			xdebug_lib_start_with_trigger(NULL) ||
 			xdebug_lib_start_upon_error() ||
 			getenv("XDEBUG_SESSION_START") != NULL ||
 			getenv("PHP_DEBUGGER_SESSION_START") != NULL
