@@ -736,14 +736,6 @@ ZEND_DLEXPORT void xdebug_zend_shutdown(zend_extension *extension)
 	xdebug_library_zend_shutdown();
 }
 
-ZEND_DLEXPORT void xdebug_init_oparray(zend_op_array *op_array)
-{
-	if (XDEBUG_MODE_IS_OFF()) {
-		return;
-	}
-
-}
-
 #ifndef ZEND_EXT_API
 #define ZEND_EXT_API    ZEND_DLEXPORT
 #endif
@@ -765,7 +757,7 @@ ZEND_DLEXPORT zend_extension zend_extension_entry = {
 	xdebug_statement_call, /* statement_handler_func_t */
 	NULL,           /* fcall_begin_handler_func_t */
 	NULL,           /* fcall_end_handler_func_t */
-	xdebug_init_oparray,   /* op_array_ctor_func_t */
+	NULL,           /* op_array_ctor_func_t */
 	NULL,           /* op_array_dtor_func_t */
 	STANDARD_ZEND_EXTENSION_PROPERTIES
 };
