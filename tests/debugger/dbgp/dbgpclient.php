@@ -35,7 +35,7 @@ class DebugClient
 	{
 	}
 
-	private function open( &$errno, &$errstr )
+	protected function open( &$errno, &$errstr )
 	{
 		$socket = @stream_socket_server( $this->getAddress(), $errno, $errstr );
 		if ( $socket )
@@ -45,6 +45,17 @@ class DebugClient
 			$this->port = array_pop( $name );
 		}
 		return $socket;
+	}
+
+	protected function acceptConnection( $timeout = 5 )
+	{
+		return @stream_socket_accept( $this->socket, $timeout );
+	}
+
+	protected function closeConnection( $conn )
+	{
+		fclose( $conn );
+		fclose( $this->socket );
 	}
 
 	private function launchPhp( &$pipes, $filename, array $ini_options = [], array $extra_options = [] )
@@ -190,7 +201,7 @@ class DebugClient
 			return false;
 		}
 		$this->php = $this->launchPhp( $this->ppipes, $filename, $ini_options, $options );
-		$conn = @stream_socket_accept( $this->socket, isset( $options['timeout'] ) ? $options['timeout'] : 5 );
+		$conn = $this->acceptConnection( isset( $options['timeout'] ) ? $options['timeout'] : 5 );
 
 		if ( $conn === false )
 		{
@@ -206,10 +217,9 @@ class DebugClient
 
 	function stop( $conn, array $options = [] )
 	{
-		fclose( $conn );
+		$this->closeConnection( $conn );
 		fclose( $this->ppipes[0] );
 		fclose( $this->ppipes[1] );
-		fclose( $this->socket );
 		proc_close( $this->php );
 
 		if ( array_key_exists( 'show-stdout', $options ) && $options['show-stdout'] )
