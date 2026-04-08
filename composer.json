@@ -2,7 +2,7 @@
     "name": "php-debugger/php-debugger",
     "type": "php-ext-zend",
     "license": "Xdebug-1.03",
-    "description": "A lightweight, high-performance PHP debugger. Drop-in Xdebug replacement focused on debugging.",
+    "description": "A lightweight, high-performance PHP debugger extension. Comptible with Xdebug step-debugging.",
     "homepage": "https://github.com/php-debugger/php-debugger",
     "authors": [
         {
