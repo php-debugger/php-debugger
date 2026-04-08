@@ -1,13 +1,18 @@
 {
-    "name": "pronskiy/php-debugger",
+    "name": "php-debugger/php-debugger",
     "type": "php-ext-zend",
     "license": "Xdebug-1.03",
-    "description": "A lightweight, high-performance PHP debugger. Drop-in Xdebug replacement focused on debugging.",
-    "homepage": "https://github.com/pronskiy/php-debugger",
+    "description": "A lightweight, high-performance PHP debugger extension. Comptible with Xdebug step-debugging.",
+    "homepage": "https://github.com/php-debugger/php-debugger",
     "authors": [
         {
             "name": "Roman Pronskiy",
             "role": "lead"
+        },
+        {
+            "name": "Carlos Granados",
+            "homepage": "https://github.com/carlos-granados",
+            "role": "maintainer"
         },
         {
             "name": "Derick Rethans",

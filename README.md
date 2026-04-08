@@ -50,7 +50,7 @@ We measured three different scenarios which we believe represent a good mix of t
 
 ### Manual download
 
-Grab the right binary from [Releases](https://github.com/pronskiy/php-debugger/releases), copy it to your extension directory, and add to `php.ini`:
+Grab the right binary from [Releases](https://github.com/php-debugger/php-debugger/releases), copy it to your extension directory, and add to `php.ini`:
 
 ```ini
 zend_extension=php_debugger.so
@@ -61,13 +61,13 @@ zend_extension=php_debugger.so
 **Quick install script:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/pronskiy/php-debugger/main/install.php | php
+curl -fsSL https://raw.githubusercontent.com/php-debugger/php-debugger/main/install.php | php
 ```
 
 **PIE (PHP Installer for Extensions):**
 
 ```bash
-pie install pronskiy/php-debugger
+pie install php-debugger/php-debugger
 ```
 
 ## Configuration
