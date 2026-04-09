@@ -621,9 +621,9 @@ PHP_RINIT_FUNCTION(xdebug)
 		}
 		if (!connected) {
 			if (!XINI_DBG(on_demand_debugging_enabled)) {
-                XG_BASE(observer_active) = false;
-                return SUCCESS;
-		    }
+				XG_BASE(observer_active) = false;
+				return SUCCESS;
+			}
 			XG_BASE(statement_handler_enabled) = false;
 		}
 	}

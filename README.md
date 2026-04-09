@@ -123,17 +123,18 @@ Works as-is. No changes needed.
 
 PHP Debugger maintains compatibility with Xdebug's debug mode:
 
-| Feature                            | PHP Debugger | Xdebug  |
-|------------------------------------|--------------|---------|
-| `extension_loaded("xdebug")`       | ✅ true       | ✅ true  |
-| `extension_loaded("php_debugger")` | ✅ true       | ❌ false |
-| `xdebug.*` INI settings            | ✅ works      | ✅ works |
-| `xdebug_break()`                   | ✅ works      | ✅ works |
-| `XDEBUG_SESSION` trigger           | ✅ works      | ✅ works |
-| Step debugging (DBGp)              | ✅            | ✅       |
-| Code coverage                      | ❌ use pcov   | ✅       |
-| Profiling                          | ❌ removed    | ✅       |
-| Tracing                            | ❌ removed    | ✅       |
+| Feature                            | PHP Debugger                                                                 | Xdebug |
+|------------------------------------|------------------------------------------------------------------------------|--------|
+| `extension_loaded("xdebug")`       | ✅ true                                                                       | ✅ true |
+| `extension_loaded("php_debugger")` | ✅ true                                                                       | ❌ false |
+| `xdebug.*` INI settings            | ✅ works                                                                      | ✅ works |
+| `xdebug_break()`                   | ✅ works                                                                      | ✅ works |
+| `XDEBUG_SESSION` trigger           | ✅ works                                                                      | ✅ works |
+| Step debugging (DBGp)              | ✅                                                                            | ✅      |
+| On-demand debugging                | ✅ works if `on_demand_debugging_enabled`<br/>is set, does not work otherwise | ✅      |
+| Code coverage                      | ❌ use pcov                                                                   | ✅      |
+| Profiling                          | ❌ removed                                                                    | ✅      |
+| Tracing                            | ❌ removed                                                                    | ✅      |
 
 ### New names (optional)
 
