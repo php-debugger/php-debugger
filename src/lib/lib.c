@@ -259,7 +259,7 @@ int xdebug_lib_set_start_with_request(char *value)
 	return 0;
 }
 
-int xdebug_lib_start_with_request()
+int xdebug_lib_start_with_request(void)
 {
 	if (XG_LIB(start_with_request) == XDEBUG_START_WITH_REQUEST_YES) {
 		return 1;
@@ -531,7 +531,7 @@ int xdebug_lib_start_with_trigger(char **found_trigger_value)
 }
 
 /* Returns 1 if the mode is 'trigger'. Does not check whether a trigger is present. */
-int xdebug_lib_start_if_mode_is_trigger()
+int xdebug_lib_start_if_mode_is_trigger(void)
 {
 	return is_mode_trigger_and_enabled(1, NULL);
 }
