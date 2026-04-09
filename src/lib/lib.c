@@ -243,10 +243,6 @@ int xdebug_lib_get_start_with_request(void)
 
 int xdebug_lib_set_start_with_request(char *value)
 {
-	if (strcmp(value, "default") == 0) {
-		XG_LIB(start_with_request) = XDEBUG_START_WITH_REQUEST_DEFAULT;
-		return 1;
-	}
 	if (strcmp(value, "yes") == 0 || strcmp(value, "1") == 0) {
 		XG_LIB(start_with_request) = XDEBUG_START_WITH_REQUEST_YES;
 		return 1;
@@ -263,7 +259,7 @@ int xdebug_lib_set_start_with_request(char *value)
 	return 0;
 }
 
-int xdebug_lib_start_with_request(int for_mode)
+int xdebug_lib_start_with_request(void)
 {
 	if (XG_LIB(start_with_request) == XDEBUG_START_WITH_REQUEST_YES) {
 		return 1;
@@ -396,10 +392,10 @@ int xdebug_lib_has_shared_secret(void)
 	return 0;
 }
 
-static int does_shared_secret_match_single(int mode, const char *trimmed_trigger_value, const char *trimmed_shared_secret, char **found_trigger_value)
+static int does_shared_secret_match_single(const char *trimmed_trigger_value, const char *trimmed_shared_secret, char **found_trigger_value)
 {
 	if (strcmp(trimmed_shared_secret, trimmed_trigger_value) == 0) {
-		xdebug_log_ex(XLOG_CHAN_CONFIG, XLOG_DEBUG, "TRGSEC-MATCH", "The trigger value '%s' matched the shared secret '%s' for mode '%s'", trimmed_trigger_value, trimmed_shared_secret, xdebug_lib_mode_from_value(mode));
+		xdebug_log_ex(XLOG_CHAN_CONFIG, XLOG_DEBUG, "TRGSEC-MATCH", "The trigger value '%s' matched the shared secret '%s'", trimmed_trigger_value, trimmed_shared_secret);
 
 		if (found_trigger_value != NULL) {
 			*found_trigger_value = xdstrdup(trimmed_trigger_value);
@@ -411,7 +407,7 @@ static int does_shared_secret_match_single(int mode, const char *trimmed_trigger
 	return 0;
 }
 
-static int does_shared_secret_match(int mode, const char *trigger_name, const char *trigger_value, char **found_trigger_value)
+static int does_shared_secret_match(const char *trigger_name, const char *trigger_value, char **found_trigger_value)
 {
 	int         retval = 0;
 	const char *shared_secret = XINI_LIB(trigger_value);
@@ -422,14 +418,14 @@ static int does_shared_secret_match(int mode, const char *trigger_name, const ch
 		int         i;
 		xdebug_arg *values = xdebug_arg_ctor();
 
-		xdebug_log_ex(XLOG_CHAN_CONFIG, XLOG_DEBUG, "TRGSEC-MULT", "The shared secret (xdebug.trigger_value) is multi-value for mode '%s'", xdebug_lib_mode_from_value(mode));
+		xdebug_log_ex(XLOG_CHAN_CONFIG, XLOG_DEBUG, "TRGSEC-MULT", "The shared secret (xdebug.trigger_value) is multi-value");
 
 		xdebug_explode(",", shared_secret, values, -1);
 
 		for (i = 0; i < values->c; i++) {
 			char *trimmed_shared_secret = xdebug_trim(values->args[i]);
 
-			retval = does_shared_secret_match_single(mode, trimmed_trigger_value, trimmed_shared_secret, found_trigger_value);
+			retval = does_shared_secret_match_single(trimmed_trigger_value, trimmed_shared_secret, found_trigger_value);
 
 			xdfree(trimmed_shared_secret);
 
@@ -442,17 +438,17 @@ static int does_shared_secret_match(int mode, const char *trigger_name, const ch
 		xdebug_arg_dtor(values);
 
 		if (retval == 0) {
-			xdebug_log_ex(XLOG_CHAN_CONFIG, XLOG_WARN, "TRGSEC-MNO", "The trigger value '%s', as set through '%s', did not match any of the shared secrets (xdebug.trigger_value) for mode '%s'", trimmed_trigger_value, trigger_name, xdebug_lib_mode_from_value(mode));
+			xdebug_log_ex(XLOG_CHAN_CONFIG, XLOG_WARN, "TRGSEC-MNO", "The trigger value '%s', as set through '%s', did not match any of the shared secrets (xdebug.trigger_value)", trimmed_trigger_value, trigger_name);
 		}
 	} else {
 		char *trimmed_shared_secret = xdebug_trim(shared_secret);
 
-		retval = does_shared_secret_match_single(mode, trimmed_trigger_value, trimmed_shared_secret, found_trigger_value);
+		retval = does_shared_secret_match_single(trimmed_trigger_value, trimmed_shared_secret, found_trigger_value);
 
 		xdfree(trimmed_shared_secret);
 
 		if (retval == 0) {
-			xdebug_log_ex(XLOG_CHAN_CONFIG, XLOG_WARN, "TRGSEC-NO", "The trigger value '%s', as set through '%s', did not match the shared secret (xdebug.trigger_value) for mode '%s'", trimmed_trigger_value, trigger_name, xdebug_lib_mode_from_value(mode));
+			xdebug_log_ex(XLOG_CHAN_CONFIG, XLOG_WARN, "TRGSEC-NO", "The trigger value '%s', as set through '%s', did not match the shared secret (xdebug.trigger_value)", trimmed_trigger_value, trigger_name);
 		}
 	}
 
@@ -461,38 +457,31 @@ static int does_shared_secret_match(int mode, const char *trigger_name, const ch
 	return retval;
 }
 
-static int trigger_enabled(int for_mode, char **found_trigger_value)
+static int trigger_enabled(char **found_trigger_value)
 {
 	const char *trigger_value = NULL;
 	const char *trigger_name = "XDEBUG_TRIGGER";
 	const char *found_in_global;
 
-	xdebug_log(XLOG_CHAN_CONFIG, XLOG_DEBUG, "Checking if trigger 'XDEBUG_TRIGGER' is enabled for mode '%s'", xdebug_lib_mode_from_value(for_mode));
+	xdebug_log(XLOG_CHAN_CONFIG, XLOG_DEBUG, "Checking if trigger 'XDEBUG_TRIGGER' is enabled");
 
 	/* First we check for the generic 'XDEBUG_TRIGGER' option */
 	trigger_value = xdebug_lib_find_in_globals(trigger_name, &found_in_global);
 
 	/* If not found, try the PHP_DEBUGGER_TRIGGER alias */
 	if (!trigger_value) {
+		trigger_name = "PHP_DEBUGGER_TRIGGER";
 		trigger_value = xdebug_lib_find_in_globals("PHP_DEBUGGER_TRIGGER", &found_in_global);
-		if (trigger_value) {
-			trigger_name = "PHP_DEBUGGER_TRIGGER";
-		}
 	}
 
 	/* If not found, we fall back to the per-mode name for backwards compatibility reasons */
 	if (!trigger_value) {
-		if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG) && (for_mode == XDEBUG_MODE_STEP_DEBUG)) {
-			trigger_name = "XDEBUG_SESSION";
-		}
-
-		if (trigger_name) {
-			xdebug_log(XLOG_CHAN_CONFIG, XLOG_INFO, "Trigger value for 'XDEBUG_TRIGGER' not found, falling back to '%s'", trigger_name);
-			trigger_value = xdebug_lib_find_in_globals(trigger_name, &found_in_global);
-		}
+		trigger_name = "XDEBUG_SESSION";
+		xdebug_log(XLOG_CHAN_CONFIG, XLOG_INFO, "Trigger value for 'XDEBUG_TRIGGER' not found, falling back to '%s'", trigger_name);
+		trigger_value = xdebug_lib_find_in_globals(trigger_name, &found_in_global);
 
 		/* Also try PHP_DEBUGGER_SESSION alias */
-		if (!trigger_value && XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG) && (for_mode == XDEBUG_MODE_STEP_DEBUG)) {
+		if (!trigger_value) {
 			trigger_name = "PHP_DEBUGGER_SESSION";
 			trigger_value = xdebug_lib_find_in_globals(trigger_name, &found_in_global);
 		}
@@ -518,43 +507,33 @@ static int trigger_enabled(int for_mode, char **found_trigger_value)
 
 	/* Check if the configured trigger value matches the one found in the
 	 * trigger element */
-	if (does_shared_secret_match(for_mode, trigger_name, trigger_value, found_trigger_value)) {
+	if (does_shared_secret_match(trigger_name, trigger_value, found_trigger_value)) {
 		return 1;
 	}
 
 	return 0;
 }
 
-static int is_mode_trigger_and_enabled(int for_mode, int force_trigger, char **found_trigger_value)
+static int is_mode_trigger_and_enabled(int force_trigger, char **found_trigger_value)
 {
 	if (XG_LIB(start_with_request) == XDEBUG_START_WITH_REQUEST_TRIGGER) {
-		return force_trigger || trigger_enabled(for_mode, found_trigger_value);
-	}
-
-	if (XG_LIB(start_with_request) == XDEBUG_START_WITH_REQUEST_DEFAULT) {
-		if (
-			XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)
-		) {
-			return force_trigger || trigger_enabled(for_mode, found_trigger_value);
-		}
+		return force_trigger || trigger_enabled(found_trigger_value);
 	}
 
 	return 0;
 }
 
-/* Returns 1 if the mode is 'trigger', or 'default', where the default mode for
- * a feature is to trigger, and the trigger is present. If found_trigger_value
+/* Returns 1 if the mode is 'trigger' and the trigger is present. If found_trigger_value
  * is not NULL, then it is set to the found trigger value */
-int xdebug_lib_start_with_trigger(int for_mode, char **found_trigger_value)
+int xdebug_lib_start_with_trigger(char **found_trigger_value)
 {
-	return is_mode_trigger_and_enabled(for_mode, 0, found_trigger_value);
+	return is_mode_trigger_and_enabled(0, found_trigger_value);
 }
 
-/* Returns 1 if the mode is 'trigger', or 'default', where the default mode for
- * a feature is to trigger. Does not check whether a trigger is present. */
-int xdebug_lib_start_if_mode_is_trigger(int for_mode)
+/* Returns 1 if the mode is 'trigger'. Does not check whether a trigger is present. */
+int xdebug_lib_start_if_mode_is_trigger(void)
 {
-	return is_mode_trigger_and_enabled(for_mode, 1, NULL);
+	return is_mode_trigger_and_enabled(1, NULL);
 }
 
 function_stack_entry *xdebug_get_stack_frame(int nr)
