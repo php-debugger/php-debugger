@@ -238,13 +238,16 @@ static inline bool php_debugger_ini_is_explicitly_set(zend_ini_entry *entry)
 static void php_debugger_sync_canonical(zend_ini_entry *alias_entry, zend_string *new_value)
 {
 	const char *alias_name = ZSTR_VAL(alias_entry->name);
+	char canonical[128];
+	zend_string *key;
+	zend_ini_entry *canon;
+
 	if (strncmp(alias_name, "php_debugger.", sizeof("php_debugger.") - 1) != 0) return;
 
-	char canonical[128];
 	snprintf(canonical, sizeof(canonical), "xdebug.%s", alias_name + sizeof("php_debugger.") - 1);
 
-	zend_string *key = zend_string_init(canonical, strlen(canonical), 0);
-	zend_ini_entry *canon = zend_hash_find_ptr(EG(ini_directives), key);
+	key = zend_string_init(canonical, strlen(canonical), 0);
+	canon = zend_hash_find_ptr(EG(ini_directives), key);
 	zend_string_release(key);
 	if (!canon) return;
 
@@ -253,8 +256,9 @@ static void php_debugger_sync_canonical(zend_ini_entry *alias_entry, zend_string
 }
 #define PHP_DEBUGGER_INI_WRAPPER(name, delegate) \
 	static PHP_INI_MH(name) { \
+		int rc; \
 		if (!php_debugger_ini_is_explicitly_set(entry)) return SUCCESS; \
-		int rc = delegate(entry, new_value, mh_arg1, mh_arg2, mh_arg3, stage); \
+		rc = delegate(entry, new_value, mh_arg1, mh_arg2, mh_arg3, stage); \
 		if (rc == SUCCESS) php_debugger_sync_canonical(entry, new_value); \
 		return rc; \
 	}
@@ -467,6 +471,7 @@ int xdebug_is_output_tty(void)
 
 PHP_MINIT_FUNCTION(xdebug)
 {
+	zend_string *alias_name;
 	ZEND_INIT_MODULE_GLOBALS(xdebug, php_xdebug_init_globals, php_xdebug_shutdown_globals);
 	REGISTER_INI_ENTRIES();
 
@@ -479,7 +484,7 @@ PHP_MINIT_FUNCTION(xdebug)
 		xdebug_compat_module_entry.type = MODULE_PERSISTENT;
 		xdebug_compat_module_entry.module_number = module_number;
 		xdebug_compat_module_entry.zend_api = ZEND_MODULE_API_NO;
-		zend_string *alias_name = zend_string_init_interned("xdebug", sizeof("xdebug") - 1, 1);
+		alias_name = zend_string_init_interned("xdebug", sizeof("xdebug") - 1, 1);
 		zend_hash_add_ptr(&module_registry, alias_name, &xdebug_compat_module_entry);
 		zend_string_release(alias_name);
 	}
