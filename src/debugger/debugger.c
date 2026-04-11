@@ -1200,7 +1200,7 @@ void xdebug_debugger_register_eval(function_stack_entry *fse)
 	}
 }
 
-void xdebug_debugger_restart_if_pid_changed()
+void xdebug_debugger_restart_if_pid_changed(void)
 {
 	zend_ulong pid;
 

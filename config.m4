@@ -86,6 +86,7 @@ if test "$PHP_PHP_DEBUGGER" != "no"; then
     AX_CHECK_COMPILE_FLAG(-Wwrite-strings,                  _MAINTAINER_CFLAGS="$_MAINTAINER_CFLAGS -Wwrite-strings")
     AX_CHECK_COMPILE_FLAG(-Wpointer-arith,                  _MAINTAINER_CFLAGS="$_MAINTAINER_CFLAGS -Wpointer-arith")
     AX_CHECK_COMPILE_FLAG(-Wstrict-prototypes,              _MAINTAINER_CFLAGS="$_MAINTAINER_CFLAGS -Wstrict-prototypes")
+    AX_CHECK_COMPILE_FLAG(-Wold-style-definition,           _MAINTAINER_CFLAGS="$_MAINTAINER_CFLAGS -Wold-style-definition")
     AX_CHECK_COMPILE_FLAG(-fdiagnostics-show-option,        _MAINTAINER_CFLAGS="$_MAINTAINER_CFLAGS -fdiagnostics-show-option")
     AX_CHECK_COMPILE_FLAG(-fno-exceptions,                  _MAINTAINER_CFLAGS="$_MAINTAINER_CFLAGS -fno-exceptions")
     AX_CHECK_COMPILE_FLAG(-fno-omit-frame-pointer,          _MAINTAINER_CFLAGS="$_MAINTAINER_CFLAGS -fno-omit-frame-pointer")
