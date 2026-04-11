@@ -688,20 +688,20 @@ int xdebug_early_connect_to_client(void)
 	return (XG_DBG(context).socket >= 0) ? 1 : 0;
 }
 
-void xdebug_abort_debugger()
+void xdebug_abort_debugger(void)
 {
 	if (XG_DBG(remote_connection_enabled)) {
 		xdebug_mark_debug_connection_not_active();
 	}
 }
 
-void xdebug_restart_debugger()
+void xdebug_restart_debugger(void)
 {
 	xdebug_abort_debugger();
 	xdebug_init_debugger();
 }
 
-void xdebug_mark_debug_connection_active()
+void xdebug_mark_debug_connection_active(void)
 {
 	XG_DBG(remote_connection_enabled) = 1;
 	XG_DBG(remote_connection_pid) = xdebug_get_pid();
@@ -709,13 +709,13 @@ void xdebug_mark_debug_connection_active()
 	XG_BASE(observer_active) = 1;
 }
 
-void xdebug_mark_debug_connection_pending()
+void xdebug_mark_debug_connection_pending(void)
 {
 	XG_DBG(remote_connection_enabled) = 0;
 	XG_DBG(remote_connection_pid) = 0;
 }
 
-void xdebug_mark_debug_connection_not_active()
+void xdebug_mark_debug_connection_not_active(void)
 {
 	if (XG_DBG(remote_connection_enabled)) {
 		xdebug_close_socket(XG_DBG(context).socket);
@@ -750,7 +750,7 @@ bool xdebug_should_ignore(void)
 }
 
 
-void xdebug_debug_init_if_requested_on_connect_to_client()
+void xdebug_debug_init_if_requested_on_connect_to_client(void)
 {
 	RETURN_IF_MODE_IS_NOT(XDEBUG_MODE_STEP_DEBUG);
 
@@ -763,7 +763,7 @@ void xdebug_debug_init_if_requested_on_connect_to_client()
 	}
 }
 
-void xdebug_debug_init_if_requested_on_error()
+void xdebug_debug_init_if_requested_on_error(void)
 {
 	RETURN_IF_MODE_IS_NOT(XDEBUG_MODE_STEP_DEBUG);
 
@@ -776,7 +776,7 @@ void xdebug_debug_init_if_requested_on_error()
 	}
 }
 
-void xdebug_debug_init_if_requested_on_xdebug_break()
+void xdebug_debug_init_if_requested_on_xdebug_break(void)
 {
 	RETURN_IF_MODE_IS_NOT(XDEBUG_MODE_STEP_DEBUG);
 

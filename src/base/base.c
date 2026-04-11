@@ -914,7 +914,7 @@ void xdebug_base_minit(INIT_FUNC_ARGS)
 	xdebug_base_overloaded_functions_setup();
 }
 
-void xdebug_base_mshutdown()
+void xdebug_base_mshutdown(void)
 {
 	/* Reset compile and error callbacks */
 	zend_compile_file = old_compile_file;
@@ -927,13 +927,13 @@ void xdebug_base_mshutdown()
 #endif
 }
 
-void xdebug_base_post_startup()
+void xdebug_base_post_startup(void)
 {
 	old_compile_file = zend_compile_file;
 	zend_compile_file = xdebug_compile_file;
 }
 
-void xdebug_base_rinit()
+void xdebug_base_rinit(void)
 {
 	/* Hack: We check for a soap header here, if that's existing, we don't use
 	 * Xdebug's error handler to keep soap fault from fucking up. */
@@ -1012,7 +1012,7 @@ void xdebug_base_rinit()
 	}
 }
 
-void xdebug_base_post_deactivate()
+void xdebug_base_post_deactivate(void)
 {
 	xdebug_hash_destroy(XG_BASE(fiber_stacks));
 	XG_BASE(fiber_stacks) = NULL;
@@ -1038,7 +1038,7 @@ void xdebug_base_post_deactivate()
 #endif
 }
 
-void xdebug_base_rshutdown()
+void xdebug_base_rshutdown(void)
 {
 	/* Signal that we're no longer in a request */
 	XG_BASE(in_execution) = 0;

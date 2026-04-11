@@ -816,7 +816,7 @@ void xdebug_open_log(void)
 	}
 }
 
-void xdebug_close_log()
+void xdebug_close_log(void)
 {
 	char *timestr;
 
