@@ -997,8 +997,9 @@ static struct xdebug_fiber_entry* xdebug_fiber_entry_ctor(xdebug_vector *stack)
 	return tmp;
 }
 
-static void xdebug_fiber_entry_dtor(struct xdebug_fiber_entry *entry)
+static void xdebug_fiber_entry_dtor(void *ptr)
 {
+	struct xdebug_fiber_entry *entry = (struct xdebug_fiber_entry *) ptr;
 	xdebug_vector_destroy(entry->stack);
 	xdfree(entry);
 }
@@ -1220,7 +1221,7 @@ void xdebug_base_rinit()
 	{
 		zend_string *fiber_key = create_key_for_fiber(EG(main_fiber_context));
 
-		XG_BASE(fiber_stacks) = xdebug_hash_alloc(64, (xdebug_hash_dtor_t) xdebug_fiber_entry_dtor);
+		XG_BASE(fiber_stacks) = xdebug_hash_alloc(64, xdebug_fiber_entry_dtor);
 		XG_BASE(stack) = create_stack_for_fiber(fiber_key, EG(main_fiber_context));
 
 		zend_string_release(fiber_key);
