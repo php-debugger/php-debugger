@@ -452,15 +452,6 @@ static int is_using_private_tmp_directory(char *file_name)
 	return (XG_BASE(private_tmp) && (strstr(file_name, "/tmp") == file_name));
 }
 
-static const char* private_tmp_directory(char *file_name)
-{
-	if (is_using_private_tmp_directory(file_name)) {
-		return XG_BASE(private_tmp);
-	}
-
-	return "";
-}
-
 static void xdebug_print_settings(void)
 {
 	zend_module_entry *module;
@@ -825,7 +816,7 @@ void xdebug_open_log(void)
 	}
 }
 
-void xdebug_close_log()
+void xdebug_close_log(void)
 {
 	char *timestr;
 

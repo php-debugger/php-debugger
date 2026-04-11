@@ -2,8 +2,8 @@ dnl config.m4 for extension PHP Debugger (based on Xdebug)
 
 PHP_ARG_ENABLE(php-debugger, whether to enable PHP Debugger support,
 [  --enable-php-debugger   Enable PHP Debugger support])
-PHP_ARG_ENABLE(xdebug-dev, whether to enable PHP Debugger developer build flags,
-[  --enable-xdebug-dev              PHP Debugger: Enable developer flags],, no)
+PHP_ARG_ENABLE(php-debugger-dev, whether to enable PHP Debugger developer build flags,
+[  --enable-php-debugger-dev  PHP Debugger: Enable developer flags],, no)
 
 
 
@@ -53,7 +53,7 @@ if test "$PHP_PHP_DEBUGGER" != "no"; then
 
   CPPFLAGS=$old_CPPFLAGS
 
-  if test "$PHP_XDEBUG_DEV" = "yes"; then
+  if test "$PHP_PHP_DEBUGGER_DEV" = "yes"; then
     AX_CHECK_COMPILE_FLAG(-Wbool-conversion,                _MAINTAINER_CFLAGS="$_MAINTAINER_CFLAGS -Wbool-conversion")
     AX_CHECK_COMPILE_FLAG(-Wdeclaration-after-statement,    _MAINTAINER_CFLAGS="$_MAINTAINER_CFLAGS -Wdeclaration-after-statement")
     AX_CHECK_COMPILE_FLAG(-Wdiscarded-qualifiers,           _MAINTAINER_CFLAGS="$_MAINTAINER_CFLAGS -Wdiscarded-qualifiers")
@@ -85,6 +85,8 @@ if test "$PHP_PHP_DEBUGGER" != "no"; then
     AX_CHECK_COMPILE_FLAG(-Wstring-conversion,              _MAINTAINER_CFLAGS="$_MAINTAINER_CFLAGS -Wstring-conversion")
     AX_CHECK_COMPILE_FLAG(-Wwrite-strings,                  _MAINTAINER_CFLAGS="$_MAINTAINER_CFLAGS -Wwrite-strings")
     AX_CHECK_COMPILE_FLAG(-Wpointer-arith,                  _MAINTAINER_CFLAGS="$_MAINTAINER_CFLAGS -Wpointer-arith")
+    AX_CHECK_COMPILE_FLAG(-Wstrict-prototypes,              _MAINTAINER_CFLAGS="$_MAINTAINER_CFLAGS -Wstrict-prototypes")
+    AX_CHECK_COMPILE_FLAG(-Wold-style-definition,           _MAINTAINER_CFLAGS="$_MAINTAINER_CFLAGS -Wold-style-definition")
     AX_CHECK_COMPILE_FLAG(-fdiagnostics-show-option,        _MAINTAINER_CFLAGS="$_MAINTAINER_CFLAGS -fdiagnostics-show-option")
     AX_CHECK_COMPILE_FLAG(-fno-exceptions,                  _MAINTAINER_CFLAGS="$_MAINTAINER_CFLAGS -fno-exceptions")
     AX_CHECK_COMPILE_FLAG(-fno-omit-frame-pointer,          _MAINTAINER_CFLAGS="$_MAINTAINER_CFLAGS -fno-omit-frame-pointer")
