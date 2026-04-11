@@ -998,7 +998,7 @@ void xdebug_base_rinit()
 	}
 }
 
-void xdebug_base_rinit_if_enabled()
+void xdebug_base_rinit_if_enabled(void)
 {
 	CG(compiler_options) = CG(compiler_options) | ZEND_COMPILE_EXTENDED_STMT;
 	xdebug_disable_opcache_optimizer();

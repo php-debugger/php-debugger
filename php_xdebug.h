@@ -68,7 +68,7 @@ PHP_RSHUTDOWN_FUNCTION(xdebug);
 PHP_MINFO_FUNCTION(xdebug);
 ZEND_MODULE_POST_ZEND_DEACTIVATE_D(xdebug);
 
-int xdebug_is_output_tty();
+int xdebug_is_output_tty(void);
 
 ZEND_BEGIN_MODULE_GLOBALS(xdebug)
 	struct {

@@ -18,14 +18,14 @@
 #define __XDEBUG_BASE_H__
 
 void xdebug_base_minit(INIT_FUNC_ARGS);
-void xdebug_base_mshutdown();
+void xdebug_base_mshutdown(void);
 
-void xdebug_base_post_startup();
+void xdebug_base_post_startup(void);
 
-void xdebug_base_rinit();
-void xdebug_base_rinit_if_enabled();
-void xdebug_base_post_deactivate();
-void xdebug_base_rshutdown();
+void xdebug_base_rinit(void);
+void xdebug_base_rinit_if_enabled(void);
+void xdebug_base_post_deactivate(void);
+void xdebug_base_rshutdown(void);
 
 void xdebug_func_dtor_by_ref(xdebug_func *elem); /* TODO: Remove this API */
 void xdebug_func_dtor(xdebug_func *elem);

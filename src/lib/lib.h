@@ -306,5 +306,5 @@ zend_string* xdebug_wrap_closure_location_around_function_name(zend_op_array *op
 
 void xdebug_lib_register_compiled_variables(function_stack_entry *fse);
 
-bool xdebug_lib_path_mapping_enabled();
+bool xdebug_lib_path_mapping_enabled(void);
 #endif
