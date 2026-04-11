@@ -32,7 +32,7 @@ jobs:
             -   name: Compile
                 run: |
                     phpize
-                    ./configure --enable-php-debugger
+                    ./configure --enable-php-debugger-dev
                     make -j$(nproc)
 
             -   name: Find PHP

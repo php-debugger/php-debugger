@@ -2,8 +2,8 @@ dnl config.m4 for extension PHP Debugger (based on Xdebug)
 
 PHP_ARG_ENABLE(php-debugger, whether to enable PHP Debugger support,
 [  --enable-php-debugger   Enable PHP Debugger support])
-PHP_ARG_ENABLE(xdebug-dev, whether to enable PHP Debugger developer build flags,
-[  --enable-xdebug-dev              PHP Debugger: Enable developer flags],, no)
+PHP_ARG_ENABLE(php-debugger-dev, whether to enable PHP Debugger developer build flags,
+[  --enable-php-debugger-dev  PHP Debugger: Enable developer flags],, no)
 
 
 
@@ -53,7 +53,7 @@ if test "$PHP_PHP_DEBUGGER" != "no"; then
 
   CPPFLAGS=$old_CPPFLAGS
 
-  if test "$PHP_XDEBUG_DEV" = "yes"; then
+  if test "$PHP_PHP_DEBUGGER_DEV" = "yes"; then
     AX_CHECK_COMPILE_FLAG(-Wbool-conversion,                _MAINTAINER_CFLAGS="$_MAINTAINER_CFLAGS -Wbool-conversion")
     AX_CHECK_COMPILE_FLAG(-Wdeclaration-after-statement,    _MAINTAINER_CFLAGS="$_MAINTAINER_CFLAGS -Wdeclaration-after-statement")
     AX_CHECK_COMPILE_FLAG(-Wdiscarded-qualifiers,           _MAINTAINER_CFLAGS="$_MAINTAINER_CFLAGS -Wdiscarded-qualifiers")
