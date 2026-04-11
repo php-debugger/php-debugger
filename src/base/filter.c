@@ -100,7 +100,6 @@ void xdebug_filter_run_internal(function_stack_entry *fse, int group, unsigned c
 {
 	xdebug_llist_element *le;
 	unsigned int          k;
-	function_stack_entry  tmp_fse;
 	int (*filter_to_run)(function_stack_entry *fse, unsigned char *filtered_flag, char *filter);
 
 	le = XDEBUG_LLIST_HEAD(filters);

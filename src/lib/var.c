@@ -98,7 +98,6 @@ HashTable *xdebug_objdebug_pp(zval **zval_pp, int flags)
 		Z_OBJ_HANDLER(dzval, get_debug_info) &&
 		!EG(exception)
 	) {
-		void        *original_trace_context;
 		zend_object *orig_exception;
 
 		XG_BASE(in_debug_info) = 1;
