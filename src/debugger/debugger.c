@@ -833,7 +833,7 @@ static size_t xdebug_ub_write(const char *string, size_t length)
 	return xdebug_orig_ub_write(string, length);
 }
 
-static void xdebug_hook_output_handlers()
+static void xdebug_hook_output_handlers(void)
 {
 	/* Override output handler for capturing output */
 	if (xdebug_orig_ub_write == NULL) {
@@ -842,7 +842,7 @@ static void xdebug_hook_output_handlers()
 	}
 }
 
-static void xdebug_unhook_output_handlers()
+static void xdebug_unhook_output_handlers(void)
 {
 	/* Restore original output handler */
 	sapi_module.ub_write = xdebug_orig_ub_write;

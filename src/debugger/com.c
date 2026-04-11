@@ -538,7 +538,7 @@ static void xdebug_init_cloud_debugger(const char *cloud_id)
 /**
  * dXXXXXXa-cXXa-4XX7-9XX3-fXXXXXXXXXX0
  */
-static int ide_key_is_cloud_id()
+static int ide_key_is_cloud_id(void)
 {
 	const char *k = XG_DBG(ide_key);
 
@@ -553,7 +553,7 @@ static int ide_key_is_cloud_id()
 	return 1;
 }
 
-static bool is_opcache_enabled()
+static bool is_opcache_enabled(void)
 {
 	zend_string *opcache_enable = ZSTR_INIT_LITERAL("opcache.enable", 0);
 	zend_string *opcache_enable_cli = ZSTR_INIT_LITERAL("opcache.enable_cli", 0);
@@ -580,7 +580,7 @@ static bool is_opcache_enabled()
 	return true;
 }
 
-static void warn_if_opcache_is_loaded_after_xdebug()
+static void warn_if_opcache_is_loaded_after_xdebug(void)
 {
 	bool xdebug_loaded = false;
 	zend_llist_element *ext_ptr = zend_extensions.head;
@@ -604,7 +604,7 @@ static void warn_if_opcache_is_loaded_after_xdebug()
 	} while (ext_ptr != NULL);
 }
 
-static void xdebug_init_debugger()
+static void xdebug_init_debugger(void)
 {
 	xdebug_str *connection_attempts = xdebug_str_new();
 
@@ -797,7 +797,7 @@ static void xdebug_update_ide_key(char *new_key)
 	XG_DBG(ide_key) = xdstrdup(new_key);
 }
 
-static int xdebug_handle_start_session()
+static int xdebug_handle_start_session(void)
 {
 	int   activate_session = 0;
 	zval *dummy;
@@ -858,7 +858,7 @@ static int xdebug_handle_start_session()
 	return activate_session;
 }
 
-static void xdebug_handle_stop_session()
+static void xdebug_handle_stop_session(void)
 {
 	/* Remove session cookie if requested */
 	if (
