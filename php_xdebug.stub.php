@@ -29,3 +29,91 @@ function xdebug_is_debugger_active(): bool {}
 function xdebug_notify(mixed $data): bool {}
 
 /* -----------------------------------------------------------------------*/
+/* Compatibility stubs — profiler                                         */
+/* -----------------------------------------------------------------------*/
+
+function xdebug_get_profiler_filename(): string|false {}
+
+/* -----------------------------------------------------------------------*/
+/* Compatibility stubs — coverage                                         */
+/* -----------------------------------------------------------------------*/
+
+function xdebug_code_coverage_started(): bool {}
+
+function xdebug_get_code_coverage(): array {}
+
+function xdebug_start_code_coverage(int $options = 0): void {}
+
+function xdebug_stop_code_coverage(bool $cleanUp = true): void {}
+
+/* -----------------------------------------------------------------------*/
+/* Compatibility stubs — tracing                                          */
+/* -----------------------------------------------------------------------*/
+
+function xdebug_get_tracefile_name(): string|false {}
+
+function xdebug_start_trace(?string $traceFile = null, int $options = 0): string|false {}
+
+function xdebug_stop_trace(): string|false {}
+
+function xdebug_get_function_count(): int {}
+
+function xdebug_start_function_monitor(array $functionNames): void {}
+
+function xdebug_stop_function_monitor(): void {}
+
+function xdebug_get_monitored_functions(): array {}
+
+/* -----------------------------------------------------------------------*/
+/* Compatibility stubs — gcstats                                          */
+/* -----------------------------------------------------------------------*/
+
+function xdebug_get_gc_run_count(): int {}
+
+function xdebug_get_gc_total_collected_roots(): int {}
+
+function xdebug_get_gcstats_filename(): string|false {}
+
+function xdebug_start_gcstats(): string|false {}
+
+function xdebug_stop_gcstats(): string|false {}
+
+/* -----------------------------------------------------------------------*/
+/* Compatibility stubs — develop                                          */
+/* -----------------------------------------------------------------------*/
+
+function xdebug_call_class(int $depth = 2): string|false {}
+
+function xdebug_call_file(int $depth = 2): string|false {}
+
+function xdebug_call_function(int $depth = 2): string|false {}
+
+function xdebug_call_line(int $depth = 2): int {}
+
+function xdebug_debug_zval(string ...$varName): void {}
+
+function xdebug_debug_zval_stdout(string ...$varName): void {}
+
+function xdebug_dump_superglobals(): void {}
+
+function xdebug_get_collected_errors(bool $emptyList = false): array {}
+
+function xdebug_get_function_stack(array $options = []): array {}
+
+function xdebug_get_headers(): array {}
+
+function xdebug_get_stack_depth(): int {}
+
+function xdebug_memory_usage(): int {}
+
+function xdebug_peak_memory_usage(): int {}
+
+function xdebug_print_function_stack(string $message = 'user triggered', int $options = 0): void {}
+
+function xdebug_start_error_collection(): void {}
+
+function xdebug_stop_error_collection(): void {}
+
+function xdebug_time_index(): float {}
+
+function xdebug_var_dump(mixed ...$var): void {}

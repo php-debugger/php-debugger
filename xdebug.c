@@ -61,6 +61,7 @@
 #include "lib/var_export_html.h"
 #include "lib/var_export_line.h"
 #include "lib/var_export_text.h"
+#include "lib/compat_stubs.h"
 
 static zend_result (*xdebug_orig_post_startup_cb)(void);
 static zend_result xdebug_post_startup(void);
