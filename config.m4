@@ -116,4 +116,5 @@ if test "$PHP_PHP_DEBUGGER" != "no"; then
 
   PHP_ADD_INCLUDE($ext_srcdir/src)
   PHP_ADD_INCLUDE($ext_builddir/src)
+  PHP_ADD_INCLUDE($ext_srcdir)
 fi

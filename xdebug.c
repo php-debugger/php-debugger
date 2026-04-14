@@ -70,6 +70,9 @@ int xdebug_include_or_eval_handler(zend_execute_data *execute_data);
 /* True globals */
 int zend_xdebug_initialised = 0;
 int xdebug_global_mode = 0;
+/* Forward declaration for static build self-registration */
+extern ZEND_DLEXPORT zend_extension zend_extension_entry;
+
 
 zend_module_entry xdebug_module_entry = {
 	STANDARD_MODULE_HEADER,
@@ -473,6 +476,28 @@ int xdebug_is_output_tty(void)
 PHP_MINIT_FUNCTION(xdebug)
 {
 	zend_string *alias_name;
+
+#ifndef COMPILE_DL_PHP_DEBUGGER
+	/* Static build: register ourselves as a Zend extension from MINIT.
+	 * In shared builds, this is handled by the zend_extension= INI directive
+	 * and xdebug_zend_startup runs during zend_startup_extensions.
+	 * In static builds, the PHP module is auto-registered but the Zend extension
+	 * is not, and zend_startup_extensions has already run by the time MINIT fires.
+	 * So we register the Zend extension and manually perform its startup steps. */
+	{
+		zend_extension *existing = zend_get_extension(XDEBUG_NAME);
+		if (!existing) {
+			zend_register_extension(&zend_extension_entry, NULL);
+			/* Replicate xdebug_zend_startup() logic, minus zend_startup_module()
+			 * which would double-register the already-active PHP module. */
+			xdebug_library_zend_startup();
+			xdebug_debugger_zend_startup();
+			zend_xdebug_initialised = 1;
+			xdebug_orig_post_startup_cb = zend_post_startup_cb;
+			zend_post_startup_cb = xdebug_post_startup;
+		}
+	}
+#endif
 	ZEND_INIT_MODULE_GLOBALS(xdebug, php_xdebug_init_globals, php_xdebug_shutdown_globals);
 	REGISTER_INI_ENTRIES();
 
@@ -559,7 +584,7 @@ PHP_RINIT_FUNCTION(xdebug)
 	int debug_requested;
 	int connected;
 
-#if defined(ZTS) && defined(COMPILE_DL_XDEBUG)
+#if defined(ZTS) && defined(COMPILE_DL_PHP_DEBUGGER)
 	ZEND_TSRMLS_CACHE_UPDATE();
 #endif
 
@@ -695,6 +720,13 @@ ZEND_DLEXPORT void xdebug_statement_call(zend_execute_data *frame)
 
 ZEND_DLEXPORT int xdebug_zend_startup(zend_extension *extension)
 {
+
+#ifndef COMPILE_DL_PHP_DEBUGGER
+	/* Static build: module already registered and initialized via static ext table + MINIT.
+	 * xdebug_zend_startup is called again by zend_startup_extensions(), but all
+	 * work was already done in MINIT. Skip to avoid double module registration. */
+	return SUCCESS;
+#endif
 	xdebug_library_zend_startup();
 	xdebug_debugger_zend_startup();
 
