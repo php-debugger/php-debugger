@@ -1,0 +1,105 @@
+name: "Static Build"
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'config.m4'
+      - 'php_php_debugger.h'
+      - 'xdebug.c'
+      - '.github/workflows/static-build.yml'
+  pull_request:
+    paths:
+      - 'config.m4'
+      - 'php_php_debugger.h'
+      - 'xdebug.c'
+      - '.github/workflows/static-build.yml'
+
+jobs:
+  static-build:
+    name: "Static — PHP ${{ matrix.php }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.4']
+
+    steps:
+      - name: Checkout extension
+        uses: actions/checkout@v6
+        with:
+          path: ext-src
+
+      - name: Cache PHP source
+        uses: actions/cache@v4
+        id: php-cache
+        with:
+          path: ~/php-src
+          key: php-src-${{ matrix.php }}-${{ hashFiles('.github/workflows/static-build.yml') }}
+
+      - name: Clone PHP source
+        if: steps.php-cache.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth=1 --branch="PHP-${{ matrix.php }}" \
+            https://github.com/php/php-src.git ~/php-src
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential autoconf automake libtool re2c bison \
+            libxml2-dev libsqlite3-dev pkg-config
+
+      - name: Copy extension into php-src
+        run: |
+          cp -r ext-src ~/php-src/ext/php_debugger
+
+      - name: Build PHP with static php_debugger
+        run: |
+          cd ~/php-src
+          ./buildconf --force
+          ./configure \
+            --disable-all \
+            --enable-cli \
+            --enable-session \
+            --enable-php-debugger \
+            --without-pear
+          make -j$(nproc)
+
+      - name: Verify extension is statically linked
+        run: |
+          cd ~/php-src
+          # Extension must appear in module list
+          ./sapi/cli/php -m | grep -q php_debugger
+          # Xdebug compat alias must work
+          ./sapi/cli/php -m | grep -q xdebug
+          # Zend extension must be registered
+          ./sapi/cli/php -v | grep -q "PHP Debugger"
+
+      - name: Smoke test — extension_loaded
+        run: |
+          cd ~/php-src
+          ./sapi/cli/php -r "
+            assert(extension_loaded('php_debugger'), 'php_debugger not loaded');
+            assert(extension_loaded('xdebug'), 'xdebug compat alias not loaded');
+            echo 'extension_loaded: OK' . PHP_EOL;
+          "
+
+      - name: Smoke test — INI settings
+        run: |
+          cd ~/php-src
+          ./sapi/cli/php -r "
+            // Both INI prefixes must work
+            assert(ini_get('xdebug.client_port') !== false, 'xdebug.* INI missing');
+            assert(ini_get('php_debugger.client_port') !== false, 'php_debugger.* INI missing');
+            echo 'INI settings: OK' . PHP_EOL;
+          "
+
+      - name: Smoke test — functions
+        run: |
+          cd ~/php-src
+          ./sapi/cli/php -r "
+            assert(function_exists('xdebug_break'), 'xdebug_break missing');
+            assert(function_exists('php_debugger_break'), 'php_debugger_break missing');
+            assert(function_exists('xdebug_info'), 'xdebug_info missing');
+            echo 'Functions: OK' . PHP_EOL;
+          "
