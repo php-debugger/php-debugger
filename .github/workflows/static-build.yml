@@ -44,6 +44,7 @@ jobs:
       - name: Copy extension into php-src
         run: |
           cp -r ext-src ~/php-src/ext/php_debugger
+          mkdir -p ~/php-src/m4
           cp ext-src/m4/*.m4 ~/php-src/m4/
 
       - name: Build PHP with static php_debugger
