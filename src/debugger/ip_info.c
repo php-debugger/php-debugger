@@ -34,6 +34,9 @@
 
 #define BUFFER_SIZE		4096
 
+#define XDEBUG_STR(x)		#x
+#define XDEBUG_XSTR(x)		XDEBUG_STR(x)
+
 static char *convert_to_quad(int domain, void *buf)
 {
 	char *ip = xdcalloc(1, INET6_ADDRSTRLEN + 1);
@@ -188,7 +191,7 @@ char *xdebug_get_ip_for_interface(const char *iface)
 static int get_gateway_and_iface(in_addr_t *addr, char *interface)
 {
 	long  destination, gateway;
-	char  iface[IF_NAMESIZE];
+	char  iface[IF_NAMESIZE + 1];
 	char  buf[BUFFER_SIZE];
 	FILE *file;
 
@@ -201,10 +204,11 @@ static int get_gateway_and_iface(in_addr_t *addr, char *interface)
 	}
 
 	while (fgets(buf, sizeof(buf), file)) {
-		if (sscanf(buf, "%s %lx %lx", iface, &destination, &gateway) == 3) {
+		if (sscanf(buf, "%" XDEBUG_XSTR(IF_NAMESIZE) "s %lx %lx", iface, &destination, &gateway) == 3) {
 			if (destination == 0) { /* default */
 				*addr = gateway;
-				strcpy(interface, iface);
+				strncpy(interface, iface, IF_NAMESIZE - 1);
+				interface[IF_NAMESIZE - 1] = '\0';
 				fclose(file);
 				return 1;
 			}
