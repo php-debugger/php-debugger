@@ -30,29 +30,20 @@ jobs:
         with:
           path: ext-src
 
-      - name: Cache PHP source
-        uses: actions/cache@v4
-        id: php-cache
-        with:
-          path: ~/php-src
-          key: php-src-${{ matrix.php }}-${{ hashFiles('.github/workflows/static-build.yml') }}
-
-      - name: Clone PHP source
-        if: steps.php-cache.outputs.cache-hit != 'true'
-        run: |
-          git clone --depth=1 --branch="PHP-${{ matrix.php }}" \
-            https://github.com/php/php-src.git ~/php-src
-
       - name: Install build dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential autoconf automake libtool re2c bison \
             libxml2-dev libsqlite3-dev pkg-config
 
+      - name: Clone PHP source
+        run: |
+          git clone --depth=1 --branch="PHP-${{ matrix.php }}" \
+            https://github.com/php/php-src.git ~/php-src
+
       - name: Copy extension into php-src
         run: |
           cp -r ext-src ~/php-src/ext/php_debugger
-          # m4 includes resolve relative to php-src root
           cp ext-src/m4/*.m4 ~/php-src/m4/
 
       - name: Build PHP with static php_debugger
@@ -70,11 +61,8 @@ jobs:
       - name: Verify extension is statically linked
         run: |
           cd ~/php-src
-          # Extension must appear in module list
           ./sapi/cli/php -m | grep -q php_debugger
-          # Xdebug compat alias must work
           ./sapi/cli/php -m | grep -q xdebug
-          # Zend extension must be registered
           ./sapi/cli/php -v | grep -q "PHP Debugger"
 
       - name: Smoke test — extension_loaded
@@ -90,7 +78,6 @@ jobs:
         run: |
           cd ~/php-src
           ./sapi/cli/php -r "
-            // Both INI prefixes must work
             assert(ini_get('xdebug.client_port') !== false, 'xdebug.* INI missing');
             assert(ini_get('php_debugger.client_port') !== false, 'php_debugger.* INI missing');
             echo 'INI settings: OK' . PHP_EOL;
