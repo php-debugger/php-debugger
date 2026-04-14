@@ -457,8 +457,16 @@ FILE *xdebug_fopen(char *fname, const char *mode, const char *extension, char **
 		}
 	}
 
-	/* 7. We established a lock, now we truncate and return the handle */
-	fh = freopen(tmp_fname, "w", fh);
+	/* 7. We established a lock, now we truncate the already-opened file
+	 *    descriptor. Using the fd (rather than reopening by name via
+	 *    freopen) avoids a TOCTOU race where the path could be swapped
+	 *    between the earlier stat() and this operation. */
+	if (ftruncate(fileno(fh), 0) == -1) {
+		fclose(fh);
+		fh = NULL;
+	} else {
+		rewind(fh);
+	}
 
 lock: /* Yes yes, an evil goto label here!!! */
 	if (fh) {
