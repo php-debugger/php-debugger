@@ -52,6 +52,7 @@
 # include "base/ctrl_socket.h"
 #endif
 #include "debugger/com.h"
+#include "debugger/frankenphp.h"
 #include "lib/usefulstuff.h"
 #include "lib/lib.h"
 #include "lib/llist.h"
@@ -554,6 +555,10 @@ PHP_MSHUTDOWN_FUNCTION(xdebug)
 		ts_free_id(xdebug_globals_id);
 #endif
 		return SUCCESS;
+	}
+
+	if (XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)) {
+		xdebug_frankenphp_mshutdown();
 	}
 
 	xdebug_library_mshutdown();

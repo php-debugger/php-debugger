@@ -67,6 +67,7 @@ xdebug_remote_handler xdebug_handler_dbgp = {
 	xdebug_dbgp_notification,
 	xdebug_dbgp_user_notify,
 	xdebug_dbgp_register_eval_id,
+	xdebug_dbgp_poll_pending,
 };
 
 static char *create_eval_key_id(int id);
@@ -3204,4 +3205,69 @@ int xdebug_dbgp_register_eval_id(xdebug_con *context, function_stack_entry *fse)
 	xdfree(key);
 
 	return ei->id;
+}
+
+/* Drain queued non-continuation DBGp commands without blocking.
+ *
+ * Used by FrankenPHP worker mode to apply breakpoint changes the IDE pushed
+ * while the worker was busy with a previous request. Continuation commands
+ * (run / step_* / stop / detach) are returned by the parser as ret == 1 and
+ * are deliberately not honored here — they are only meaningful at a stop. */
+int xdebug_dbgp_poll_pending(xdebug_con *context)
+{
+	struct timeval timeout;
+	fd_set         read_set;
+
+	if (context->socket < 0) {
+		return 0;
+	}
+
+	while (1) {
+		char            *option;
+		int              length = 0;
+		int              ret;
+		xdebug_xml_node *response;
+		int              sel;
+
+		FD_ZERO(&read_set);
+		FD_SET(context->socket, &read_set);
+		timeout.tv_sec  = 0;
+		timeout.tv_usec = 0;
+
+		sel = select(context->socket + 1, &read_set, NULL, NULL, &timeout);
+		if (sel < 0) {
+			if (errno == EINTR) {
+				continue;
+			}
+			xdebug_mark_debug_connection_not_active();
+			return 0;
+		}
+		if (sel == 0 || !FD_ISSET(context->socket, &read_set)) {
+			return 1;
+		}
+
+		option = xdebug_fd_read_line_delim(context->socket, context->buffer, FD_RL_SOCKET, '\0', &length);
+		if (!option) {
+			xdebug_mark_debug_connection_not_active();
+			return 0;
+		}
+
+		response = xdebug_xml_node_init("response");
+		xdebug_xml_add_attribute(response, "xmlns", "urn:debugger_protocol_v1");
+		xdebug_xml_add_attribute(response, "xmlns:xdebug", "https://xdebug.org/dbgp/xdebug");
+
+		ret = xdebug_dbgp_parse_option(context, option, 0, response);
+
+		if (ret != 1) {
+			send_message(context, response);
+		} else {
+			xdebug_log(
+				XLOG_CHAN_DEBUG, XLOG_WARN,
+				"FrankenPHP poll: ignoring continuation command received between requests"
+			);
+		}
+
+		xdebug_xml_node_dtor(response);
+		free(option);
+	}
 }
