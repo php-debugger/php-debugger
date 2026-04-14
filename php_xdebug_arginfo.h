@@ -1,5 +1,5 @@
-/* This is a generated file, edit php_xdebug.stub.php instead.
- * Stub hash: 90054ce38776046c4312c1dba4833dce6b8ac1f6 */
+/* This is a generated file, edit the .stub.php file instead.
+ * Stub hash: 4cc2d77fe8b4a87419c90a555f61192810385f35 */
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_xdebug_break, 0, 0, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()

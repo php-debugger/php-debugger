@@ -7,7 +7,6 @@
  */
 
 #include "lib/php-header.h"
-#include "ext/standard/php_var.h"
 
 #include "lib/compat_stubs.h"
 
@@ -175,7 +174,7 @@ PHP_FUNCTION(xdebug_debug_zval)
 	zval *args;
 	int argc;
 	ZEND_PARSE_PARAMETERS_START(1, -1)
-		Z_PARAM_VARIADIC('+', args, argc)
+		Z_PARAM_VARIADIC('s', args, argc)
 	ZEND_PARSE_PARAMETERS_END();
 	php_error_docref(NULL, E_DEPRECATED,
 		"xdebug_debug_zval() is not available in php-debugger, "
@@ -187,7 +186,7 @@ PHP_FUNCTION(xdebug_debug_zval_stdout)
 	zval *args;
 	int argc;
 	ZEND_PARSE_PARAMETERS_START(1, -1)
-		Z_PARAM_VARIADIC('+', args, argc)
+		Z_PARAM_VARIADIC('s', args, argc)
 	ZEND_PARSE_PARAMETERS_END();
 	php_error_docref(NULL, E_DEPRECATED,
 		"xdebug_debug_zval_stdout() is not available in php-debugger, "
@@ -228,14 +227,17 @@ COMPAT_STUB_RETURN_LONG(xdebug_peak_memory_usage, "develop", 0)
 
 PHP_FUNCTION(xdebug_print_function_stack)
 {
-	char *message = NULL;
-	size_t message_len = 0;
+	char *message = (char *)"user triggered";
+	size_t message_len = sizeof("user triggered") - 1;
 	zend_long options = 0;
 	ZEND_PARSE_PARAMETERS_START(0, 2)
 		Z_PARAM_OPTIONAL
 		Z_PARAM_STRING(message, message_len)
 		Z_PARAM_LONG(options)
 	ZEND_PARSE_PARAMETERS_END();
+	(void)message;
+	(void)message_len;
+	(void)options;
 	php_error_docref(NULL, E_DEPRECATED,
 		"xdebug_print_function_stack() is not available in php-debugger, "
 		"develop support has been removed");
@@ -255,8 +257,4 @@ PHP_FUNCTION(xdebug_var_dump)
 	php_error_docref(NULL, E_DEPRECATED,
 		"xdebug_var_dump() is not available in php-debugger, "
 		"develop support has been removed");
-	/* Fall through to PHP's native var_dump */
-	for (int i = 0; i < argc; i++) {
-		php_var_dump(&args[i], 1);
-	}
 }
