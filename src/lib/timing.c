@@ -236,6 +236,7 @@ char* xdebug_nanotime_to_chars(uint64_t nanotime, unsigned char precision)
 {
 	char *res;
 	time_t secs;
+	struct tm tm_buf;
 
 	secs = (time_t)(nanotime / NANOS_IN_SEC);
 	if (precision > 0) {
@@ -243,7 +244,12 @@ char* xdebug_nanotime_to_chars(uint64_t nanotime, unsigned char precision)
 	} else {
 		res = xdmalloc(20);
 	}
-	strftime(res, 20, "%Y-%m-%d %H:%M:%S", gmtime(&secs));
+#if WIN32|WINNT
+	gmtime_s(&tm_buf, &secs);
+#else
+	gmtime_r(&secs, &tm_buf);
+#endif
+	strftime(res, 20, "%Y-%m-%d %H:%M:%S", &tm_buf);
 	if (precision > 0) {
 		sprintf(res + 19, ".%09u", (uint32_t)(nanotime % NANOS_IN_SEC));
 		if (precision < 9) {
