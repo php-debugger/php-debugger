@@ -225,7 +225,7 @@ static int xdebug_create_socket(const char *hostname, int dport, int timeout)
 	}
 
 	/* Make a string of the port number that can be used with getaddrinfo */
-	sprintf(sport, "%d", dport);
+	snprintf(sport, sizeof(sport), "%d", dport);
 
 	/* Create hints for getaddrinfo saying that we want IPv4 and IPv6 TCP stream sockets */
 	memset(&hints, 0, sizeof(hints));
