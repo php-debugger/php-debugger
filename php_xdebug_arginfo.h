@@ -1,5 +1,5 @@
 /* This is a generated file, edit php_xdebug.stub.php instead.
- * Stub hash: 16bb1cdc731ec0b8166a7d05632d0b63480d60e1 */
+ * Stub hash: 90054ce38776046c4312c1dba4833dce6b8ac1f6 */
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_xdebug_break, 0, 0, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()
@@ -91,8 +91,6 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_xdebug_get_function_stack, 0, 0,
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, options, IS_ARRAY, 0, "[]")
 ZEND_END_ARG_INFO()
 
-#define arginfo_xdebug_get_headers arginfo_xdebug_get_code_coverage
-
 #define arginfo_xdebug_get_stack_depth arginfo_xdebug_get_function_count
 
 #define arginfo_xdebug_memory_usage arginfo_xdebug_get_function_count
@@ -146,7 +144,6 @@ ZEND_FUNCTION(xdebug_debug_zval_stdout);
 ZEND_FUNCTION(xdebug_dump_superglobals);
 ZEND_FUNCTION(xdebug_get_collected_errors);
 ZEND_FUNCTION(xdebug_get_function_stack);
-ZEND_FUNCTION(xdebug_get_headers);
 ZEND_FUNCTION(xdebug_get_stack_depth);
 ZEND_FUNCTION(xdebug_memory_usage);
 ZEND_FUNCTION(xdebug_peak_memory_usage);
@@ -188,7 +185,6 @@ static const zend_function_entry ext_functions[] = {
 	ZEND_FE(xdebug_dump_superglobals, arginfo_xdebug_dump_superglobals)
 	ZEND_FE(xdebug_get_collected_errors, arginfo_xdebug_get_collected_errors)
 	ZEND_FE(xdebug_get_function_stack, arginfo_xdebug_get_function_stack)
-	ZEND_FE(xdebug_get_headers, arginfo_xdebug_get_headers)
 	ZEND_FE(xdebug_get_stack_depth, arginfo_xdebug_get_stack_depth)
 	ZEND_FE(xdebug_memory_usage, arginfo_xdebug_memory_usage)
 	ZEND_FE(xdebug_peak_memory_usage, arginfo_xdebug_peak_memory_usage)
@@ -197,11 +193,5 @@ static const zend_function_entry ext_functions[] = {
 	ZEND_FE(xdebug_stop_error_collection, arginfo_xdebug_stop_error_collection)
 	ZEND_FE(xdebug_time_index, arginfo_xdebug_time_index)
 	ZEND_FE(xdebug_var_dump, arginfo_xdebug_var_dump)
-	/* php_debugger_* aliases */
-	ZEND_FALIAS(php_debugger_break, xdebug_break, arginfo_xdebug_break)
-	ZEND_FALIAS(php_debugger_connect_to_client, xdebug_connect_to_client, arginfo_xdebug_connect_to_client)
-	ZEND_FALIAS(php_debugger_info, xdebug_info, arginfo_xdebug_info)
-	ZEND_FALIAS(php_debugger_is_debugger_active, xdebug_is_debugger_active, arginfo_xdebug_is_debugger_active)
-	ZEND_FALIAS(php_debugger_notify, xdebug_notify, arginfo_xdebug_notify)
 	ZEND_FE_END
 };

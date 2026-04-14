@@ -1,32 +1,21 @@
 /*
-   +----------------------------------------------------------------------+
-   | Xdebug                                                               |
-   +----------------------------------------------------------------------+
-   | Copyright (c) 2002-2025 Derick Rethans                               |
-   +----------------------------------------------------------------------+
-   | This source file is subject to version 1.01 of the Xdebug license,   |
-   | that is bundled with this package in the file LICENSE, and is        |
-   | available at through the world-wide-web at                           |
-   | https://xdebug.org/license.php                                       |
-   | If you did not receive a copy of the Xdebug license and are unable   |
-   | to obtain it through the world-wide-web, please send a note to       |
-   | derick@xdebug.org so we can mail you a copy immediately.             |
-   +----------------------------------------------------------------------+
+ * Compatibility stubs for stripped Xdebug functions.
+ * See compat_stubs.c for details.
  */
 
 #ifndef __HAVE_XDEBUG_COMPAT_STUBS_H__
 #define __HAVE_XDEBUG_COMPAT_STUBS_H__
 
-/* Profiler stubs */
+/* Profiler */
 PHP_FUNCTION(xdebug_get_profiler_filename);
 
-/* Coverage stubs */
+/* Coverage */
 PHP_FUNCTION(xdebug_code_coverage_started);
 PHP_FUNCTION(xdebug_get_code_coverage);
 PHP_FUNCTION(xdebug_start_code_coverage);
 PHP_FUNCTION(xdebug_stop_code_coverage);
 
-/* Tracing stubs */
+/* Tracing */
 PHP_FUNCTION(xdebug_get_tracefile_name);
 PHP_FUNCTION(xdebug_start_trace);
 PHP_FUNCTION(xdebug_stop_trace);
@@ -35,14 +24,14 @@ PHP_FUNCTION(xdebug_start_function_monitor);
 PHP_FUNCTION(xdebug_stop_function_monitor);
 PHP_FUNCTION(xdebug_get_monitored_functions);
 
-/* GC Stats stubs */
+/* GC Stats */
 PHP_FUNCTION(xdebug_get_gc_run_count);
 PHP_FUNCTION(xdebug_get_gc_total_collected_roots);
 PHP_FUNCTION(xdebug_get_gcstats_filename);
 PHP_FUNCTION(xdebug_start_gcstats);
 PHP_FUNCTION(xdebug_stop_gcstats);
 
-/* Develop stubs */
+/* Develop */
 PHP_FUNCTION(xdebug_call_class);
 PHP_FUNCTION(xdebug_call_file);
 PHP_FUNCTION(xdebug_call_function);
@@ -61,4 +50,4 @@ PHP_FUNCTION(xdebug_stop_error_collection);
 PHP_FUNCTION(xdebug_time_index);
 PHP_FUNCTION(xdebug_var_dump);
 
-#endif /* __HAVE_XDEBUG_COMPAT_STUBS_H__ */
+#endif

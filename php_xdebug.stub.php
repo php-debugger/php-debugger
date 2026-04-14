@@ -100,7 +100,6 @@ function xdebug_get_collected_errors(bool $emptyList = false): array {}
 
 function xdebug_get_function_stack(array $options = []): array {}
 
-function xdebug_get_headers(): array {}
 
 function xdebug_get_stack_depth(): int {}
 
