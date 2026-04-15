@@ -28,7 +28,7 @@ extern ZEND_DECLARE_MODULE_GLOBALS(xdebug);
 static size_t (*xdebug_orig_ub_write)(const char *string, size_t len);
 static size_t xdebug_ub_write(const char *string, size_t length);
 
-static void xdebug_line_list_dtor(xdebug_lines_list *line_list);
+static void xdebug_line_list_dtor(void *line_list_v);
 
 void xdebug_init_debugger_globals(xdebug_debugger_globals_t *xg)
 {
