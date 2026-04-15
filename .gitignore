@@ -82,6 +82,8 @@ phpt.*
 !php_xdebug.stub.php
 !run-xdebug-tests.php
 !make-release.php
+!tests/frankenphp/**/*.php
+!tests/frankenphp/**/*.sh
 !bench.php
 !test-ini.php
 !rector.php

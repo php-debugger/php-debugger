@@ -1,0 +1,11 @@
+{
+	frankenphp {
+		worker /app/worker.php
+	}
+	auto_https off
+}
+
+http://:80 {
+	root * /app
+	php_server
+}

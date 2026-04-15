@@ -1,0 +1,54 @@
+# Keep host build artifacts (with absolute host paths baked in) out of any
+# Docker build context rooted at this repo. Without this, tests/frankenphp/
+# would inherit a broken Makefile from a prior host `phpize`/`configure`.
+.git
+.github
+.claude
+.understand-anything
+.idea
+.vscode
+
+# PHP build artifacts from running phpize/configure/make on the host.
+# Docker .dockerignore patterns do not cross directory boundaries without
+# explicit **/ — these live both at the root and nested under src/**.
+Makefile
+Makefile.*
+Makefile.fragments
+Makefile.global
+Makefile.objects
+config.status
+config.cache
+config.log
+config.nice
+configure
+configure.ac
+configure.in
+acinclude.m4
+aclocal.m4
+autom4te.cache
+build
+libtool
+ltmain.sh
+install-sh
+missing
+mkinstalldirs
+run-tests.php
+
+# Compiled objects / deps (root + nested)
+*.lo
+*.la
+*.o
+*.dep
+*.so
+*.loT
+**/*.lo
+**/*.la
+**/*.o
+**/*.dep
+**/*.so
+**/*.loT
+**/.libs
+**/.deps
+.libs
+.deps
+modules
