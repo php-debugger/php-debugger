@@ -84,7 +84,7 @@ sort($commands);
 sort($phpVersions);
 
 // Sort PHP Debugger modes according to the defined order, leaving only those which actually exist in the data
-$phpDebuggerModeOrder = ["no", "off", "debug", "debug-on-demand"];
+$phpDebuggerModeOrder = ["no", "off", "debug", "debug-on-demand", "debug-connected"];
 $phpDebuggerModes = array_values(array_filter($phpDebuggerModeOrder, function($mode) use ($phpDebuggerModes) {
     return in_array($mode, $phpDebuggerModes);
 }));
