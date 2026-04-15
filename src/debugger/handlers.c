@@ -64,18 +64,20 @@ void xdebug_brk_info_dtor(xdebug_brk_info *brk_info)
 	xdfree(brk_info);
 }
 
-void xdebug_hash_brk_dtor(xdebug_brk_info *brk_info)
+void xdebug_hash_brk_dtor(void *brk_info)
 {
-	xdebug_brk_info_dtor(brk_info);
+	xdebug_brk_info_dtor((xdebug_brk_info *) brk_info);
 }
 
-void xdebug_llist_brk_dtor(void *dummy, xdebug_brk_info *brk_info)
+void xdebug_llist_brk_dtor(void *dummy, void *brk_info)
 {
-	xdebug_brk_info_dtor(brk_info);
+	xdebug_brk_info_dtor((xdebug_brk_info *) brk_info);
 }
 
-void xdebug_hash_eval_info_dtor(xdebug_eval_info *ei)
+void xdebug_hash_eval_info_dtor(void *ei_v)
 {
+	xdebug_eval_info *ei = (xdebug_eval_info *) ei_v;
+
 	ei->refcount--;
 
 	if (ei->refcount == 0) {

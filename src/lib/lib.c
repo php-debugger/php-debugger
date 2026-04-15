@@ -25,6 +25,11 @@
 
 extern ZEND_DECLARE_MODULE_GLOBALS(xdebug);
 
+static void xdebug_trait_location_map_dtor(void *str)
+{
+	zend_string_release((zend_string *) str);
+}
+
 void xdebug_init_library_globals(xdebug_library_globals_t *xg)
 {
 	xg->headers               = NULL;
@@ -90,7 +95,7 @@ void xdebug_library_rinit(void)
 	XG_LIB(dumped) = 0;
 	XG_LIB(do_collect_errors) = 0;
 
-	XG_LIB(trait_location_map) = xdebug_hash_alloc(256, (xdebug_hash_dtor_t) zend_string_release);
+	XG_LIB(trait_location_map) = xdebug_hash_alloc(256, xdebug_trait_location_map_dtor);
 
 	XG_LIB(path_mapping_information) = NULL;
 	if (XINI_LIB(path_mapping)) {

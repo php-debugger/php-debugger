@@ -917,7 +917,7 @@ void xdebug_debugger_rinit(void)
 	XG_DBG(breakpoints_allowed) = 1;
 	XG_DBG(suppress_return_value_step) = 0;
 	XG_DBG(detached) = 0;
-	XG_DBG(breakable_lines_map) = xdebug_hash_alloc(2048, (xdebug_hash_dtor_t) xdebug_line_list_dtor);
+	XG_DBG(breakable_lines_map) = xdebug_hash_alloc(2048, xdebug_line_list_dtor);
 	XG_DBG(function_count) = 0;
 	XG_DBG(class_count) = 0;
 
@@ -996,8 +996,9 @@ static void xdebug_function_lines_map_dtor(xdebug_function_lines_map_item *lines
 	xdfree(lines_map);
 }
 
-static void xdebug_line_list_dtor(xdebug_lines_list *line_list)
+static void xdebug_line_list_dtor(void *line_list_v)
 {
+	xdebug_lines_list *line_list = (xdebug_lines_list *) line_list_v;
 	size_t i;
 
 	for (i  = 0; i < line_list->count; i++) {

@@ -163,8 +163,8 @@ struct _xdebug_remote_handler {
 
 xdebug_brk_info *xdebug_brk_info_ctor(void);
 void xdebug_brk_info_dtor(xdebug_brk_info *brk);
-void xdebug_llist_brk_dtor(void *dummy, xdebug_brk_info *brk);
-void xdebug_hash_brk_dtor(xdebug_brk_info *brk);
-void xdebug_hash_eval_info_dtor(xdebug_eval_info *ei);
+void xdebug_llist_brk_dtor(void *dummy, void *brk);
+void xdebug_hash_brk_dtor(void *brk);
+void xdebug_hash_eval_info_dtor(void *ei);
 
 #endif
