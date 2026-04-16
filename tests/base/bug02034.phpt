@@ -2,7 +2,7 @@
 Test for bug #2034: Segmentation fault when 'set_time_limit' function is disabled
 --INI--
 disable_functions=set_time_limit
-xdebug.mode=debug,develop
+xdebug.mode=debug
 --FILE--
 <?php
 echo "Hello\n";

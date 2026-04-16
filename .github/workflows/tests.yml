@@ -51,15 +51,15 @@ jobs:
                     echo "Test PHP arguments: $TEST_PHP_ARGS"
                     echo "TEST_PHP_ARGS=$TEST_PHP_ARGS" >> $GITHUB_ENV
 
-            -   name: Run debugger tests
+            -   name: Run tests
                 run: |
                     $TEST_PHP_EXECUTABLE $TEST_PHP_ARGS -v
-                    $TEST_PHP_EXECUTABLE -n run-xdebug-tests.php -j$(nproc) -q -x --show-diff tests/debugger/
+                    $TEST_PHP_EXECUTABLE -n run-xdebug-tests.php -j$(nproc) -q -x --show-diff
 
             -   name: Show errors
                 if: failure()
                 run: |
-                    for f in tests/debugger/*.diff; do
+                    for f in tests/**/*.diff; do
                         if [ -f "$f" ]; then
                             echo "=== $f ==="
                             cat "$f"

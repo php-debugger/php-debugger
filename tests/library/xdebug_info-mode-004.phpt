@@ -5,15 +5,13 @@ display_errors=0
 error_log=
 xdebug.mode=off
 --ENV--
-XDEBUG_MODE=gcstats,coverage
+XDEBUG_MODE=debug
 --FILE--
 <?php
 var_dump(xdebug_info('mode'));
 ?>
 --EXPECTF--
-array(2) {
+array(1) {
   [0]=>
-  string(8) "coverage"
-  [1]=>
-  string(7) "gcstats"
+  string(5) "debug"
 }
