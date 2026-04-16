@@ -33,3 +33,4 @@ unlink(getTmpFile('remote-unix.txt'));
 [%d] [Step Debug] WARN: Invalid remote address provided containing URI spec 'unix:///tmp/haxx0r.sock'.
 [%d] [Step Debug] WARN: Could not discover client host through HTTP headers, connecting to configured address/port: unix:///tmp/xdbg.sock:0.
 [%d] [Step Debug] WARN: Creating socket for 'unix:///tmp/xdbg.sock', connect: No such file or directory.
+[%d] [Step Debug] DEBUG: Adding header 'Content-type: text/html; charset=UTF-8'.

@@ -4,25 +4,23 @@ Test for bug #1782: Make sure we use SameSite=Lax cookies (>= PHP 7.3)
 <?php
 require __DIR__ . '/../utils.inc';
 check_reqs('PHP >= 7.3');
-if (is_stripped_debugger()) die('skip Needs develop mode');
 ?>
 --ENV--
 XDEBUG_CONFIG=idekey=testing
 --INI--
-xdebug.mode=debug,develop
+xdebug.mode=debug
 default_charset=utf-8
 xdebug.filename_format=
 xdebug.client_port=9172
-xdebug.log=
+xdebug.log={TMPFILE:bug01782.txt}
 xdebug.log_level=10
 --FILE--
 <?php
-var_dump( xdebug_get_headers( ) );
+require_once __DIR__ . '/../utils.inc';
+
+echo file_get_contents(getTmpFile('bug01782.txt'));
+unlink(getTmpFile('bug01782.txt'));
 ?>
 --EXPECTF--
-Xdebug: [Step Debug] %sTried: localhost:9172 (through xdebug.client_host/xdebug.client_port).
-%sbug01782.php:2:
-array(1) {
-  [0] =>
-  string(%d) "Set-Cookie: XDEBUG_SESSION=testing; path=/; SameSite=Lax"
-}
+%A Adding header 'Set-Cookie: XDEBUG_SESSION=testing; path=/; SameSite=Lax'.
+%A

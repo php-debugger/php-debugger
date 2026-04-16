@@ -17,6 +17,8 @@
 
 #include "lib_private.h"
 
+#include "log.h"
+
 extern ZEND_DECLARE_MODULE_GLOBALS(xdebug);
 
 static int xdebug_header_handler(sapi_header_struct *h, sapi_header_op_enum op, sapi_headers_struct *s);
@@ -46,6 +48,7 @@ static int xdebug_header_handler(sapi_header_struct *h, sapi_header_op_enum op, 
 	if (XG_LIB(headers)) {
 		switch (op) {
 			case SAPI_HEADER_ADD:
+				xdebug_log(XLOG_CHAN_DEBUG, XLOG_DEBUG, "Adding header '%s'.", h->header);
 				xdebug_llist_insert_next(XG_LIB(headers), XDEBUG_LLIST_TAIL(XG_LIB(headers)), xdstrdup(h->header));
 				break;
 			case SAPI_HEADER_REPLACE: {

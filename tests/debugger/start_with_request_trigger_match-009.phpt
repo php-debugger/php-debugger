@@ -39,4 +39,5 @@ Hi!
 [%d] [Config] DEBUG: Checking if trigger 'XDEBUG_TRIGGER' is enabled
 [%d] [Config] DEBUG: The shared secret (xdebug.trigger_value) is multi-value
 [%d] [Config] WARN: The trigger value 'value3', as set through 'XDEBUG_TRIGGER', did not match any of the shared secrets (xdebug.trigger_value)
+[%d] [Step Debug] DEBUG: Adding header 'Content-type: text/html; charset=UTF-8'.
 [%d] Log closed at %s

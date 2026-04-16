@@ -28,3 +28,4 @@ unlink (getTmpFile('remote-log4.txt'));
 [%d] Log opened at %d-%d-%d %d:%d:%d.%d
 [%d] [Step Debug] INFO: Connecting to configured address/port: unix:///tmp/xdbg.sock:0.
 [%d] [Step Debug] WARN: Creating socket for 'unix:///tmp/xdbg.sock', connect: No such file or directory.
+[%d] [Step Debug] DEBUG: Adding header 'Content-type: text/html; charset=UTF-8'.

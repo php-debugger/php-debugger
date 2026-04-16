@@ -30,4 +30,5 @@ Hi!
 [%d] Log opened at %s%A
 [%d] [Step Debug] DEBUG: Not activating because an 'XDEBUG_IGNORE' ENV variable is present, with value 'yes'.
 [%d] [Step Debug] DEBUG: Not activating because an 'XDEBUG_IGNORE' GET variable is present, with value 'yes'.
+[%d] [Step Debug] DEBUG: Adding header 'Content-type: text/html; charset=UTF-8'.
 [%d] Log closed at %s

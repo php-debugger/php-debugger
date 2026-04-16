@@ -40,4 +40,5 @@ Hi!
 [%d] [Config] INFO: Trigger value for 'XDEBUG_TRIGGER' not found, falling back to 'XDEBUG_SESSION'
 [%d] [Config] DEBUG: The shared secret (xdebug.trigger_value) is multi-value
 [%d] [Config] WARN: The trigger value 'value3', as set through 'XDEBUG_SESSION', did not match any of the shared secrets (xdebug.trigger_value)
+[%d] [Step Debug] DEBUG: Adding header 'Content-type: text/html; charset=UTF-8'.
 [%d] Log closed at %s

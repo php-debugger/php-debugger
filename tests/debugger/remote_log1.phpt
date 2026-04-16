@@ -28,3 +28,4 @@ unlink(getTmpFile('remote-log1.txt'));
 [%d] Log opened at %d-%d-%d %d:%d:%d.%d
 [%d] [Step Debug] INFO: Connecting to configured address/port: doesnotexist:9002.
 [%d] [Step Debug] WARN: Creating socket for 'doesnotexist:9002', getaddrinfo: %s.
+[%d] [Step Debug] DEBUG: Adding header 'Content-type: text/html; charset=UTF-8'.

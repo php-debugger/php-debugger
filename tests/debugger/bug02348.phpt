@@ -80,4 +80,5 @@ echo file_get_contents( $xdebugLogFileName );
 [%d] [Step Debug] <- detach -i 4
 [%d] [Step Debug] -> <response xmlns="urn:debugger_protocol_v1" xmlns:xdebug="https://xdebug.org/dbgp/xdebug" command="detach" transaction_id="4" status="stopping" reason="ok"></response>
 
+[%d] [Step Debug] DEBUG: Adding header 'Content-type: text/html; charset=UTF-8'.
 [%d] Log closed at %s

@@ -69,5 +69,6 @@ int xdebug_early_connect_to_client(void);
 void xdebug_debug_init_if_requested_on_connect_to_client(void);
 void xdebug_debug_init_if_requested_on_error(void);
 void xdebug_debug_init_if_requested_on_xdebug_break(void);
+int xdebug_handle_start_session(void);
 
 #endif

@@ -586,6 +586,7 @@ static void xdebug_init_auto_globals(void)
 
 PHP_RINIT_FUNCTION(xdebug)
 {
+	char *found_trigger_value = NULL;
 	int debug_requested;
 	int connected;
 
@@ -627,15 +628,21 @@ PHP_RINIT_FUNCTION(xdebug)
 	 * but it handles re-enabling the observer itself. */
 	/* Respect start_with_request=no and XDEBUG_IGNORE */
 	debug_requested = !xdebug_lib_never_start_with_request() && !xdebug_should_ignore() && (
+		xdebug_handle_start_session() ||
 		xdebug_lib_start_with_request() ||
-		xdebug_lib_start_with_trigger(NULL) ||
-		xdebug_lib_start_upon_error() ||
-		getenv("XDEBUG_SESSION_START") != NULL ||
-		getenv("PHP_DEBUGGER_SESSION_START") != NULL
+		xdebug_lib_start_with_trigger(&found_trigger_value)
 	);
 
 	connected = false;
 	if (debug_requested) {
+		if (found_trigger_value) {
+			if (XG_DBG(ide_key)) {
+				xdfree(XG_DBG(ide_key));
+			}
+			XG_DBG(ide_key) = xdstrdup(found_trigger_value);
+			xdfree(found_trigger_value);
+		}
+
 		/* Debug session requested: check if a client is actually listening
 		 * before enabling expensive EXT_STMT opcodes. This avoids ~2x
 		 * overhead when triggers are present but no IDE is connected. */

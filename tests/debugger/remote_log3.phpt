@@ -32,3 +32,4 @@ unlink(getTmpFile('remote-log3.txt'));
 [%d] [Step Debug] INFO: Checking header 'REMOTE_ADDR'.
 [%d] [Step Debug] WARN: Could not discover client host through HTTP headers, connecting to configured address/port: doesnotexist2:9003.
 [%d] [Step Debug] WARN: Creating socket for 'doesnotexist2:9003', getaddrinfo: %s.
+[%d] [Step Debug] DEBUG: Adding header 'Content-type: text/html; charset=UTF-8'.

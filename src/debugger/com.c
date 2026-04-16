@@ -802,7 +802,7 @@ static void xdebug_update_ide_key(char *new_key)
 	XG_DBG(ide_key) = xdstrdup(new_key);
 }
 
-static int xdebug_handle_start_session(void)
+int xdebug_handle_start_session(void)
 {
 	int   activate_session = 0;
 	zval *dummy;
@@ -898,19 +898,21 @@ void xdebug_debug_init_if_requested_at_startup(void)
 		return;
 	}
 
-	if (
-		xdebug_lib_start_with_request() ||
-		(!xdebug_lib_never_start_with_request() && xdebug_handle_start_session()) ||
-		xdebug_lib_start_with_trigger(&found_trigger_value)
-	) {
-		if (found_trigger_value) {
-			xdebug_update_ide_key(found_trigger_value);
+	if (EXPECTED(XG_BASE(observer_active))) {
+		if (
+			xdebug_lib_start_with_request() ||
+			(!xdebug_lib_never_start_with_request() && xdebug_handle_start_session()) ||
+			xdebug_lib_start_with_trigger(&found_trigger_value)
+		) {
+			if (found_trigger_value) {
+				xdebug_update_ide_key(found_trigger_value);
+			}
+			xdebug_init_debugger();
 		}
-		xdebug_init_debugger();
-	}
 
-	if (found_trigger_value) {
-		xdfree(found_trigger_value);
+		if (found_trigger_value) {
+			xdfree(found_trigger_value);
+		}
 	}
 
 	xdebug_handle_stop_session();
