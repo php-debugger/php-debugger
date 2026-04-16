@@ -69,8 +69,8 @@ jobs:
           export PATH="$HOME/php-install/bin:$PATH"
           phpize
           CC=clang CXX=clang++ \
-          CFLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer -g" \
-          LDFLAGS="-fsanitize=address,undefined" \
+          CFLAGS="-fsanitize=address,undefined -fno-sanitize=function -fno-omit-frame-pointer -g" \
+          LDFLAGS="-fsanitize=address,undefined -fno-sanitize=function" \
           ./configure --enable-php-debugger --with-php-config=$HOME/php-install/bin/php-config
           make -j4
 
