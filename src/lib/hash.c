@@ -91,7 +91,7 @@ xdebug_hash *xdebug_hash_alloc(int slots, xdebug_hash_dtor_t dtor)
 
 	h->table = (xdebug_llist **) malloc(slots * sizeof(xdebug_llist *));
 	for (i = 0; i < h->slots; ++i) {
-		h->table[i] = xdebug_llist_alloc(hash_element_dtor);
+		h->table[i] = xdebug_llist_alloc((xdebug_llist_dtor) hash_element_dtor);
 	}
 
 	return h;

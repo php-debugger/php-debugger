@@ -676,10 +676,8 @@ static xdebug_xml_node* return_stackframe(int nr)
 */
 
 /* Helper functions */
-static void xdebug_hash_admin_dtor(void *admin_v)
+static void xdebug_hash_admin_dtor(xdebug_brk_admin *admin)
 {
-	xdebug_brk_admin *admin = (xdebug_brk_admin *) admin_v;
-
 	xdfree(admin->key);
 	xdfree(admin);
 }
@@ -2600,11 +2598,11 @@ int xdebug_dbgp_init(xdebug_con *context, int mode)
 		options->runtime[i].current_element_nr = 0;
 	}
 
-	context->breakpoint_list = xdebug_hash_alloc_with_sort(64, xdebug_hash_admin_dtor, xdebug_compare_brk_info);
-	context->function_breakpoints = xdebug_hash_alloc(64, xdebug_hash_brk_dtor);
-	context->exception_breakpoints = xdebug_hash_alloc(64, xdebug_hash_brk_dtor);
-	context->line_breakpoints = xdebug_llist_alloc(xdebug_llist_brk_dtor);
-	context->eval_id_lookup = xdebug_hash_alloc(64, xdebug_hash_eval_info_dtor);
+	context->breakpoint_list = xdebug_hash_alloc_with_sort(64, (xdebug_hash_dtor_t) xdebug_hash_admin_dtor, xdebug_compare_brk_info);
+	context->function_breakpoints = xdebug_hash_alloc(64, (xdebug_hash_dtor_t) xdebug_hash_brk_dtor);
+	context->exception_breakpoints = xdebug_hash_alloc(64, (xdebug_hash_dtor_t) xdebug_hash_brk_dtor);
+	context->line_breakpoints = xdebug_llist_alloc((xdebug_llist_dtor) xdebug_llist_brk_dtor);
+	context->eval_id_lookup = xdebug_hash_alloc(64, (xdebug_hash_dtor_t) xdebug_hash_eval_info_dtor);
 	context->eval_id_sequence = 0;
 	context->send_notifications = 0;
 	context->inhibit_notifications = 0;
