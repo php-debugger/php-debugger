@@ -137,6 +137,8 @@ foreach ($commands as $command) {
 
             // Calculate performance change compared to previous results
             $performanceChange = '--';
+            $previousOverhead = '--';
+            $performanceChange = '0%';
             $key = $command . '-' . $php . '-' . $phpDebugger;
             $comparisonBranch = getenv('COMPARISON_BRANCH');
             if ($phpDebugger == 'debug-on-demand' && $comparisonBranch !== false && $comparisonBranch !== '') {
@@ -144,8 +146,7 @@ foreach ($commands as $command) {
             }
             if (isset($previousResults[$key])) {
                 $previousOverhead = $previousResults[$key];
-                $performanceChange = '0%';
-                if ($previousOverhead !== 0) {
+                if ($previousOverhead != 0) {
                     $currentOverhead = sprintf('%.1f', $overheadPercent);
                     $changePercent = (($previousOverhead - $currentOverhead) * 100) / $previousOverhead;
                     $performanceChange = sprintf('%+.1f%%', $changePercent);
@@ -202,7 +203,7 @@ foreach ($commands as $command) {
                 if (isset($previousResults[$key])) {
                     $previousOverhead = $previousResults[$key];
                     $changePercent = 0;
-                    if ($previousOverhead !== 0) {
+                    if ($previousOverhead != 0) {
                         $currentOverhead = sprintf('%.1f', $overheadPercent);
                         $changePercent = (($previousOverhead - $currentOverhead) * 100) / $previousOverhead;
                     }
@@ -414,7 +415,7 @@ function fetchPreviousBenchmarkResults(): array {
         if (count($fields) >= 4) {
             // Fields: command, php, php_debugger_mode, instructions, overhead
             $key = $fields[0] . '-' . $fields[1] . '-' . $fields[2];
-            $previousData[$key] = (int)$fields[4];
+            $previousData[$key] = (float)$fields[4];
         }
     }
 
