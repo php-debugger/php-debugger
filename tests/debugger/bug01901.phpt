@@ -1,10 +1,5 @@
 --TEST--
 Test for bug #1901: Stack traces are shown (with a broken time) when Xdebug's mode includes 'debug' but not 'develop' or 'trace'
---SKIPIF--
-<?php
-require __DIR__ . "/../utils.inc";
-if (is_stripped_debugger()) die("skip Needs develop mode distinction");
-?>
 --INI--
 xdebug.mode=debug
 xdebug.start_with_request=no

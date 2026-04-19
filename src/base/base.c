@@ -1043,6 +1043,8 @@ static void xdebug_error_cb(int orig_type, zend_string *error_filename, const un
 	xdebug_debugger_error_cb(error_filename, error_lineno, type, error_type_str, ZSTR_VAL(message));
 
 	xdfree(error_type_str);
+
+	xdebug_old_error_cb(orig_type, error_filename, error_lineno, message);
 }
 #else
 static void xdebug_error_cb(int orig_type, const char *error_filename, const unsigned int error_lineno, zend_string *message)

@@ -1,9 +1,9 @@
 --TEST--
-Test for bug #494: Private attributes of parent class unavailable when inheriting (>= PHP 8.1)
+Test for bug #494: Private attributes of parent class unavailable when inheriting
 --SKIPIF--
 <?php
 require __DIR__ . '/../utils.inc';
-check_reqs('PHP >= 8.1; dbgp');
+check_reqs('dbgp');
 ?>
 --FILE--
 <?php

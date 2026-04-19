@@ -4,7 +4,6 @@ Test for Xdebug's remote log (with xdebug.client_discovery_header value)
 <?php
 require __DIR__ . '/../utils.inc';
 check_reqs('dbgp; !win');
-if (is_stripped_debugger()) die('skip Removed feature in stripped build');
 ?>
 --ENV--
 I_LIKE_COOKIES=cookiehost
@@ -35,4 +34,3 @@ unlink(getTmpFile('remote-log4.txt'));
 [%d] [Step Debug] WARN: Creating socket for 'cookiehost:9003', getaddrinfo: %s.
 [%d] [Step Debug] WARN: Could not connect to client host discovered through HTTP headers, connecting to configured address/port: doesnotexist2:9003.
 [%d] [Step Debug] WARN: Creating socket for 'doesnotexist2:9003', getaddrinfo: %s.
-[%d] [Step Debug] ERR: Could not connect to debugging client. Tried: cookiehost:9003 (from I_LIKE_COOKIES HTTP header), doesnotexist2:9003 (fallback through xdebug.client_host/xdebug.client_port).

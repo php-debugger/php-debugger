@@ -4,7 +4,6 @@ Test for bug #2381: Step debug evaluator crashes when using ::class to deference
 <?php
 require __DIR__ . '/../utils.inc';
 check_reqs('dbgp');
-if (is_stripped_debugger()) die('skip Known issue in stripped build');
 ?>
 --FILE--
 <?php

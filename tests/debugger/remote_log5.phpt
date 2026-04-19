@@ -4,7 +4,6 @@ Test for Xdebug's remote log output through PHP's log
 <?php
 require __DIR__ . '/../utils.inc';
 check_reqs('dbgp; !win');
-if (is_stripped_debugger()) die('skip Removed feature in stripped build');
 ?>
 --ENV--
 I_LIKE_COOKIES=cookiehost
@@ -21,5 +20,4 @@ xdebug.client_discovery_header=I_LIKE_COOKIES
 echo strlen("foo"), "\n";
 ?>
 --EXPECTF--
-Xdebug: [Step Debug] Could not connect to debugging client. Tried: cookiehost:9003 (from I_LIKE_COOKIES HTTP header), doesnotexist2:9003 (fallback through xdebug.client_host/xdebug.client_port).
 3

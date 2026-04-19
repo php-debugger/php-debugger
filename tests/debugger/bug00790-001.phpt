@@ -4,7 +4,6 @@ Test for bug #790: Debugging with > PHP 5.4 and stderr/stdout doesn't work [1]
 <?php
 require __DIR__ . '/../utils.inc';
 check_reqs('dbgp');
-if (is_stripped_debugger()) die('skip Known issue in stripped build');
 ?>
 --FILE--
 <?php

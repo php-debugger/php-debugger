@@ -4,7 +4,6 @@ DBGP: return value with internal function as top frame
 <?php
 require __DIR__ . '/../utils.inc';
 check_reqs('PHP >= 7.4; dbgp');
-if (is_stripped_debugger()) die('skip Needs develop mode');
 ?>
 --FILE--
 <?php
@@ -23,15 +22,11 @@ $commands = array(
 	'step_into',
 	'context_get',
 	'property_get -n $__RETURN_VALUE',
-	'property_get -n $__RETURN_VALUE[1]',
-	'property_get -n $__RETURN_VALUE[1]["time"]',
 	'property_value -n $__RETURN_VALUE',
-	'property_value -n $__RETURN_VALUE[1]',
-	'property_value -n $__RETURN_VALUE[1]["time"]',
 	'detach',
 );
 
-dbgpRunFile( $filename, $commands, [ 'xdebug.mode' => 'develop,debug' ] );
+dbgpRunFile( $filename, $commands, [ 'xdebug.mode' => 'debug' ] );
 ?>
 --EXPECTF--
 <?xml version="1.0" encoding="iso-8859-1"?>
@@ -71,36 +66,20 @@ dbgpRunFile( $filename, $commands, [ 'xdebug.mode' => 'develop,debug' ] );
 
 -> step_into -i 9
 <?xml version="1.0" encoding="iso-8859-1"?>
-<response xmlns="urn:debugger_protocol_v1" xmlns:xdebug="https://xdebug.org/dbgp/xdebug" command="step_into" transaction_id="9" status="break" reason="ok"><xdebug:message filename="file://dbgp-breakpoint-return-function-006.inc" lineno="4"></xdebug:message><xdebug:return_value><property type="array" children="1" numchildren="2" page="0" pagesize="32"><property name="0" type="array" children="1" numchildren="6"></property><property name="1" type="array" children="1" numchildren="6"></property></property></xdebug:return_value></response>
+<response xmlns="urn:debugger_protocol_v1" xmlns:xdebug="https://xdebug.org/dbgp/xdebug" command="step_into" transaction_id="9" status="break" reason="ok"><xdebug:message filename="file://dbgp-breakpoint-return-function-006.inc" lineno="4"></xdebug:message><xdebug:return_value><property type="array" children="1" numchildren="1" page="0" pagesize="32"><property name="0" type="array" children="1" numchildren="4"></property></property></xdebug:return_value></response>
 
 -> context_get -i 10
 <?xml version="1.0" encoding="iso-8859-1"?>
-<response xmlns="urn:debugger_protocol_v1" xmlns:xdebug="https://xdebug.org/dbgp/xdebug" command="context_get" transaction_id="10" context="0"><property name="$__RETURN_VALUE" fullname="$__RETURN_VALUE" type="array" children="1" numchildren="2" page="0" pagesize="32" facet="readonly return_value virtual"><property name="0" fullname="$__RETURN_VALUE[0]" type="array" children="1" numchildren="6"></property><property name="1" fullname="$__RETURN_VALUE[1]" type="array" children="1" numchildren="6"></property></property></response>
+<response xmlns="urn:debugger_protocol_v1" xmlns:xdebug="https://xdebug.org/dbgp/xdebug" command="context_get" transaction_id="10" context="0"><property name="$__RETURN_VALUE" fullname="$__RETURN_VALUE" type="array" children="1" numchildren="1" page="0" pagesize="32" facet="readonly return_value virtual"><property name="0" fullname="$__RETURN_VALUE[0]" type="array" children="1" numchildren="4"></property></property></response>
 
 -> property_get -i 11 -n $__RETURN_VALUE
 <?xml version="1.0" encoding="iso-8859-1"?>
-<response xmlns="urn:debugger_protocol_v1" xmlns:xdebug="https://xdebug.org/dbgp/xdebug" command="property_get" transaction_id="11"><property name="$__RETURN_VALUE" fullname="$__RETURN_VALUE" type="array" children="1" numchildren="2" page="0" pagesize="32"><property name="0" fullname="$__RETURN_VALUE[0]" type="array" children="1" numchildren="6"></property><property name="1" fullname="$__RETURN_VALUE[1]" type="array" children="1" numchildren="6"></property></property></response>
+<response xmlns="urn:debugger_protocol_v1" xmlns:xdebug="https://xdebug.org/dbgp/xdebug" command="property_get" transaction_id="11"><property name="$__RETURN_VALUE" fullname="$__RETURN_VALUE" type="array" children="1" numchildren="1" page="0" pagesize="32"><property name="0" fullname="$__RETURN_VALUE[0]" type="array" children="1" numchildren="4"></property></property></response>
 
--> property_get -i 12 -n $__RETURN_VALUE[1]
+-> property_value -i 12 -n $__RETURN_VALUE
 <?xml version="1.0" encoding="iso-8859-1"?>
-<response xmlns="urn:debugger_protocol_v1" xmlns:xdebug="https://xdebug.org/dbgp/xdebug" command="property_get" transaction_id="12"><property name="$__RETURN_VALUE[1]" fullname="$__RETURN_VALUE[1]" type="array" children="1" numchildren="6" page="0" pagesize="32"><property name="time" fullname="$__RETURN_VALUE[1][&quot;time&quot;]" type="float"><![CDATA[%s]]></property><property name="memory" fullname="$__RETURN_VALUE[1][&quot;memory&quot;]" type="int"><![CDATA[%s]]></property><property name="function" fullname="$__RETURN_VALUE[1][&quot;function&quot;]" type="string" size="9" encoding="base64"><![CDATA[%s]]></property><property name="file" fullname="$__RETURN_VALUE[1][&quot;file&quot;]" type="string" size="%d" encoding="base64"><![CDATA[%s]]></property><property name="line" fullname="$__RETURN_VALUE[1][&quot;line&quot;]" type="int"><![CDATA[%s]]></property><property name="params" fullname="$__RETURN_VALUE[1][&quot;params&quot;]" type="array" children="0" numchildren="0"></property></property></response>
+<response xmlns="urn:debugger_protocol_v1" xmlns:xdebug="https://xdebug.org/dbgp/xdebug" command="property_value" transaction_id="12" type="array" children="1" numchildren="1"></response>
 
--> property_get -i 13 -n $__RETURN_VALUE[1]["time"]
+-> detach -i 13
 <?xml version="1.0" encoding="iso-8859-1"?>
-<response xmlns="urn:debugger_protocol_v1" xmlns:xdebug="https://xdebug.org/dbgp/xdebug" command="property_get" transaction_id="13"><property name="$__RETURN_VALUE[1][&quot;time&quot;]" fullname="$__RETURN_VALUE[1][&quot;time&quot;]" type="float"><![CDATA[%s]]></property></response>
-
--> property_value -i 14 -n $__RETURN_VALUE
-<?xml version="1.0" encoding="iso-8859-1"?>
-<response xmlns="urn:debugger_protocol_v1" xmlns:xdebug="https://xdebug.org/dbgp/xdebug" command="property_value" transaction_id="14" type="array" children="1" numchildren="2"></response>
-
--> property_value -i 15 -n $__RETURN_VALUE[1]
-<?xml version="1.0" encoding="iso-8859-1"?>
-<response xmlns="urn:debugger_protocol_v1" xmlns:xdebug="https://xdebug.org/dbgp/xdebug" command="property_value" transaction_id="15" type="array" children="1" numchildren="6"></response>
-
--> property_value -i 16 -n $__RETURN_VALUE[1]["time"]
-<?xml version="1.0" encoding="iso-8859-1"?>
-<response xmlns="urn:debugger_protocol_v1" xmlns:xdebug="https://xdebug.org/dbgp/xdebug" command="property_value" transaction_id="16" type="float"><![CDATA[%s]]></response>
-
--> detach -i 17
-<?xml version="1.0" encoding="iso-8859-1"?>
-<response xmlns="urn:debugger_protocol_v1" xmlns:xdebug="https://xdebug.org/dbgp/xdebug" command="detach" transaction_id="17" status="stopping" reason="ok"></response>
+<response xmlns="urn:debugger_protocol_v1" xmlns:xdebug="https://xdebug.org/dbgp/xdebug" command="detach" transaction_id="13" status="stopping" reason="ok"></response>

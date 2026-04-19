@@ -4,7 +4,6 @@ Test for Xdebug's remote log (with unix sockets and header)
 <?php
 require __DIR__ . '/../utils.inc';
 check_reqs('dbgp; !win');
-if (is_stripped_debugger()) die('skip Removed feature in stripped build');
 ?>
 --ENV--
 I_LIKE_COOKIES=unix:///tmp/haxx0r.sock
@@ -34,4 +33,3 @@ unlink(getTmpFile('remote-unix.txt'));
 [%d] [Step Debug] WARN: Invalid remote address provided containing URI spec 'unix:///tmp/haxx0r.sock'.
 [%d] [Step Debug] WARN: Could not discover client host through HTTP headers, connecting to configured address/port: unix:///tmp/xdbg.sock:0.
 [%d] [Step Debug] WARN: Creating socket for 'unix:///tmp/xdbg.sock', connect: No such file or directory.
-[%d] [Step Debug] ERR: Could not connect to debugging client. Tried: unix:///tmp/xdbg.sock:0 (fallback through xdebug.client_host/xdebug.client_port).

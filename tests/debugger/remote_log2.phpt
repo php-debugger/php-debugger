@@ -4,7 +4,6 @@ Test for Xdebug's remote log (can not connect, with not-found remote callback)
 <?php
 require __DIR__ . '/../utils.inc';
 check_reqs('dbgp; !win');
-if (is_stripped_debugger()) die('skip Removed feature in stripped build');
 ?>
 --INI--
 xdebug.mode=debug
@@ -31,4 +30,3 @@ unlink(getTmpFile('remote-log2.txt'));
 [%d] [Step Debug] INFO: Checking header 'REMOTE_ADDR'.
 [%d] [Step Debug] WARN: Could not discover client host through HTTP headers, connecting to configured address/port: doesnotexist2:9003.
 [%d] [Step Debug] WARN: Creating socket for 'doesnotexist2:9003', getaddrinfo: %s.
-[%d] [Step Debug] ERR: Could not connect to debugging client. Tried: doesnotexist2:9003 (fallback through xdebug.client_host/xdebug.client_port).

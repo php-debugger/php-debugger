@@ -1,14 +1,9 @@
 --TEST--
 Test for bug #2251: xdebug.log setting not picked up from XDEBUG_CONFIG
---SKIPIF--
-<?php
-require __DIR__ . "/../utils.inc";
-if (is_stripped_debugger()) die("skip Log format changed in stripped build");
-?>
 --ENV--
 XDEBUG_CONFIG=log={TMPFILE:bug02251.log}
 --INI--
-xdebug.mode=debug,develop
+xdebug.mode=debug
 default_charset=utf-8
 xdebug.filename_format=
 xdebug.client_port=9172
@@ -23,4 +18,5 @@ echo file_get_contents(getTmpFile('bug02251.log'));
 @unlink(getTmpFile('bug02251.log'));
 ?>
 --EXPECTF--
-%A[Step Debug] %sTried: localhost:9172 (through xdebug.client_host/xdebug.client_port).
+%A[Step Debug] %sConnecting to configured address/port: localhost:9172.
+%A

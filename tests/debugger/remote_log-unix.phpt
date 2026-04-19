@@ -4,7 +4,6 @@ Test for Xdebug's remote log (with unix sockets)
 <?php
 require __DIR__ . '/../utils.inc';
 check_reqs('dbgp; !win');
-if (is_stripped_debugger()) die('skip Removed feature in stripped build');
 ?>
 --ENV--
 I_LIKE_COOKIES=doesnotexist3
@@ -29,4 +28,3 @@ unlink (getTmpFile('remote-log4.txt'));
 [%d] Log opened at %d-%d-%d %d:%d:%d.%d
 [%d] [Step Debug] INFO: Connecting to configured address/port: unix:///tmp/xdbg.sock:0.
 [%d] [Step Debug] WARN: Creating socket for 'unix:///tmp/xdbg.sock', connect: No such file or directory.
-[%d] [Step Debug] ERR: Could not connect to debugging client. Tried: unix:///tmp/xdbg.sock:0 (through xdebug.client_host/xdebug.client_port).
