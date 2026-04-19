@@ -447,6 +447,7 @@ static zval *get_client_discovery_address(char **header)
 		xdfree(header_name);
 	}
 
+	xdebug_arg_dtor(headers);
 	return NULL;
 }
 
@@ -481,13 +482,19 @@ static void xdebug_init_normal_debugger(xdebug_str *connection_attempts)
 	remote_addr = get_client_discovery_address(&header);
 
 	if (remote_addr && strstr(Z_STRVAL_P(remote_addr), "://")) {
-		header = NULL;
+		if (header) {
+			xdfree(header);
+			header = NULL;
+		}
 		xdebug_log_ex(XLOG_CHAN_DEBUG, XLOG_WARN, "INVADDR", "Invalid remote address provided containing URI spec '%s'.", Z_STRVAL_P(remote_addr));
 
 		remote_addr = NULL;
 	}
 
 	if (!remote_addr) {
+		if (header) {
+			xdfree(header);
+		}
 		xdebug_str_add_fmt(connection_attempts, "%s:%ld (fallback through xdebug.client_host/xdebug.client_port)", XINI_DBG(client_host), XINI_DBG(client_port));
 		xdebug_log_ex(XLOG_CHAN_DEBUG, XLOG_WARN, "HDR", "Could not discover client host through HTTP headers, connecting to configured address/port: %s:%ld.", XINI_DBG(client_host), (long int) XINI_DBG(client_port));
 
