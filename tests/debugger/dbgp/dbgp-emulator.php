@@ -103,7 +103,7 @@ class DbgpEmulator extends DebugClient
 			$response = $this->doRead($conn, (string)$i);
 
 			// Check if the debugger has stopped
-			if ($response === null || feof($conn)) {
+			if (feof($conn)) {
 				$this->conversation[] = "Connection closed by debugger";
 				break;
 			}
