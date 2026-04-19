@@ -17,15 +17,13 @@
 #include "lib/php-header.h"
 #include "ext/standard/php_string.h"
 #include "Zend/zend_closures.h"
-#if PHP_VERSION_ID >= 80100
-# if !defined(_MSC_VER)
-#   pragma GCC diagnostic push
-#   pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
-# endif
-# include "zend_enum.h"
-# if !defined(_MSC_VER)
-#   pragma GCC diagnostic pop
-# endif
+#if !defined(_MSC_VER)
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
+#endif
+#include "zend_enum.h"
+#if !defined(_MSC_VER)
+#  pragma GCC diagnostic pop
 #endif
 
 

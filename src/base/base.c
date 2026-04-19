@@ -19,17 +19,13 @@
 #include "php_globals.h"
 #include "zend_closures.h"
 #include "zend_exceptions.h"
-#if PHP_VERSION_ID >= 80200
 # include "zend_attributes.h"
-#endif
 
 #include "zend_interfaces.h"
 
-#if PHP_VERSION_ID >= 80100
 # include "base_private.h"
 # include "Zend/zend_fibers.h"
 # include "Zend/zend_observer.h"
-#endif
 
 #include "php_xdebug.h"
 #include "php_xdebug_arginfo.h"
@@ -53,15 +49,9 @@ zif_handler orig_pcntl_exec_func = NULL;
 zif_handler orig_pcntl_fork_func = NULL;
 zif_handler orig_exit_func = NULL;
 
-#if PHP_VERSION_ID >= 80100
 void (*xdebug_old_error_cb)(int type, zend_string *error_filename, const uint32_t error_lineno, zend_string *message);
 void (*xdebug_new_error_cb)(int type, zend_string *error_filename, const uint32_t error_lineno, zend_string *message);
 static void xdebug_error_cb(int orig_type, zend_string *error_filename, const uint32_t error_lineno, zend_string *message);
-#else
-void (*xdebug_old_error_cb)(int type, const char *error_filename, const uint32_t error_lineno, zend_string *message);
-void (*xdebug_new_error_cb)(int type, const char *error_filename, const uint32_t error_lineno, zend_string *message);
-static void xdebug_error_cb(int orig_type, const char *error_filename, const uint32_t error_lineno, zend_string *message);
-#endif
 
 /* execution redirection functions */
 zend_op_array* (*old_compile_file)(zend_file_handle* file_handle, int type);
@@ -1023,7 +1013,6 @@ void xdebug_base_rshutdown(void)
 }
 
 /* Error callback for formatting stack traces */
-#if PHP_VERSION_ID >= 80100
 static void xdebug_error_cb(int orig_type, zend_string *error_filename, const unsigned int error_lineno, zend_string *message)
 {
 	int type                        = orig_type & E_ALL;
@@ -1035,19 +1024,6 @@ static void xdebug_error_cb(int orig_type, zend_string *error_filename, const un
 
 	xdebug_old_error_cb(orig_type, error_filename, error_lineno, message);
 }
-#else
-static void xdebug_error_cb(int orig_type, const char *error_filename, const unsigned int error_lineno, zend_string *message)
-{
-	int type                        = orig_type & E_ALL;
-	char *error_type_str            = xdebug_error_type(type);
-	zend_string *tmp_error_filename = zend_string_init(error_filename, strlen(error_filename), 0);
-
-	xdebug_debugger_error_cb(tmp_error_filename, error_lineno, type, error_type_str, ZSTR_VAL(message));
-
-	zend_string_release(tmp_error_filename);
-	xdfree(error_type_str);
-}
-#endif
 
 void xdebug_base_use_original_error_cb(void)
 {
@@ -1074,11 +1050,9 @@ static void xdebug_throw_exception_hook(zend_object *exception)
 		return;
 	}
 
-#if PHP_VERSION_ID >= 80100
 	if (zend_is_graceful_exit(exception)) {
 		return;
 	}
-#endif
 
 	exception_ce = exception->ce;
 

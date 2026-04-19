@@ -48,9 +48,7 @@ typedef struct xdebug_var_name {
 #define XFUNC_REQUIRE        0x13
 #define XFUNC_REQUIRE_ONCE   0x14
 #define XFUNC_MAIN           0x15
-#if PHP_VERSION_ID >= 80100
-# define XFUNC_FIBER         0x16
-#endif
+#define XFUNC_FIBER          0x16
 
 #define XFUNC_ZEND_PASS      0x20
 
@@ -140,11 +138,7 @@ typedef struct _function_stack_entry {
 
 	/* misc properties */
 	zend_op_array *op_array;
-#if PHP_VERSION_ID >= 80100
 	void           (*soap_error_cb)(int type, zend_string *error_filename, const uint32_t error_lineno, zend_string *message);
-#else
-	void           (*soap_error_cb)(int type, const char *error_filename, const uint32_t error_lineno, zend_string *message);
-#endif
 } function_stack_entry;
 
 function_stack_entry *xdebug_get_stack_frame(int nr);

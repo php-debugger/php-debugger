@@ -497,11 +497,9 @@ void xdebug_var_xml_attach_static_vars(xdebug_xml_node *node, xdebug_var_export_
 
 	xdebug_zend_hash_apply_protection_begin(static_members);
 
-#if PHP_VERSION_ID >= 80100
 	if (ce->default_static_members_count && !CE_STATIC_MEMBERS(ce)) {
 		zend_class_init_statics(ce);
 	}
-#endif
 
 	ZEND_HASH_FOREACH_PTR(static_members, zpi) {
 		xdebug_var_xml_attach_property_with_contents(zpi, static_container, options, ce, STR_NAME_VAL(ce->name), &children);
@@ -630,13 +628,7 @@ void xdebug_var_export_xml_node(zval **struc, xdebug_str *name, xdebug_xml_node 
 			/* Adding static properties */
 			xdebug_zend_hash_apply_protection_begin(&ce->properties_info);
 
-#if PHP_VERSION_ID >= 80100
 			zend_class_init_statics(ce);
-#else
-			if (ce->type == ZEND_INTERNAL_CLASS || (ce->ce_flags & ZEND_ACC_IMMUTABLE)) {
-				zend_class_init_statics(ce);
-			}
-#endif
 
 			ZEND_HASH_FOREACH_PTR(&ce->properties_info, zpi_val) {
 				object_item_add_zend_prop_to_merged_hash(zpi_val, merged_hash, (int) XDEBUG_OBJECT_ITEM_TYPE_STATIC_PROPERTY, Z_OBJ_P(*struc), ce);
@@ -655,7 +647,6 @@ void xdebug_var_export_xml_node(zval **struc, xdebug_str *name, xdebug_xml_node 
 				ZEND_HASH_FOREACH_KEY_VAL_IND(myht, num, key, tmp_val) {
 					int flags = XDEBUG_OBJECT_ITEM_TYPE_PROPERTY;
 
-#if PHP_VERSION_ID >= 80100
 					if (ce->type != ZEND_INTERNAL_CLASS && !HASH_KEY_IS_NUMERIC(key)) {
 						const char         *cls_name, *tmp_prop_name;
 						size_t              tmp_prop_name_len;
@@ -680,7 +671,6 @@ void xdebug_var_export_xml_node(zval **struc, xdebug_str *name, xdebug_xml_node 
 #endif
 						}
 					}
-#endif
 					object_item_add_to_merged_hash(tmp_val, num, key, merged_hash, flags, Z_OBJ_P(*struc));
 				} ZEND_HASH_FOREACH_END();
 
@@ -689,67 +679,14 @@ void xdebug_var_export_xml_node(zval **struc, xdebug_str *name, xdebug_xml_node 
 
 			xdebug_xml_add_attribute(node, "type", "object");
 
-#if PHP_VERSION_ID >= 80100 // Enums
 			{
 				zend_class_entry *ce = Z_OBJCE_P(*struc);
 				if (ce->ce_flags & ZEND_ACC_ENUM) {
 					xdebug_xml_expand_attribute_value(node, "facet", "enum");
 				}
 			}
-#endif
 
 			if (instanceof_function(Z_OBJCE_P(*struc), zend_ce_closure)) {
-#if PHP_VERSION_ID < 80200
-				xdebug_xml_node *closure_cont, *closure_func;
-				const zend_function *closure_function = zend_get_closure_method_def(Z_OBJ_P(*struc));
-
-				closure_cont = xdebug_xml_node_init("property");
-				xdebug_xml_add_attribute(closure_cont, "facet", "virtual readonly");
-				xdebug_xml_add_attribute(closure_cont, "name", "{closure}");
-				xdebug_xml_add_attribute(closure_cont, "type", "array");
-				xdebug_xml_add_attribute(closure_cont, "children", "1");
-				xdebug_xml_add_attribute(closure_cont, "page", "0");
-				xdebug_xml_add_attribute(closure_cont, "pagesize", "2");
-
-				if (closure_function->common.scope) {
-					xdebug_xml_node *closure_scope = xdebug_xml_node_init("property");
-					xdebug_xml_add_attribute(closure_scope, "facet", "readonly");
-					xdebug_xml_add_attribute(closure_scope, "name", "scope");
-					xdebug_xml_add_attribute(closure_scope, "type", "string");
-
-					if (closure_function->common.fn_flags & ZEND_ACC_STATIC) {
-						xdebug_xml_add_text_ex(
-							closure_scope,
-							ZSTR_VAL(closure_function->common.scope->name),
-							ZSTR_LEN(closure_function->common.scope->name),
-							0, 0
-						);
-					} else {
-						xdebug_xml_add_text_ex(closure_scope, (char*) "$this", 6, 0, 0);
-					}
-
-					xdebug_xml_add_child(closure_cont, closure_scope);
-					xdebug_xml_add_attribute(closure_cont, "numchildren", "2");
-				} else {
-					xdebug_xml_add_attribute(closure_cont, "numchildren", "1");
-				}
-
-				closure_func = xdebug_xml_node_init("property");
-				xdebug_xml_add_attribute(closure_func, "facet", "readonly");
-				xdebug_xml_add_attribute(closure_func, "name", "function");
-				xdebug_xml_add_attribute(closure_func, "type", "string");
-				xdebug_xml_add_text_ex(
-					closure_func,
-					ZSTR_VAL(closure_function->common.function_name),
-					ZSTR_LEN(closure_function->common.function_name),
-					0, 0
-				);
-				xdebug_xml_add_child(closure_cont, closure_func);
-
-				xdebug_xml_add_child(node, closure_cont);
-				extra_children = 1;
-#endif
-
 				xdebug_xml_expand_attribute_value(node, "facet", "closure");
 			}
 
