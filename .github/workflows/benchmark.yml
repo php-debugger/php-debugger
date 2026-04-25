@@ -24,9 +24,9 @@ jobs:
             matrix:
                 command: ["bench", "symfony", "rector"]
                 php: ["8.1", "8.2", "8.3", "8.4", "8.5"]
-                xdebug_mode: ["no", "off", "coverage", "debug", "develop", "gcstats", "profile", "trace"]
+                xdebug_mode: ["no", "off", "debug", "debug-connected"]
         steps:
-            -   uses: actions/checkout@v4
+            -   uses: actions/checkout@v6
 
             -   name: Setup PHP
                 uses: shivammathur/setup-php@v2
@@ -88,14 +88,33 @@ jobs:
                     sudo cp ./.github/benchmark-files/benchmark.ini /etc/php/${{ matrix.php }}/cgi/conf.d
 
             -   name: Copy xdebug ini file
-                if: matrix.xdebug_mode != 'no'   
+                if: matrix.xdebug_mode != 'no' && matrix.xdebug_mode != 'debug-connected'
                 run: |
                     sudo cp ./.github/benchmark-files/xdebug-benchmark.ini /etc/php/${{ matrix.php }}/cli/conf.d
                     sudo cp ./.github/benchmark-files/xdebug-benchmark.ini /etc/php/${{ matrix.php }}/cgi/conf.d
-    
+
+            -   name: Copy connected xdebug ini file
+                if: matrix.xdebug_mode == 'debug-connected'
+                run: |
+                    sudo cp ./.github/benchmark-files/xdebug-connected-benchmark.ini /etc/php/${{ matrix.php }}/cli/conf.d
+                    sudo cp ./.github/benchmark-files/xdebug-connected-benchmark.ini /etc/php/${{ matrix.php }}/cgi/conf.d
+
             -   name: Set xdebug mode
+                if: matrix.xdebug_mode != 'debug-connected'
                 run: echo "XDEBUG_MODE=${{ matrix.xdebug_mode }}" >> $GITHUB_ENV
-    
+
+            -   name: Set xdebug mode when connected
+                if: matrix.xdebug_mode == 'debug-connected'
+                run: echo "XDEBUG_MODE=debug" >> $GITHUB_ENV
+
+            -   name: Start DBGP emulator daemon
+                if: matrix.xdebug_mode == 'debug-connected'
+                run: |
+                    # Start the emulator in the background with the run command
+                    php tests/debugger/dbgp/dbgp-emulator.php .github/benchmark-files/commands/run.txt &
+                    # Give it a moment to start listening
+                    sleep 2
+
             -   name: benchmark bench.php
                 if: matrix.command == 'bench'   
                 run: valgrind --tool=callgrind --dump-instr=yes --callgrind-out-file=callgrind.out -- php ./.github/benchmark-files/bench.php
@@ -129,7 +148,7 @@ jobs:
                     echo "${{ matrix.php }},${{ matrix.command }},${{ matrix.xdebug_mode }}" > results/matrix-values-${{ matrix.php }}-${{ matrix.command }}-${{ matrix.xdebug_mode }}.txt
 
             -   name: Upload result and matrix info
-                uses: actions/upload-artifact@v4
+                uses: actions/upload-artifact@v6
                 with:
                     name: results-${{ matrix.command }}-${{ matrix.php }}-${{ matrix.xdebug_mode }}
                     path: results/
@@ -146,10 +165,10 @@ jobs:
                     php-version: "8.5"
                     coverage: none
 
-            -   uses: actions/checkout@v4
+            -   uses: actions/checkout@v6
 
             -   name: Download all artifacts
-                uses: actions/download-artifact@v4
+                uses: actions/download-artifact@v7
                 with:
                     path: results
 

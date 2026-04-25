@@ -84,7 +84,7 @@ sort($commands);
 sort($phpVersions);
 
 // Sort xdebug modes according to the defined order, leaving only those which actually exist in the data
-$xdebugModeOrder = ["no", "off", "coverage", "debug", "develop", "gcstats", "profile", "trace"];
+$xdebugModeOrder = ["no", "off", "coverage", "debug", "debug-connected", "develop", "gcstats", "profile", "trace"];
 $xdebugModes = array_values(array_filter($xdebugModeOrder, function($mode) use ($xdebugModes) {
     return in_array($mode, $xdebugModes);
 }));
