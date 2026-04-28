@@ -19,6 +19,7 @@
 #include "ext/standard/info.h"
 #include "zend_exceptions.h"
 
+#include "base/base.h"
 #include "debugger_private.h"
 #include "frankenphp.h"
 #include "lib/log.h"
@@ -1231,6 +1232,11 @@ PHP_FUNCTION(xdebug_break)
 		RETURN_FALSE;
 	}
 
+	if (!XG_BASE(observer_active)) {
+		xdebug_rebuild_stack();
+		xdebug_vector_pop(XG_BASE(stack));
+	}
+
 	xdebug_debug_init_if_requested_on_xdebug_break();
 
 	if (!xdebug_is_debug_connection_active()) {
@@ -1239,6 +1245,8 @@ PHP_FUNCTION(xdebug_break)
 
 	XG_DBG(context).do_break = 1;
 	XG_DBG(context).pending_breakpoint = NULL;
+
+    XG_BASE(statement_handler_enabled) = true;
 
 	RETURN_TRUE;
 }
@@ -1281,6 +1289,10 @@ PHP_FUNCTION(xdebug_notify)
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "z", &data) == FAILURE) {
 		return;
+	}
+
+	if (!XG_BASE(observer_active)) {
+		xdebug_rebuild_stack();
 	}
 
 	fse = xdebug_get_stack_frame(0);

@@ -33,4 +33,6 @@ void xdebug_func_dtor(xdebug_func *elem);
 void xdebug_build_fname(xdebug_func *tmp, zend_execute_data *edata);
 
 void xdebug_print_info(void);
+
+void xdebug_rebuild_stack(void);
 #endif // __XDEBUG_BASE_H__

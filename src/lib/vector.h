@@ -125,4 +125,11 @@ static inline xdebug_vector *xdebug_vector_clone(xdebug_vector *v)
 	return tmp;
 }
 
+static inline void xdebug_vector_empty(xdebug_vector *v)
+{
+	while (XDEBUG_VECTOR_COUNT(v)) {
+		xdebug_vector_pop(v);
+	}
+}
+
 #endif /* __XDEBUG_VECTOR_H__ */

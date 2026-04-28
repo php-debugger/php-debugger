@@ -661,7 +661,9 @@ static void xdebug_init_debugger(void)
 		xdebug_log_ex(XLOG_CHAN_DEBUG, XLOG_ERR, "NOPERM", "No permission connecting to debugging client (%s). This could be SELinux related.", connection_attempts->d);
 	}
 
-	XG_BASE(statement_handler_enabled) = XG_DBG(remote_connection_enabled);
+	if (XINI_DBG(on_demand_debugging_enabled)) {
+		XG_BASE(statement_handler_enabled) = XG_DBG(remote_connection_enabled);
+	}
 
 	xdebug_str_free(connection_attempts);
 }

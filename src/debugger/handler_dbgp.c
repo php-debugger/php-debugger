@@ -2493,6 +2493,23 @@ static int xdebug_dbgp_cmdloop(xdebug_con *context, int bail)
 		free(option);
 	} while (0 == ret);
 
+	if (!XG_DBG(context).do_connect_to_client &&
+		!XG_DBG(context).do_break &&
+		!XG_DBG(context).do_finish &&
+		!XG_DBG(context).do_next &&
+		!XG_DBG(context).do_step &&
+		!XG_DBG(context).send_notifications &&
+		!xdebug_lib_start_upon_error() &&
+		(!XG_DBG(context).line_breakpoints || XG_DBG(context).line_breakpoints->size == 0) &&
+		(!XG_DBG(context).exception_breakpoints || XG_DBG(context).exception_breakpoints->size == 0) &&
+		(!XG_DBG(context).function_breakpoints || XG_DBG(context).function_breakpoints->size == 0)
+	) {
+		if (!XINI_DBG(on_demand_debugging_enabled)) {
+			XG_BASE(observer_active) = false;
+		}
+		XG_BASE(statement_handler_enabled) = false;
+	}
+
 	if (bail && XG_DBG(status) == DBGP_STATUS_STOPPED) {
 		_zend_bailout((char*)__FILE__, __LINE__);
 	}

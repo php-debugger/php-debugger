@@ -101,7 +101,7 @@ jobs:
                     sudo cp ./.github/benchmark-files/php-debugger-on-demand-benchmark.ini /etc/php/${{ matrix.php }}/cli/conf.d
                     sudo cp ./.github/benchmark-files/php-debugger-on-demand-benchmark.ini /etc/php/${{ matrix.php }}/cgi/conf.d
 
-            -   name: Copy on-demand php_debugger ini file
+            -   name: Copy connected php_debugger ini file
                 if: matrix.php_debugger_mode == 'debug-connected'
                 run: |
                     sudo cp ./.github/benchmark-files/php-debugger-connected-benchmark.ini /etc/php/${{ matrix.php }}/cli/conf.d

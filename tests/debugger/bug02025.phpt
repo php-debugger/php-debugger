@@ -5,6 +5,9 @@ Test for bug #2025: Anonymous classes which extend are not detected as anonymous
 require __DIR__ . '/../utils.inc';
 check_reqs('dbgp');
 ?>
+--XFAIL--
+Will fail until this is merged with the branch which adds the xdebug_execute_ex function back as it needs this
+function to be able to get the name of executed evals
 --FILE--
 <?php
 require 'dbgp/dbgpclient.php';
