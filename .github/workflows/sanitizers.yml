@@ -32,7 +32,7 @@ jobs:
             clang llvm libxml2-dev libsqlite3-dev pkg-config
 
       - name: Cache PHP build
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         id: php-cache
         with:
           path: ~/php-install
