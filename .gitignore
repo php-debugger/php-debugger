@@ -104,3 +104,4 @@ src/*/*/*.lo
 *.phase1
 .libs/
 php_test_results_*.txt
+/.claude/settings.local.json
