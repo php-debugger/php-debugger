@@ -71,6 +71,9 @@ check('xdebug_stop_error_collection',  xdebug_stop_error_collection(),  null);
 check('xdebug_time_index',            xdebug_time_index(),             0.0);
 check('xdebug_var_dump',              xdebug_var_dump('x'),            null);
 
+/* filters */
+check('xdebug_set_filter',             xdebug_set_filter(XDEBUG_FILTER_NONE, XDEBUG_PATH_INCLUDE, []),            null);
+
 restore_error_handler();
 
 echo "\n--- deprecations ---\n";
@@ -118,7 +121,8 @@ xdebug_start_error_collection: ok
 xdebug_stop_error_collection: ok
 xdebug_time_index: ok
 xdebug_var_dump: ok
+xdebug_set_filter: ok
 
 --- deprecations ---
-count: 34
-unique funcs warned: 34
+count: 35
+unique funcs warned: 35

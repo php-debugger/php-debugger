@@ -78,10 +78,6 @@ typedef struct _xdebug_base_globals_t {
 # endif
 #endif
 
-	/* filters */
-	zend_long     filter_type_stack;
-	xdebug_llist *filters_stack;
-
 	/* PHP versions */
 	const char   *php_version_compile_time;
 	const char   *php_version_run_time;

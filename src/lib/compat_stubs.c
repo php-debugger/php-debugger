@@ -258,3 +258,37 @@ PHP_FUNCTION(xdebug_var_dump)
 		"xdebug_var_dump() is not available in php-debugger, "
 		"develop support has been removed");
 }
+
+/* --- Filters ---------------------------------------------------------- */
+
+/*
+ * Constants kept for backwards compatibility.
+ */
+void xdebug_filter_register_constants(INIT_FUNC_ARGS)
+{
+	REGISTER_LONG_CONSTANT("XDEBUG_FILTER_STACK", XDEBUG_FILTER_STACK, CONST_CS | CONST_PERSISTENT);
+
+	REGISTER_LONG_CONSTANT("XDEBUG_FILTER_NONE", XDEBUG_FILTER_NONE, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("XDEBUG_PATH_INCLUDE", XDEBUG_PATH_INCLUDE, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("XDEBUG_PATH_EXCLUDE", XDEBUG_PATH_EXCLUDE, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("XDEBUG_NAMESPACE_INCLUDE", XDEBUG_NAMESPACE_INCLUDE, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("XDEBUG_NAMESPACE_EXCLUDE", XDEBUG_NAMESPACE_EXCLUDE, CONST_CS | CONST_PERSISTENT);
+}
+
+PHP_FUNCTION(xdebug_set_filter)
+{
+	zend_long      filter_group;
+	zend_long      filter_type;
+	zval          *filters;
+
+	ZEND_PARSE_PARAMETERS_START(3, 3)
+		Z_PARAM_LONG(filter_group)
+		Z_PARAM_LONG(filter_type)
+		Z_PARAM_ARRAY(filters)
+	ZEND_PARSE_PARAMETERS_END();
+
+	php_error_docref(NULL, E_DEPRECATED,
+		"xdebug_set_filter() is not available in php-debugger, "
+		"filter support has been removed");
+}
+

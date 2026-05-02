@@ -490,6 +490,9 @@ PHP_MINIT_FUNCTION(xdebug)
 		zend_string_release(alias_name);
 	}
 
+	/* register filter constants for backwards compatibility */
+	xdebug_filter_register_constants(INIT_FUNC_ARGS_PASSTHRU);
+
 	/* Register php_debugger.* INI aliases pointing to the same storage as xdebug.* */
 	zend_register_ini_entries(php_debugger_ini_entries, module_number);
 

@@ -115,3 +115,9 @@ function xdebug_stop_error_collection(): void {}
 function xdebug_time_index(): float {}
 
 function xdebug_var_dump(mixed ...$var): void {}
+
+/* -----------------------------------------------------------------------*/
+/* Compatibility stubs — filters                                          */
+/* -----------------------------------------------------------------------*/
+
+function xdebug_set_filter(int $group, int $listType, array $configuration): void {}

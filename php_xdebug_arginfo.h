@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: 4cc2d77fe8b4a87419c90a555f61192810385f35 */
+ * Stub hash: 96ed175dbdffd06a1b013b2d776c58b5543a8118 */
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_xdebug_break, 0, 0, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()
@@ -113,6 +113,12 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_xdebug_var_dump, 0, 0, IS_VOID, 
 	ZEND_ARG_VARIADIC_TYPE_INFO(0, var, IS_MIXED, 0)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_xdebug_set_filter, 0, 3, IS_VOID, 0)
+	ZEND_ARG_TYPE_INFO(0, group, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, listType, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, configuration, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
 ZEND_FUNCTION(xdebug_break);
 ZEND_FUNCTION(xdebug_connect_to_client);
 ZEND_FUNCTION(xdebug_info);
@@ -152,6 +158,7 @@ ZEND_FUNCTION(xdebug_start_error_collection);
 ZEND_FUNCTION(xdebug_stop_error_collection);
 ZEND_FUNCTION(xdebug_time_index);
 ZEND_FUNCTION(xdebug_var_dump);
+ZEND_FUNCTION(xdebug_set_filter);
 
 static const zend_function_entry ext_functions[] = {
 	ZEND_FE(xdebug_break, arginfo_xdebug_break)
@@ -193,5 +200,6 @@ static const zend_function_entry ext_functions[] = {
 	ZEND_FE(xdebug_stop_error_collection, arginfo_xdebug_stop_error_collection)
 	ZEND_FE(xdebug_time_index, arginfo_xdebug_time_index)
 	ZEND_FE(xdebug_var_dump, arginfo_xdebug_var_dump)
+	ZEND_FE(xdebug_set_filter, arginfo_xdebug_set_filter)
 	ZEND_FE_END
 };

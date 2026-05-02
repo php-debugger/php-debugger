@@ -50,4 +50,19 @@ PHP_FUNCTION(xdebug_stop_error_collection);
 PHP_FUNCTION(xdebug_time_index);
 PHP_FUNCTION(xdebug_var_dump);
 
+/* Filters */
+void xdebug_filter_register_constants(INIT_FUNC_ARGS);
+
+#define XDEBUG_FILTER_NONE           0x000
+#define XDEBUG_FILTER_CODE_COVERAGE  0x100
+#define XDEBUG_FILTER_STACK          0x200
+#define XDEBUG_FILTER_TRACING        0x300
+
+#define XDEBUG_PATH_INCLUDE        0x01
+#define XDEBUG_PATH_EXCLUDE        0x02
+#define XDEBUG_NAMESPACE_INCLUDE   0x11
+#define XDEBUG_NAMESPACE_EXCLUDE   0x12
+
+PHP_FUNCTION(xdebug_set_filter);
+
 #endif
