@@ -25,7 +25,6 @@
 
 #include "../hash.h"
 #include "../mm.h"
-#include "../normalize_path.h"
 #include "../str.h"
 #include "../trim.h"
 #include "../xdebug_strndup.h"

@@ -19,7 +19,6 @@
 
 #include "maps_private.h"
 #include "../mm.h"
-#include "../normalize_path.h"
 #include "../strrnchr.h"
 #include "../vector.h"
 #include "../xdebug_strndup.h"

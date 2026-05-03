@@ -82,14 +82,6 @@ static char *xdebug_debugger_get_ide_key(void)
 	return NULL;
 }
 
-void xdebug_debugger_reset_ide_key(char *envval)
-{
-	if (XG_DBG(ide_key)) {
-		xdfree(XG_DBG(ide_key));
-	}
-	XG_DBG(ide_key) = xdstrdup(envval);
-}
-
 int xdebug_debugger_bailout_if_no_exec_requested(void)
 {
 	/* We need to do this first before the executable clauses are called */
@@ -530,11 +522,6 @@ void xdebug_debugger_throw_exception_hook(zend_object *exception, zval *file, zv
 				ce_ptr = ce_ptr->parent;
 			} while (!exception_breakpoint_found && ce_ptr);
 		}
-#if 0
-		if (XG_DBG(context).resolved_breakpoints && exception_breakpoint_found) {
-			XG_DBG(context).handler->resolve_breakpoints(&(XG_DBG(context)), extra_brk_info);
-		}
-#endif
 		if (exception_breakpoint_found && xdebug_handle_hit_value(extra_brk_info)) {
 			if (
 				!XG_DBG(context).handler->remote_breakpoint(

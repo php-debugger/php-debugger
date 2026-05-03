@@ -30,8 +30,6 @@
 #include "lib/lib_private.h"
 #include "lib/mm.h"
 #include "lib/var.h"
-#include "lib/var_export_html.h"
-#include "lib/var_export_line.h"
 #include "lib/xdebug_strndup.h"
 #include "lib/xml.h"
 
@@ -119,47 +117,6 @@ HashTable *xdebug_objdebug_pp(zval **zval_pp, int flags)
 	return NULL;
 }
 
-char* xdebug_error_type_simple(int type)
-{
-	switch (type) {
-		case E_ERROR:
-		case E_CORE_ERROR:
-		case E_COMPILE_ERROR:
-		case E_USER_ERROR:
-			return xdstrdup("fatal-error");
-			break;
-		case E_RECOVERABLE_ERROR:
-			return xdstrdup("recoverable-fatal-error");
-			break;
-		case E_WARNING:
-		case E_CORE_WARNING:
-		case E_COMPILE_WARNING:
-		case E_USER_WARNING:
-			return xdstrdup("warning");
-			break;
-		case E_PARSE:
-			return xdstrdup("parse-error");
-			break;
-		case E_NOTICE:
-		case E_USER_NOTICE:
-			return xdstrdup("notice");
-			break;
-		case E_STRICT:
-			return xdstrdup("strict-standards");
-			break;
-		case E_DEPRECATED:
-		case E_USER_DEPRECATED:
-			return xdstrdup("deprecated");
-			break;
-		case 0:
-			return xdstrdup("xdebug");
-			break;
-		default:
-			return xdstrdup("unknown-error");
-			break;
-	}
-}
-
 char* xdebug_error_type(int type)
 {
 	switch (type) {
@@ -213,10 +170,6 @@ zval *xdebug_get_zval(zend_execute_data *zdata, int node_type, const znode_op *n
 {
 	return xdebug_get_zval_with_opline(zdata, zdata->opline, node_type, node);
 }
-
-/*****************************************************************************
-** PHP Variable related utility functions
-*/
 
 /*****************************************************************************
 ** Data returning functions
@@ -878,55 +831,6 @@ void xdebug_get_php_symbol(zval *retval, xdebug_str* name)
 	}
 }
 
-/* Copied from Zend/zend_objects_API.h and instead of a ZEND_ASSERT it returns NULL */
-static zend_property_info *xdebug_get_property_info_for_slot(zend_object *obj, zval *val)
-{
-	zend_property_info **table = obj->ce->properties_info_table;
-	intptr_t prop_num = val - obj->properties_table;
-
-	if (prop_num < 0 || prop_num >= obj->ce->default_properties_count) {
-		return NULL;
-	}
-
-	return table[prop_num];
-}
-
-static zend_property_info *xdebug_get_typed_property_info_for_slot(zend_object *obj, zval *val)
-{
-	zend_property_info *prop_info = xdebug_get_property_info_for_slot(obj, val);
-	if (prop_info && ZEND_TYPE_IS_SET(prop_info->type)) {
-		return prop_info;
-	}
-	return NULL;
-}
-
-xdebug_str* xdebug_get_property_type(zval* object, zval *val)
-{
-	xdebug_str         *type_str = NULL;
-	zend_property_info *info;
-
-	if (Z_TYPE_P(val) != IS_INDIRECT) {
-		return NULL;
-	}
-	val = Z_INDIRECT_P(val);
-
-	info = xdebug_get_typed_property_info_for_slot(Z_OBJ_P(object), val);
-
-	if (info) {
-		zend_string *type_info = zend_type_to_string(info->type);
-		type_str = xdebug_str_new();
-
-		if (info->flags & ZEND_ACC_READONLY) {
-			xdebug_str_add_literal(type_str, "readonly ");
-		}
-
-		xdebug_str_add_zstr(type_str, type_info);
-		zend_string_release(type_info);
-	}
-
-	return type_str;
-}
-
 xdebug_str* xdebug_get_property_info(char *mangled_property, int mangled_len, const char **modifier, char **class_name)
 {
 	const char *cls_name, *tmp_prop_name;
@@ -989,48 +893,6 @@ xdebug_var_export_options* xdebug_var_export_options_from_ini(void)
 	options->no_decoration = 0;
 
 	return options;
-}
-
-xdebug_var_export_options xdebug_var_nolimit_options = { XDEBUG_MAX_INT, XDEBUG_MAX_INT, 1023, 1, 0, 0, 0, NULL, 0 };
-
-xdebug_var_export_options* xdebug_var_get_nolimit_options(void)
-{
-	return &xdebug_var_nolimit_options;
-}
-
-/*****************************************************************************
-** Normal variable printing routines
-*/
-
-#define XDEBUG_VAR_ATTR_TEXT 0
-#define XDEBUG_VAR_ATTR_FANCY 1
-
-void xdebug_add_variable_attributes(xdebug_str *str, zval *struc, zend_bool html)
-{
-	if (html) {
-		xdebug_str_add_literal(str, "<i>(");
-	} else {
-		xdebug_str_add_literal(str, "(");
-	}
-
-	if (Z_TYPE_P(struc) >= IS_STRING && Z_TYPE_P(struc) != IS_INDIRECT) {
-		if (Z_TYPE_P(struc) == IS_STRING && ZSTR_IS_INTERNED(Z_STR_P(struc))) {
-			xdebug_str_add_literal(str, "interned");
-		} else if (Z_TYPE_P(struc) == IS_ARRAY && (GC_FLAGS(Z_ARRVAL_P(struc)) & IS_ARRAY_IMMUTABLE)) {
-			xdebug_str_add_literal(str, "immutable");
-		} else {
-			xdebug_str_add_fmt(str, "refcount=%d", Z_REFCOUNT_P(struc));
-		}
-		xdebug_str_add_fmt(str, ", is_ref=%d", Z_TYPE_P(struc) == IS_REFERENCE);
-	} else {
-		xdebug_str_add_literal(str, "refcount=0, is_ref=0");
-	}
-
-	if (html) {
-		xdebug_str_add_literal(str, ")</i>");
-	} else {
-		xdebug_str_add_literal(str, ")=");
-	}
 }
 
 /*****************************************************************************

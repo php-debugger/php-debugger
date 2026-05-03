@@ -36,7 +36,6 @@
 #endif
 #include "lib/lib_private.h"
 #include "lib/log.h"
-#include "lib/var_export_line.h"
 #include "lib/var.h"
 #include "lib/xdebug_strndup.h"
 

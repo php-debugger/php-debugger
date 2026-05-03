@@ -58,9 +58,6 @@
 #include "lib/llist.h"
 #include "lib/log.h"
 #include "lib/mm.h"
-#include "lib/var_export_html.h"
-#include "lib/var_export_line.h"
-#include "lib/var_export_text.h"
 #include "lib/compat_stubs.h"
 
 static zend_result (*xdebug_orig_post_startup_cb)(void);
@@ -462,18 +459,6 @@ static void xdebug_env_config(void)
 	xdebug_arg_dtor(parts);
 }
 
-int xdebug_is_output_tty(void)
-{
-	if (XG_BASE(output_is_tty) == OUTPUT_NOT_CHECKED) {
-#ifndef PHP_WIN32
-		XG_BASE(output_is_tty) = isatty(STDOUT_FILENO);
-#else
-		XG_BASE(output_is_tty) = getenv("ANSICON") != NULL;
-#endif
-	}
-	return (XG_BASE(output_is_tty));
-}
-
 PHP_MINIT_FUNCTION(xdebug)
 {
 	zend_string *alias_name;
@@ -768,14 +753,6 @@ ZEND_DLEXPORT void xdebug_zend_shutdown(zend_extension *extension)
 	xdebug_library_zend_shutdown();
 }
 
-ZEND_DLEXPORT void xdebug_init_oparray(zend_op_array *op_array)
-{
-	if (XDEBUG_MODE_IS_OFF()) {
-		return;
-	}
-
-}
-
 #ifndef ZEND_EXT_API
 #define ZEND_EXT_API    ZEND_DLEXPORT
 #endif
@@ -797,7 +774,7 @@ ZEND_DLEXPORT zend_extension zend_extension_entry = {
 	xdebug_statement_call, /* statement_handler_func_t */
 	NULL,           /* fcall_begin_handler_func_t */
 	NULL,           /* fcall_end_handler_func_t */
-	xdebug_init_oparray,   /* op_array_ctor_func_t */
+	NULL,           /* op_array_ctor_func_t */
 	NULL,           /* op_array_dtor_func_t */
 	STANDARD_ZEND_EXTENSION_PROPERTIES
 };

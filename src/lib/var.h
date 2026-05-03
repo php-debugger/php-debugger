@@ -60,9 +60,7 @@ typedef struct xdebug_var_export_options {
 void xdebug_get_php_symbol(zval *retval, xdebug_str* name);
 
 xdebug_var_export_options* xdebug_var_export_options_from_ini(void);
-xdebug_var_export_options* xdebug_var_get_nolimit_options(void);
 
-xdebug_str* xdebug_get_property_type(zval* object, zval *val);
 xdebug_str* xdebug_get_property_info(char *mangled_property, int mangled_len, const char **modifier, char **class_name);
 
 #define XDEBUG_VAR_OBJDEBUG_DEFAULT        0x00
@@ -70,13 +68,7 @@ xdebug_str* xdebug_get_property_info(char *mangled_property, int mangled_len, co
 HashTable *xdebug_objdebug_pp(zval **zval_pp, int flags);
 
 
-#define XDEBUG_VAR_ATTR_TEXT 0
-#define XDEBUG_VAR_ATTR_HTML 1
-void xdebug_add_variable_attributes(xdebug_str *str, zval *struc, zend_bool fancy);
-
-
 char* xdebug_xmlize(char *s_string, size_t len, size_t *newlen);
-char* xdebug_error_type_simple(int type);
 char* xdebug_error_type(int type);
 zval *xdebug_get_zval(zend_execute_data *zdata, int node_type, const znode_op *node);
 zval *xdebug_get_zval_with_opline(zend_execute_data *zdata, const zend_op *opline, int node_type, const znode_op *node);

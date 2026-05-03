@@ -59,9 +59,6 @@ typedef struct _xdebug_hash_element {
 extern "C" {
 #endif
 
-/* Helper functions */
-char* xdebug_hash_key_to_str(xdebug_hash_key* key, int* new_len);
-
 /* Standard functions */
 xdebug_hash *xdebug_hash_alloc(int slots, xdebug_hash_dtor_t dtor);
 xdebug_hash *xdebug_hash_alloc_with_sort(int slots, xdebug_hash_dtor_t dtor, xdebug_hash_apply_sorter_t sort_func);
