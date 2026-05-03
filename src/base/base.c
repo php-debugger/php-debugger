@@ -694,10 +694,13 @@ static void xdebug_execute_end(zend_execute_data *execute_data, zval *retval)
 
 static zend_observer_fcall_handlers xdebug_observer_init(zend_execute_data *execute_data)
 {
-	/* If observer is deactivated (no debugger connected), skip */
-	if (!XG_BASE(observer_active)) {
-			return (zend_observer_fcall_handlers){NULL, NULL};
-	}
+	/* Always install handlers. The engine caches the result of this
+	 * function per zend_function, so returning NULL here would prevent
+	 * our handlers from ever being invoked for this function — even if
+	 * a debugger connects in a later request (e.g. FrankenPHP worker
+	 * mode reuses op_arrays across requests). The handlers themselves
+	 * fast-path on !observer_active for near-zero overhead when no
+	 * debug session is active. See issue #63. */
 	return (zend_observer_fcall_handlers){xdebug_execute_begin, xdebug_execute_end};
 }
 /***************************************************************************/
