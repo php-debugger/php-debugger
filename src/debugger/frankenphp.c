@@ -94,9 +94,21 @@ static int xdebug_frankenphp_sapi_activate(void)
 	/* Trigger detection: superglobals are not yet populated this early in the
 	 * SAPI lifecycle, so we read the raw request data. If a trigger is present
 	 * (or start_with_request=yes), arm the connect-on-next-statement flag —
-	 * the existing path in xdebug_debugger_statement_call() picks it up. */
+	 * the existing path in xdebug_debugger_statement_call() picks it up.
+	 *
+	 * Also re-arm the observer for the request: the worker's process-start
+	 * RINIT may have left observer_active=false (no IDE at startup), and
+	 * FrankenPHP does not run RINIT again per request — only sapi_activate.
+	 * Without this, xdebug_execute_begin fast-paths out and never pushes a
+	 * stack frame for the current function. xdebug_debugger_statement_call
+	 * would then bail out on its empty-stack check, so breakpoints in the
+	 * function that triggered the connection (and any function entered
+	 * before observer activation) would be missed. See issue #63. */
 	if (xdebug_lib_start_with_request() || has_debug_trigger()) {
 		XG_DBG(context).do_connect_to_client = 1;
+		XG_BASE(observer_active) = 1;
+	} else {
+		XG_BASE(observer_active) = 0;
 	}
 
 	/* If a debug session is still alive (e.g. user kept it open across
@@ -123,6 +135,12 @@ static int xdebug_frankenphp_sapi_deactivate(void)
 
 void xdebug_frankenphp_minit(void)
 {
+	/* Note: at MINIT time on the FrankenPHP SAPI, sapi_module.name is set
+	 * to "frankenphp" but sapi_module.activate may still be NULL — the SAPI
+	 * fills the activate hook in later. We install our wrapper here, which
+	 * the SAPI's per-request dispatch then invokes (FrankenPHP's worker loop
+	 * calls activate/deactivate around each request even though it does not
+	 * re-run RINIT/RSHUTDOWN). */
 	if (!sapi_module.name || strcmp(sapi_module.name, "frankenphp") != 0) {
 		return;
 	}
@@ -134,6 +152,19 @@ void xdebug_frankenphp_minit(void)
 
 	original_sapi_deactivate  = sapi_module.deactivate;
 	sapi_module.deactivate    = xdebug_frankenphp_sapi_deactivate;
+
+	/* In worker mode the per-request decision to debug is made by
+	 * sapi_activate, but PHP_RINIT runs only once at worker startup —
+	 * before any request has set a trigger. The normal RINIT path skips
+	 * setting ZEND_COMPILE_EXTENDED_STMT and disabling opcache's
+	 * optimizer when no IDE is connected. With the worker flow, that
+	 * means user files compiled by later trigger requests still have no
+	 * EXT_STMT opcodes, so line breakpoints can never resolve. Force
+	 * both on at MINIT — the small per-statement overhead is acceptable
+	 * for a SAPI that exists to serve interactive workloads. See issue
+	 * #63. */
+	CG(compiler_options) |= ZEND_COMPILE_EXTENDED_STMT;
+	xdebug_disable_opcache_optimizer();
 }
 
 void xdebug_frankenphp_mshutdown(void)
