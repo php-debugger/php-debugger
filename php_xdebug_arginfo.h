@@ -164,6 +164,7 @@ static const zend_function_entry ext_functions[] = {
 	ZEND_FE(xdebug_break, arginfo_xdebug_break)
 	ZEND_FE(xdebug_connect_to_client, arginfo_xdebug_connect_to_client)
 	ZEND_FE(xdebug_info, arginfo_xdebug_info)
+	ZEND_FALIAS(php_debugger_info, xdebug_info, arginfo_xdebug_info)
 	ZEND_FE(xdebug_is_debugger_active, arginfo_xdebug_is_debugger_active)
 	ZEND_FE(xdebug_notify, arginfo_xdebug_notify)
 	ZEND_FE(xdebug_get_profiler_filename, arginfo_xdebug_get_profiler_filename)

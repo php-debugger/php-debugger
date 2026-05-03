@@ -89,7 +89,7 @@ jobs:
           cd ~/php-src
           ./sapi/cli/php -r "
             assert(function_exists('xdebug_break'), 'xdebug_break missing');
-            assert(function_exists('php_debugger_break'), 'php_debugger_break missing');
             assert(function_exists('xdebug_info'), 'xdebug_info missing');
+            assert(function_exists('php_debugger_info'), 'php_debugger_info missing');
             echo 'Functions: OK' . PHP_EOL;
           "

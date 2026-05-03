@@ -18,6 +18,13 @@ function xdebug_connect_to_client(): bool {}
 /** @return mixed */
 function xdebug_info(?string $category = null) {}
 
+/* Alias of xdebug_info() in the php_debugger namespace */
+/**
+ * @alias xdebug_info
+ * @return mixed
+ */
+function php_debugger_info(?string $category = null) {}
+
 /* -----------------------------------------------------------------------*/
 
 /* Returns whether a debugging session is active */
