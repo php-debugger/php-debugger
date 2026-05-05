@@ -528,6 +528,11 @@ static bool should_run_user_handler(zend_execute_data *execute_data)
 		return false;
 	}
 
+	if (execute_data->func->type == ZEND_EVAL_CODE)
+	{
+		return false;
+	}
+
 	return true;
 }
 
