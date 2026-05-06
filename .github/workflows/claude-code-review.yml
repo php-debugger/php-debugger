@@ -2,11 +2,42 @@ name: Claude Code Review
 
 on:
   pull_request_target:
-    types: [labeled, synchronize, reopened]
+    types: [opened, reopened, ready_for_review, synchronize, labeled]
 
 jobs:
+  gate:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    outputs:
+      run_review: ${{ steps.decide.outputs.run_review }}
+    steps:
+      - name: Auto-label trusted authors
+        if: |
+          github.event.pull_request.user.login == 'pronskiy' ||
+          github.event.pull_request.user.login == 'carlos-granados'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: gh pr edit "$PR" --repo "$REPO" --add-label claude-review
+
+      - name: Decide whether to review
+        id: decide
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          if gh pr view "$PR" --repo "$REPO" --json labels -q '.labels[].name' | grep -qx 'claude-review'; then
+            echo "run_review=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_review=false" >> "$GITHUB_OUTPUT"
+          fi
+
   claude-review:
-    if: contains(github.event.pull_request.labels.*.name, 'claude-review')
+    needs: gate
+    if: needs.gate.outputs.run_review == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
