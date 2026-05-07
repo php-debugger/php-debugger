@@ -1269,6 +1269,7 @@ PHP_FUNCTION(xdebug_connect_to_client)
 
 	if (!XG_BASE(observer_active)) {
 		xdebug_rebuild_stack();
+		xdebug_vector_pop(XG_BASE(stack));
 	}
 
 	XG_BASE(statement_handler_enabled) = true;
