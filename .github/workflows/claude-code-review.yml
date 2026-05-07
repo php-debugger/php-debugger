@@ -13,9 +13,9 @@ jobs:
       run_review: ${{ steps.decide.outputs.run_review }}
     steps:
       - name: Auto-label trusted authors
-        if: |
-          github.event.pull_request.user.login == 'pronskiy' ||
-          github.event.pull_request.user.login == 'carlos-granados'
+        if: >
+          github.event.pull_request.author_association == 'OWNER' ||
+          github.event.pull_request.author_association == 'MEMBER'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
