@@ -1246,7 +1246,8 @@ PHP_FUNCTION(xdebug_break)
 	XG_DBG(context).do_break = 1;
 	XG_DBG(context).pending_breakpoint = NULL;
 
-    XG_BASE(statement_handler_enabled) = true;
+	XG_BASE(statement_handler_enabled) = true;
+	XG_BASE(observer_active) = true;
 
 	RETURN_TRUE;
 }
@@ -1266,7 +1267,12 @@ PHP_FUNCTION(xdebug_connect_to_client)
 
 	XG_DBG(context).do_connect_to_client = 1;
 
-    XG_BASE(statement_handler_enabled) = true;
+	if (!XG_BASE(observer_active)) {
+		xdebug_rebuild_stack();
+	}
+
+	XG_BASE(statement_handler_enabled) = true;
+	XG_BASE(observer_active) = true;
 
 	RETURN_TRUE;
 }

@@ -428,6 +428,11 @@ static void add_stack_frame_recursively(zend_execute_data *execute_data)
 	}
 }
 
+/*
+ * This function rebuilds the stack when we the debugger is activated after
+ * being previously deactivated. This rebuild deliberately does not fire entry side-effects,
+ * like recording eval functions or checking function entry breakpoints
+ */
 void xdebug_rebuild_stack(void)
 {
 	xdebug_vector_empty(XG_BASE(stack));

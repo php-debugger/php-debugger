@@ -34,6 +34,7 @@
 #include "lib/cmd_parser.h"
 #include "lib/log.h"
 #include "lib/xml.h"
+#include "base/base.h"
 
 #if WIN32
 #include <windows.h>
@@ -223,14 +224,20 @@ CTRL_FUNC(pause)
 		xdebug_xml_add_text(action, xdstrdup("IDE Connection Signalled"));
 
 		XG_DBG(context).do_connect_to_client = 1;
-
-        XG_BASE(statement_handler_enabled) = true;
 	} else {
 		action = xdebug_xml_node_init("action");
 		xdebug_xml_add_text(action, xdstrdup("Breakpoint Signalled"));
 
 		XG_DBG(context).do_break = 1;
 	}
+
+	if (!XG_BASE(observer_active)) {
+		xdebug_rebuild_stack();
+	}
+
+	XG_BASE(statement_handler_enabled) = true;
+	XG_BASE(observer_active) = true;
+
 	xdebug_xml_add_child(response, action);
 	xdebug_xml_add_child(*retval, response);
 }
