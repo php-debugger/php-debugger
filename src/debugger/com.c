@@ -810,7 +810,7 @@ int xdebug_handle_start_session(void)
 	char *dummy_env = NULL;
 
 	/* Return cached result if already checked this request to avoid duplicate side effects */
-	if (XG_DBG(start_session_checked)) {
+	if (XG_DBG(start_session_result) != -1) {
 		return XG_DBG(start_session_result);
 	}
 
@@ -878,7 +878,6 @@ int xdebug_handle_start_session(void)
 	}
 
 	/* Cache result to make this function idempotent */
-	XG_DBG(start_session_checked) = true;
 	XG_DBG(start_session_result) = activate_session;
 
 	return activate_session;
