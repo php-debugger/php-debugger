@@ -355,7 +355,6 @@ static void xdebug_init_base_globals(xdebug_base_globals_t *xg)
 {
 	xg->stack                = NULL;
 	xg->in_debug_info        = 0;
-	xg->output_is_tty        = OUTPUT_NOT_CHECKED;
 	xg->in_execution         = 0;
 	xg->in_var_serialisation = 0;
 	xg->error_reporting_override   = 0;

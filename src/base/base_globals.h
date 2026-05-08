@@ -46,7 +46,6 @@ typedef struct _xdebug_base_globals_t {
 	uint64_t      start_nanotime;
 	unsigned int  working_tsc_clock; /* -1 = unknown, 0 = not available, 1 = available */
 	unsigned int  prev_memory;
-	int           output_is_tty;
 	zend_bool     in_debug_info;
 	zend_long     error_reporting_override;
 	zend_bool     error_reporting_overridden;

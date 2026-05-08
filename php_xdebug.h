@@ -43,10 +43,6 @@
 extern zend_module_entry xdebug_module_entry;
 #define phpext_xdebug_ptr &xdebug_module_entry
 
-#define OUTPUT_NOT_CHECKED -1
-#define OUTPUT_IS_TTY       1
-#define OUTPUT_NOT_TTY      0
-
 #ifdef PHP_WIN32
 #define PHP_XDEBUG_API __declspec(dllexport)
 #else
