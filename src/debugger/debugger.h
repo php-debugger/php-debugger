@@ -35,6 +35,8 @@ typedef struct _xdebug_debugger_globals_t {
 	unsigned int  breakpoint_count;
 	unsigned int  no_exec;
 	char         *ide_key; /* As Xdebug uses it, from environment, USER, USERNAME or empty */
+	zend_bool     start_session_checked;
+	int           start_session_result;
 
 	/* breakpoint resolving */
 	size_t        function_count;

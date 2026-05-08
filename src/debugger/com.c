@@ -794,7 +794,7 @@ void xdebug_debug_init_if_requested_on_xdebug_break(void)
 	}
 }
 
-static void xdebug_update_ide_key(char *new_key)
+void xdebug_update_ide_key(char *new_key)
 {
 	if (XG_DBG(ide_key)) {
 		xdfree(XG_DBG(ide_key));
@@ -805,10 +805,16 @@ static void xdebug_update_ide_key(char *new_key)
 int xdebug_handle_start_session(void)
 {
 	int   activate_session = 0;
-	zval *dummy;
-	char *dummy_env;
+	int   session_start_found = 0;
+	zval *dummy = NULL;
+	char *dummy_env = NULL;
 
-	/* Set session cookie if requested */
+	/* Return cached result if already checked this request to avoid duplicate side effects */
+	if (XG_DBG(start_session_checked)) {
+		return XG_DBG(start_session_result);
+	}
+
+	/* Check if session start trigger is present */
 	if (
 		((
 			(dummy = zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_ENV]), "XDEBUG_SESSION_START", sizeof("XDEBUG_SESSION_START") - 1)) != NULL
@@ -825,40 +831,55 @@ int xdebug_handle_start_session(void)
 		))
 		&& !SG(headers_sent)
 	) {
-		xdebug_log(XLOG_CHAN_DEBUG, XLOG_DEBUG, "Found 'XDEBUG_SESSION_START' HTTP variable, with value '%s'", Z_STRVAL_P(dummy));
+		session_start_found = 1;
 
-		convert_to_string_ex(dummy);
-		xdebug_update_ide_key(Z_STRVAL_P(dummy));
+		if (!xdebug_lib_has_shared_secret()) {
+			xdebug_log(XLOG_CHAN_DEBUG, XLOG_DEBUG, "Found 'XDEBUG_SESSION_START' HTTP variable, with value '%s'", Z_STRVAL_P(dummy));
 
-		xdebug_setcookie("XDEBUG_SESSION", sizeof("XDEBUG_SESSION") - 1, Z_STRVAL_P(dummy), Z_STRLEN_P(dummy), 0, "/", 1, NULL, 0, 0, 1, 0);
-		activate_session = 1;
+			convert_to_string_ex(dummy);
+			xdebug_update_ide_key(Z_STRVAL_P(dummy));
+
+			xdebug_setcookie("XDEBUG_SESSION", sizeof("XDEBUG_SESSION") - 1, Z_STRVAL_P(dummy), Z_STRLEN_P(dummy), 0, "/", 1, NULL, 0, 0, 1, 0);
+			activate_session = 1;
+		}
 	} else if (
 		(dummy_env = getenv("XDEBUG_SESSION_START")) != NULL ||
 		(dummy_env = getenv("PHP_DEBUGGER_SESSION_START")) != NULL
 	) {
-		xdebug_log(XLOG_CHAN_DEBUG, XLOG_DEBUG, "Found 'XDEBUG_SESSION_START' ENV variable, with value '%s'", dummy_env);
+		session_start_found = 1;
 
-		xdebug_update_ide_key(dummy_env);
+		if (!xdebug_lib_has_shared_secret()) {
+			xdebug_log(XLOG_CHAN_DEBUG, XLOG_DEBUG, "Found 'XDEBUG_SESSION_START' ENV variable, with value '%s'", dummy_env);
 
-		if (!SG(headers_sent)) {
-			xdebug_setcookie("XDEBUG_SESSION", sizeof("XDEBUG_SESSION") - 1, XG_DBG(ide_key), strlen(XG_DBG(ide_key)), 0, "/", 1, NULL, 0, 0, 1, 0);
-		}
+			xdebug_update_ide_key(dummy_env);
 
-		activate_session = 1;
-	} else if (getenv("XDEBUG_CONFIG") || getenv("PHP_DEBUGGER_CONFIG")) {
-		xdebug_log(XLOG_CHAN_DEBUG, XLOG_DEBUG, "Found 'XDEBUG_CONFIG' or 'PHP_DEBUGGER_CONFIG' ENV variable");
+			if (!SG(headers_sent)) {
+				xdebug_setcookie("XDEBUG_SESSION", sizeof("XDEBUG_SESSION") - 1, XG_DBG(ide_key), strlen(XG_DBG(ide_key)), 0, "/", 1, NULL, 0, 0, 1, 0);
+			}
 
-		if (XG_DBG(ide_key) && *XG_DBG(ide_key) && !SG(headers_sent)) {
-			xdebug_setcookie("XDEBUG_SESSION", sizeof("XDEBUG_SESSION") - 1, XG_DBG(ide_key), strlen(XG_DBG(ide_key)), 0, "/", 1, NULL, 0, 0, 1, 0);
 			activate_session = 1;
 		}
+	} else if (getenv("XDEBUG_CONFIG") || getenv("PHP_DEBUGGER_CONFIG")) {
+		session_start_found = 1;
+
+		if (!xdebug_lib_has_shared_secret()) {
+			xdebug_log(XLOG_CHAN_DEBUG, XLOG_DEBUG, "Found 'XDEBUG_CONFIG' or 'PHP_DEBUGGER_CONFIG' ENV variable");
+
+			if (XG_DBG(ide_key) && *XG_DBG(ide_key) && !SG(headers_sent)) {
+				xdebug_setcookie("XDEBUG_SESSION", sizeof("XDEBUG_SESSION") - 1, XG_DBG(ide_key), strlen(XG_DBG(ide_key)), 0, "/", 1, NULL, 0, 0, 1, 0);
+				activate_session = 1;
+			}
+		}
 	}
 
-	/* Make sure that if we have a trigger value configured, we don't start the session unless it matches */
-	if (activate_session && xdebug_lib_has_shared_secret()) {
+	/* Log warning if session start was found but shared secret is configured */
+	if (session_start_found && xdebug_lib_has_shared_secret()) {
 		xdebug_log_ex(XLOG_CHAN_DEBUG, XLOG_INFO, "TRGSEC-LEGACY", "Not activating through legacy method because xdebug.trigger_value is set");
-		activate_session = 0;
 	}
+
+	/* Cache result to make this function idempotent */
+	XG_DBG(start_session_checked) = true;
+	XG_DBG(start_session_result) = activate_session;
 
 	return activate_session;
 }

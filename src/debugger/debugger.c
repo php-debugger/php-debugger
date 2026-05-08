@@ -894,6 +894,8 @@ void xdebug_debugger_rinit(void)
 	}
 
 	XG_DBG(no_exec) = 0;
+	XG_DBG(start_session_checked) = false;
+	XG_DBG(start_session_result) = 0;
 	xdebug_lib_set_active_symbol_table(NULL);
 
 	/* Check if we have this special get variable that stops a debugging

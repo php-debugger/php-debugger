@@ -615,18 +615,16 @@ PHP_RINIT_FUNCTION(xdebug)
 	xdebug_base_rinit();
 
 	/* Check early if debugging could be requested this request.
-	 * Check if start_with_request=trigger and any trigger is present
-	 * or if start_with_request=yes.
-	 * If not, disable all heavy hooks for
-	 * near-zero overhead. The actual connection happens on first
-	 * function call if triggers are present. */
-	/* Check if debugging could be requested this request.
-	 * For trigger/default mode: check triggers, cookies, env vars.
-	 * For yes mode: always expect a connection.
-	 * For no mode: no debugging will happen.
-	 * Note: xdebug_break() can initiate connections without triggers,
+	 * Determines whether to enable the observer and attempt early connection.
+	 *
+	 * Three checks (all must pass start_with_request=no and XDEBUG_IGNORE guards):
+	 * 1. xdebug_handle_start_session() - legacy XDEBUG_SESSION_START or XDEBUG_CONFIG
+	 * 2. xdebug_lib_start_with_request() - start_with_request=yes
+	 * 3. xdebug_lib_start_with_trigger() - start_with_request=trigger and trigger present
+	 *
+	 * If none match, observer stays disabled for near-zero overhead.
+	 * Note: xdebug_break() can initiate connections later without any of these triggers,
 	 * but it handles re-enabling the observer itself. */
-	/* Respect start_with_request=no and XDEBUG_IGNORE */
 	debug_requested = !xdebug_lib_never_start_with_request() && !xdebug_should_ignore() && (
 		xdebug_handle_start_session() ||
 		xdebug_lib_start_with_request() ||
@@ -636,10 +634,7 @@ PHP_RINIT_FUNCTION(xdebug)
 	connected = false;
 	if (debug_requested) {
 		if (found_trigger_value) {
-			if (XG_DBG(ide_key)) {
-				xdfree(XG_DBG(ide_key));
-			}
-			XG_DBG(ide_key) = xdstrdup(found_trigger_value);
+			xdebug_update_ide_key(found_trigger_value);
 			xdfree(found_trigger_value);
 		}
 

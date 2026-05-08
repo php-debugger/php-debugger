@@ -62,6 +62,7 @@ static int xdebug_header_handler(sapi_header_struct *h, sapi_header_op_enum op, 
 					*colon_offset = save;
 				}
 
+				xdebug_log(XLOG_CHAN_DEBUG, XLOG_DEBUG, "Adding header '%s'.", h->header);
 				xdebug_llist_insert_next(XG_LIB(headers), XDEBUG_LLIST_TAIL(XG_LIB(headers)), xdstrdup(h->header));
 			} break;
 			case SAPI_HEADER_DELETE_ALL:
