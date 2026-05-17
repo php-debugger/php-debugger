@@ -32,3 +32,4 @@ echo file_get_contents("C:\\Windows\\Temp\\remote-log-win.txt");
 [%d] [Step Debug] WARN: Creating socket for 'doesnotexist3:9003', getaddrinfo: %d.
 [%d] [Step Debug] WARN: Could not connect to client host discovered through HTTP headers, connecting to configured address/port: doesnotexist2:9003.
 [%d] [Step Debug] WARN: Creating socket for 'doesnotexist2:9003', getaddrinfo: 11001.
+[%d] [Step Debug] DEBUG: Adding header 'Content-type: %s'.

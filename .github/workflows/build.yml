@@ -92,7 +92,7 @@ jobs:
                     php-version: ${{ inputs.php-version || '8.5' }}
                     arch: x64
                     ts: ${{ matrix.ts }}
-                    args: --enable-debugger
+                    args: --enable-php-debugger
                     run-tests: false
 
             -   name: Get build info
@@ -107,11 +107,11 @@ jobs:
                 id: find-dll
                 shell: pwsh
                 run: |
-                    $dll = Get-ChildItem -Path ${{ runner.temp }} -Recurse -Filter 'php_debugger.dll' | Select-Object -First 1
+                    $dll = Get-ChildItem -Path ${{ runner.temp }} -Recurse -Filter 'php_php_debugger.dll' | Select-Object -First 1
                     if (-not $dll) {
-                        $dll = Get-ChildItem -Recurse -Filter 'php_debugger.dll' | Select-Object -First 1
+                        $dll = Get-ChildItem -Recurse -Filter 'php_php_debugger.dll' | Select-Object -First 1
                     }
-                    if (-not $dll) { Write-Error 'php_debugger.dll not found'; exit 1 }
+                    if (-not $dll) { Write-Error 'php_php_debugger.dll not found'; exit 1 }
                     Write-Host "Found DLL at: $($dll.FullName)"
                     echo "dll_path=$($dll.FullName)" >> $env:GITHUB_OUTPUT
 

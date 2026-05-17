@@ -7,6 +7,40 @@ on:
     pull_request:
 
 jobs:
+    get-windows-extension-matrix:
+        runs-on: ubuntu-latest
+        name: "Generate Windows Build Matrix"
+        outputs:
+            matrix: ${{ steps.extension-matrix.outputs.matrix }}
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v6
+            - name: Get The Windows Extension Matrix
+              id: extension-matrix
+              uses: php/php-windows-builder/extension-matrix@v1
+              with:
+                  php-version-list: '8.2, 8.3, 8.4, 8.5'
+                  arch-list: 'x64'
+
+    windows:
+        needs: get-windows-extension-matrix
+        runs-on: ${{ matrix.os }}
+        name: "Windows PHP ${{ matrix.php-version }} ${{ matrix.ts == 'ts' && 'ZTS' || 'NTS' }}"
+        strategy:
+            fail-fast: false
+            matrix: ${{fromJson(needs.get-windows-extension-matrix.outputs.matrix)}}
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v6
+            - name: Build & run tests
+              uses: php/php-windows-builder/extension@v1
+              with:
+                  php-version: ${{ matrix.php-version }}
+                  arch: x64
+                  ts: ${{ matrix.ts }}
+                  args: --enable-php-debugger
+                  test-runner: run-xdebug-tests.php
+
     linux:
         runs-on: ubuntu-latest
         name: "PHP ${{ matrix.php }} ${{ matrix.zts && 'ZTS' || 'NTS' }} ${{ matrix.opcache && '(opcache)' || '' }}"

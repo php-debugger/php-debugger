@@ -90,7 +90,7 @@ jobs:
                     php-version: ${{ matrix.php-version }}
                     arch: x64
                     ts: ${{ matrix.ts }}
-                    args: --enable-debugger
+                    args: --enable-php-debugger
                     run-tests: false
 
             -   name: Package artifact
@@ -100,11 +100,11 @@ jobs:
                     $phpVer = "${{ matrix.php-version }}"
                     $tsTag = "${{ matrix.ts }}"
                     $assetName = "php-debugger-php${phpVer}-${tsTag}-windows-x64.dll"
-                    $dll = Get-ChildItem -Path $env:RUNNER_TEMP -Recurse -Filter 'php_debugger.dll' -ErrorAction SilentlyContinue | Select-Object -First 1
+                    $dll = Get-ChildItem -Path $env:RUNNER_TEMP -Recurse -Filter 'php_php_debugger.dll' -ErrorAction SilentlyContinue | Select-Object -First 1
                     if (-not $dll) {
-                        $dll = Get-ChildItem -Recurse -Filter 'php_debugger.dll' -ErrorAction SilentlyContinue | Select-Object -First 1
+                        $dll = Get-ChildItem -Recurse -Filter 'php_php_debugger.dll' -ErrorAction SilentlyContinue | Select-Object -First 1
                     }
-                    if (-not $dll) { Write-Error "php_debugger.dll not found"; exit 1 }
+                    if (-not $dll) { Write-Error "php_php_debugger.dll not found"; exit 1 }
                     Write-Host "Found DLL at: $($dll.FullName)"
                     Copy-Item $dll.FullName -Destination $assetName
                     echo "asset_name=${assetName}" >> $env:GITHUB_OUTPUT
