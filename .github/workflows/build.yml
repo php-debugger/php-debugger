@@ -68,7 +68,7 @@ jobs:
                     echo "artifact_name=php-debugger-php${PHP_VER}-${OS_TAG}-${ARCH}" >> $GITHUB_OUTPUT
 
             -   name: Upload artifact
-                uses: actions/upload-artifact@v4
+                uses: actions/upload-artifact@v6
                 with:
                     name: ${{ steps.info.outputs.artifact_name }}
                     path: modules/php_debugger.so
@@ -116,7 +116,7 @@ jobs:
                     echo "dll_path=$($dll.FullName)" >> $env:GITHUB_OUTPUT
 
             -   name: Upload artifact
-                uses: actions/upload-artifact@v4
+                uses: actions/upload-artifact@v6
                 with:
                     name: ${{ steps.info.outputs.artifact_name }}
                     path: ${{ steps.find-dll.outputs.dll_path }}

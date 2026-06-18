@@ -62,7 +62,7 @@ jobs:
                     echo "asset_name=${ASSET_NAME}" >> $GITHUB_OUTPUT
 
             -   name: Upload artifact
-                uses: actions/upload-artifact@v4
+                uses: actions/upload-artifact@v6
                 with:
                     name: ${{ steps.package.outputs.asset_name }}
                     path: ${{ steps.package.outputs.asset_name }}
@@ -110,7 +110,7 @@ jobs:
                     echo "asset_name=${assetName}" >> $env:GITHUB_OUTPUT
 
             -   name: Upload artifact
-                uses: actions/upload-artifact@v4
+                uses: actions/upload-artifact@v6
                 with:
                     name: ${{ steps.package.outputs.asset_name }}
                     path: ${{ steps.package.outputs.asset_name }}
