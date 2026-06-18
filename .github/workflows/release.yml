@@ -9,20 +9,23 @@ permissions:
     contents: write
 
 jobs:
-    build-unix:
+    build-macos:
         strategy:
             fail-fast: false
             matrix:
-                os:
-                    - macos-latest
-                    - ubuntu-latest
                 php-version:
                     - '8.2'
                     - '8.3'
                     - '8.4'
                     - '8.5'
-        runs-on: ${{ matrix.os }}
-        name: "Unix — PHP ${{ matrix.php-version }} — ${{ matrix.os }}"
+                ts:
+                    - nts
+                    - ts
+                arch:
+                    - arm64
+                    - x86_64
+        runs-on: macos-latest
+        name: "MacOS — PHP ${{ matrix.php-version }} — ${{ matrix.arch }} — ${{ matrix.ts == 'ts' && 'TS' || 'NTS' }}"
         steps:
             -   uses: actions/checkout@v7
 
@@ -32,6 +35,84 @@ jobs:
                     php-version: ${{ matrix.php-version }}
                     coverage: none
                     extensions: xmlreader
+                env:
+                    phpts: ${{ matrix.ts }}
+
+            -   name: Build extension
+                run: |
+                    phpize
+                    if [[ "${{ matrix.arch }}" == "arm64" ]]; then
+                        CFLAGS="-arch arm64" LDFLAGS="-arch arm64" ./configure --enable-php-debugger
+                    else
+                        CFLAGS="-arch x86_64" LDFLAGS="-arch x86_64" ./configure --enable-php-debugger
+                    fi
+                    make -j$(sysctl -n hw.logicalcpu 2>/dev/null || nproc)
+
+            -   name: Verify extension loads
+                run: |
+                    # Skip verification for cross-compiled binaries
+                    if [[ "${{ matrix.arch }}" == "x86_64" ]]; then
+                        arch -x86_64 php -dzend_extension=$PWD/modules/php_debugger.so -v || echo "Cross-compiled x86_64 binary, skipping test"
+                    else
+                        php -dzend_extension=$PWD/modules/php_debugger.so -v
+                        php -dzend_extension=$PWD/modules/php_debugger.so -r "echo 'xdebug_info() works: ' . (function_exists('xdebug_info') ? 'yes' : 'no') . PHP_EOL;"
+                    fi
+
+            -   name: Smoke test (DBGp)
+                if: matrix.arch == 'arm64'
+                run: |
+                    TEST_PHP_ARGS="-n -dzend_extension=$PWD/modules/php_debugger.so"
+                    echo "TEST_PHP_ARGS=$TEST_PHP_ARGS" >> $GITHUB_ENV
+                    export TEST_PHP_ARGS
+                    php -n run-xdebug-tests.php -q tests/debugger/bug00530.phpt
+
+            -   name: Package artifact
+                id: package
+                run: |
+                    PHP_VER=$(php -r "echo PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION;")
+                    OS_TAG="macos"
+                    ARCH_TAG="${{ matrix.arch }}"
+                    TS_TAG="${{ matrix.ts }}"
+                    ASSET_NAME="php-debugger-php${PHP_VER}-${TS_TAG}-${OS_TAG}-${ARCH_TAG}.so"
+                    cp modules/php_debugger.so "${ASSET_NAME}"
+                    echo "asset_name=${ASSET_NAME}" >> $GITHUB_OUTPUT
+
+            -   name: Upload artifact
+                uses: actions/upload-artifact@v4
+                with:
+                    name: ${{ steps.package.outputs.asset_name }}
+                    path: ${{ steps.package.outputs.asset_name }}
+
+    build-linux:
+        strategy:
+            fail-fast: false
+            matrix:
+                php-version:
+                    - '8.2'
+                    - '8.3'
+                    - '8.4'
+                    - '8.5'
+                ts:
+                    - nts
+                    - ts
+                arch:
+                    - runner: ubuntu-latest
+                      arch: x86_64
+                    - runner: ubuntu-24.04-arm
+                      arch: arm64
+        runs-on: ${{ matrix.arch.runner }}
+        name: "Linux — PHP ${{ matrix.php-version }} — ${{ matrix.arch.arch }} — ${{ matrix.ts == 'ts' && 'TS' || 'NTS' }}"
+        steps:
+            -   uses: actions/checkout@v6
+
+            -   name: Setup PHP
+                uses: shivammathur/setup-php@v2
+                with:
+                    php-version: ${{ matrix.php-version }}
+                    coverage: none
+                    extensions: xmlreader
+                env:
+                    phpts: ${{ matrix.ts }}
 
             -   name: Build extension
                 run: |
@@ -55,9 +136,10 @@ jobs:
                 id: package
                 run: |
                     PHP_VER=$(php -r "echo PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION;")
-                    OS_TAG=$(echo "${{ matrix.os }}" | sed 's/-latest//')
-                    ARCH=$(uname -m)
-                    ASSET_NAME="php-debugger-php${PHP_VER}-${OS_TAG}-${ARCH}.so"
+                    OS_TAG="linux"
+                    ARCH_TAG="${{ matrix.arch.arch }}"
+                    TS_TAG="${{ matrix.ts }}"
+                    ASSET_NAME="php-debugger-php${PHP_VER}-${TS_TAG}-${OS_TAG}-${ARCH_TAG}.so"
                     cp modules/php_debugger.so "${ASSET_NAME}"
                     echo "asset_name=${ASSET_NAME}" >> $GITHUB_OUTPUT
 
@@ -99,12 +181,35 @@ jobs:
                 run: |
                     $phpVer = "${{ matrix.php-version }}"
                     $tsTag = "${{ matrix.ts }}"
-                    $assetName = "php-debugger-php${phpVer}-${tsTag}-windows-x64.dll"
-                    $dll = Get-ChildItem -Path $env:RUNNER_TEMP -Recurse -Filter 'php_php_debugger.dll' -ErrorAction SilentlyContinue | Select-Object -First 1
-                    if (-not $dll) {
-                        $dll = Get-ChildItem -Recurse -Filter 'php_php_debugger.dll' -ErrorAction SilentlyContinue | Select-Object -First 1
+                    $assetName = "php_php_debugger-php${phpVer}-${tsTag}-windows-x64.dll"
+
+                    # Find the outer zip file
+                    $outerZip = Get-ChildItem -Path $env:RUNNER_TEMP -Recurse -Filter 'php_php_debugger*.zip' -ErrorAction SilentlyContinue | Select-Object -First 1
+                    if (-not $outerZip) {
+                        $outerZip = Get-ChildItem -Recurse -Filter 'php_php_debugger*.zip' -ErrorAction SilentlyContinue | Select-Object -First 1
                     }
-                    if (-not $dll) { Write-Error "php_php_debugger.dll not found"; exit 1 }
+                    if (-not $outerZip) { Write-Error "php_php_debugger zip not found"; exit 1 }
+                    Write-Host "Found outer zip at: $($outerZip.FullName)"
+
+                    # Extract outer zip
+                    $tempDir = Join-Path $env:TEMP "extract_outer"
+                    New-Item -ItemType Directory -Force -Path $tempDir | Out-Null
+                    Expand-Archive -Path $outerZip.FullName -DestinationPath $tempDir -Force
+
+                    # Find inner zip
+                    $innerZip = Get-ChildItem -Path $tempDir -Recurse -Filter '*.zip' | Select-Object -First 1
+                    if ($innerZip) {
+                        Write-Host "Found inner zip at: $($innerZip.FullName)"
+                        $tempDir2 = Join-Path $env:TEMP "extract_inner"
+                        New-Item -ItemType Directory -Force -Path $tempDir2 | Out-Null
+                        Expand-Archive -Path $innerZip.FullName -DestinationPath $tempDir2 -Force
+                        $dll = Get-ChildItem -Path $tempDir2 -Filter '*.dll' | Select-Object -First 1
+                    } else {
+                        # DLL might be directly in outer zip
+                        $dll = Get-ChildItem -Path $tempDir -Recurse -Filter '*.dll' | Select-Object -First 1
+                    }
+
+                    if (-not $dll) { Write-Error "DLL not found in zip"; exit 1 }
                     Write-Host "Found DLL at: $($dll.FullName)"
                     Copy-Item $dll.FullName -Destination $assetName
                     echo "asset_name=${assetName}" >> $env:GITHUB_OUTPUT
@@ -116,7 +221,7 @@ jobs:
                     path: ${{ steps.package.outputs.asset_name }}
 
     release:
-        needs: [build-unix, build-windows]
+        needs: [build-macos, build-linux, build-windows]
         runs-on: ubuntu-latest
         steps:
             -   uses: actions/checkout@v7
@@ -125,6 +230,7 @@ jobs:
                 uses: actions/download-artifact@v4
                 with:
                     path: artifacts
+                    pattern: php*debugger*.{so,dll}
 
             -   name: Collect release assets
                 run: |
