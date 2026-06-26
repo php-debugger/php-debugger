@@ -2498,7 +2498,6 @@ static int xdebug_dbgp_cmdloop(xdebug_con *context, int bail)
 		!XG_DBG(context).do_finish &&
 		!XG_DBG(context).do_next &&
 		!XG_DBG(context).do_step &&
-		!XG_DBG(context).send_notifications &&
 		!xdebug_lib_start_upon_error() &&
 		(!XG_DBG(context).line_breakpoints || XG_DBG(context).line_breakpoints->size == 0) &&
 		(!XG_DBG(context).exception_breakpoints || XG_DBG(context).exception_breakpoints->size == 0) &&
