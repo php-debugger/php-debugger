@@ -181,7 +181,7 @@ jobs:
                 run: |
                     $phpVer = "${{ matrix.php-version }}"
                     $tsTag = "${{ matrix.ts }}"
-                    $assetName = "php_php_debugger-php${phpVer}-${tsTag}-windows-x64.dll"
+                    $assetName = "php_php-debugger-php${phpVer}-${tsTag}-windows-x64.dll"
 
                     # Find the outer zip file
                     $outerZip = Get-ChildItem -Path $env:RUNNER_TEMP -Recurse -Filter 'php_php_debugger*.zip' -ErrorAction SilentlyContinue | Select-Object -First 1
