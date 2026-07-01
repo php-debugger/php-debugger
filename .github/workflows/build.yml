@@ -32,7 +32,7 @@ jobs:
         runs-on: ${{ matrix.os }}
         name: "${{ matrix.name }} — PHP ${{ inputs.php-version || '8.5' }}"
         steps:
-            -   uses: actions/checkout@v6
+            -   uses: actions/checkout@v7
 
             -   name: Setup PHP
                 uses: shivammathur/setup-php@v2
@@ -84,7 +84,7 @@ jobs:
         runs-on: windows-2022
         name: "Windows (x64) — PHP ${{ inputs.php-version || '8.5' }} — ${{ matrix.ts == 'ts' && 'TS' || 'NTS' }}"
         steps:
-            -   uses: actions/checkout@v6
+            -   uses: actions/checkout@v7
 
             -   name: Build the extension
                 uses: php/php-windows-builder/extension@v1
