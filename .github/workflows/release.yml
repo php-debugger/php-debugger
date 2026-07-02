@@ -9,7 +9,7 @@ permissions:
     contents: write
 
 env:
-    # Common configure flags for all Unix builds
+    # Common configure flags for all Unix builds (JIT disabled - incompatible with php-debugger)
     CONFIGURE_FLAGS: >-
       --with-mhash
       --with-pic
@@ -30,7 +30,7 @@ env:
     # Linux-specific flags
     LINUX_FLAGS: --with-pdo-sqlite=/usr --with-sqlite3=/usr --with-iconv --with-readline --with-curl
 
-    # Windows-specific flags
+    # Windows-specific flags (JIT disabled - incompatible with php-debugger)
     WINDOWS_FLAGS: --enable-php-debugger --with-mhash --with-pic --enable-mbstring --enable-mysqlnd --with-sodium=shared --with-curl --with-openssl --disable-phpdbg --disable-opcache-jit
 
 jobs:
@@ -161,7 +161,7 @@ jobs:
         runs-on: ${{ matrix.arch.runner }}
         name: "Linux — PHP ${{ matrix.php-version }} — ${{ matrix.arch.arch }} — ${{ matrix.ts == 'ts' && 'TS' || 'NTS' }}"
         steps:
-            -   uses: actions/checkout@v6
+            -   uses: actions/checkout@v7
 
             -   name: Setup PHP
                 uses: shivammathur/setup-php@v2
@@ -298,7 +298,7 @@ jobs:
         name: "PHP Binary MacOS — PHP ${{ matrix.php-version }} — ${{ matrix.arch }} — ${{ matrix.ts == 'ts' && 'TS' || 'NTS' }}"
         steps:
             -   name: Checkout extension
-                uses: actions/checkout@v6
+                uses: actions/checkout@v7
                 with:
                     path: ext-src
 
@@ -493,7 +493,7 @@ jobs:
         name: "PHP Binary Linux — PHP ${{ matrix.php-version }} — ${{ matrix.arch.arch }} — ${{ matrix.ts == 'ts' && 'TS' || 'NTS' }}"
         steps:
             -   name: Checkout extension
-                uses: actions/checkout@v6
+                uses: actions/checkout@v7
                 with:
                     path: ext-src
 
@@ -594,7 +594,7 @@ jobs:
         name: "PHP Binary Windows — PHP ${{ matrix.php-version }} — ${{ matrix.ts == 'ts' && 'TS' || 'NTS' }}"
         steps:
             -   name: Checkout extension
-                uses: actions/checkout@v6
+                uses: actions/checkout@v7
                 with:
                     path: ext-src
 
@@ -663,11 +663,13 @@ jobs:
                     }
                     Write-Host "Found PHP at: $php"
 
-                    & $php -m | Select-String -Pattern "php_debugger"
-                    if (-not $?) { Write-Error "php_debugger not in module list"; exit 1 }
+                    if (-not (& $php -m | Select-String -Pattern "php_debugger" -Quiet)) {
+                        Write-Error "php_debugger not in module list"; exit 1
+                    }
 
-                    & $php -m | Select-String -Pattern "xdebug"
-                    if (-not $?) { Write-Error "xdebug not in module list"; exit 1 }
+                    if (-not (& $php -m | Select-String -Pattern "xdebug" -Quiet)) {
+                        Write-Error "xdebug not in module list"; exit 1
+                    }
 
                     & $php -r "assert(extension_loaded('php_debugger'), 'php_debugger not loaded'); assert(extension_loaded('xdebug'), 'xdebug compat alias not loaded'); assert(function_exists('xdebug_info'), 'xdebug_info missing'); echo 'All tests passed!' . PHP_EOL;"
                     if ($LASTEXITCODE -ne 0) { Write-Error "PHP tests failed"; exit 1 }
