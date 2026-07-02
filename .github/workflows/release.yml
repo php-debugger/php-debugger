@@ -21,19 +21,52 @@ env:
       --with-zlib
       --disable-phpdbg
       --enable-opcache
-      --enable-embed
+      --disable-opcache-jit
       --enable-php-debugger
 
     # macOS-specific flags (iconv path is set dynamically from SDK, using system sqlite and curl)
     MACOS_FLAGS: --with-pdo-sqlite --with-sqlite3 --without-readline --with-curl
 
     # Linux-specific flags
-    LINUX_FLAGS: --with-pdo-sqlite=/usr --with-sqlite3=/usr --with-pear --enable-fpm --with-fpm-user=www-data --with-fpm-group=www-data --with-iconv --with-readline --with-curl
+    LINUX_FLAGS: --with-pdo-sqlite=/usr --with-sqlite3=/usr --with-iconv --with-readline --with-curl
 
     # Windows-specific flags
-    WINDOWS_FLAGS: --enable-php-debugger --with-mhash --with-pic --enable-mbstring --enable-mysqlnd --with-sodium=shared --with-curl --with-openssl --disable-phpdbg --enable-embed
+    WINDOWS_FLAGS: --enable-php-debugger --with-mhash --with-pic --enable-mbstring --enable-mysqlnd --with-sodium=shared --with-curl --with-openssl --disable-phpdbg --disable-opcache-jit
 
 jobs:
+    resolve-php-versions:
+        runs-on: ubuntu-latest
+        outputs:
+            php-8-2-tag: ${{ steps.resolve.outputs.php-8-2-tag }}
+            php-8-3-tag: ${{ steps.resolve.outputs.php-8-3-tag }}
+            php-8-4-tag: ${{ steps.resolve.outputs.php-8-4-tag }}
+            php-8-5-tag: ${{ steps.resolve.outputs.php-8-5-tag }}
+        steps:
+            -   name: Resolve PHP version tags
+                id: resolve
+                run: |
+                    for version in 8.2 8.3 8.4 8.5; do
+                        # Get all tags for the version and find the latest stable release
+                        PHP_TAG=$(git ls-remote --tags https://github.com/php/php-src.git | \
+                          grep "refs/tags/php-${version}\." | \
+                          grep -v '\^{}' | \
+                          grep -vE 'RC|alpha|beta' | \
+                          sed 's/.*refs\/tags\///' | \
+                          sort -V | \
+                          tail -1)
+
+                        if [ -z "$PHP_TAG" ]; then
+                            echo "No stable tag found for PHP ${version}, using branch PHP-${version}"
+                            PHP_TAG="PHP-${version}"
+                        else
+                            echo "Using latest stable tag for PHP ${version}: ${PHP_TAG}"
+                        fi
+
+                        # Set output with underscores instead of dots for output names
+                        output_name="php-$(echo $version | tr '.' '-')-tag"
+                        echo "${output_name}=${PHP_TAG}" >> $GITHUB_OUTPUT
+                    done
+
     build-macos:
         strategy:
             fail-fast: false
@@ -237,7 +270,7 @@ jobs:
                     if (-not $dll) { Write-Error "DLL not found in zip"; exit 1 }
                     Write-Host "Found DLL at: $($dll.FullName)"
                     Copy-Item $dll.FullName -Destination $assetName
-                    echo "asset_name=${assetName}" >> $env:GITHUB_OUTPUT
+                    Add-Content -Path $env:GITHUB_OUTPUT -Value "asset_name=${assetName}" -Encoding utf8
 
             -   name: Upload artifact
                 uses: actions/upload-artifact@v6
@@ -246,6 +279,7 @@ jobs:
                     path: ${{ steps.package.outputs.asset_name }}
 
     build-php-macos:
+        needs: resolve-php-versions
         strategy:
             fail-fast: false
             matrix:
@@ -276,31 +310,22 @@ jobs:
                         arch -x86_64 /usr/local/bin/brew install autoconf automake libtool bison re2c pkg-config \
                           openssl@3 argon2 oniguruma libsodium
                     else
-                        # arm64 native build can use system libraries
-                        brew install autoconf automake libtool bison re2c pkg-config argon2
+                        # arm64 native build - explicitly install dependencies for reliability
+                        brew install autoconf automake libtool bison re2c pkg-config \
+                          openssl@3 argon2 oniguruma libsodium
                     fi
 
             -   name: Clone PHP source
                 run: |
-                    # Fetch the latest stable tag for the PHP version dynamically
-                    PHP_VERSION="${{ matrix.php-version }}"
+                    # Use the pre-resolved PHP tag from the resolve-php-versions job
+                    case "${{ matrix.php-version }}" in
+                        8.2) PHP_TAG="${{ needs.resolve-php-versions.outputs.php-8-2-tag }}" ;;
+                        8.3) PHP_TAG="${{ needs.resolve-php-versions.outputs.php-8-3-tag }}" ;;
+                        8.4) PHP_TAG="${{ needs.resolve-php-versions.outputs.php-8-4-tag }}" ;;
+                        8.5) PHP_TAG="${{ needs.resolve-php-versions.outputs.php-8-5-tag }}" ;;
+                    esac
 
-                    # Get all tags for the version and find the latest stable release
-                    PHP_TAG=$(git ls-remote --tags https://github.com/php/php-src.git | \
-                      grep "refs/tags/php-${PHP_VERSION}\." | \
-                      grep -v '\^{}' | \
-                      grep -v 'RC\|alpha\|beta' | \
-                      sed 's/.*refs\/tags\///' | \
-                      sort -V | \
-                      tail -1)
-
-                    if [ -z "$PHP_TAG" ]; then
-                        echo "No stable tag found for PHP ${PHP_VERSION}, using branch PHP-${PHP_VERSION}"
-                        PHP_TAG="PHP-${PHP_VERSION}"
-                    else
-                        echo "Using latest stable tag: ${PHP_TAG}"
-                    fi
-
+                    echo "Using resolved PHP tag: ${PHP_TAG}"
                     git clone --depth=1 --branch="${PHP_TAG}" \
                       https://github.com/php/php-src.git ~/php-src
 
@@ -379,7 +404,6 @@ jobs:
                           $CONFIGURE_FLAGS \
                           $MACOS_FLAGS \
                           --with-iconv="${ICONV_PATH}" \
-                          --disable-opcache-jit \
                           ${{ matrix.ts == 'ts' && '--enable-zts' || '' }}
                     fi
 
@@ -448,6 +472,7 @@ jobs:
                     path: ${{ steps.package.outputs.asset_path }}
 
     build-php-linux:
+        needs: resolve-php-versions
         strategy:
             fail-fast: false
             matrix:
@@ -481,25 +506,15 @@ jobs:
 
             -   name: Clone PHP source
                 run: |
-                    # Fetch the latest stable tag for the PHP version dynamically
-                    PHP_VERSION="${{ matrix.php-version }}"
+                    # Use the pre-resolved PHP tag from the resolve-php-versions job
+                    case "${{ matrix.php-version }}" in
+                        8.2) PHP_TAG="${{ needs.resolve-php-versions.outputs.php-8-2-tag }}" ;;
+                        8.3) PHP_TAG="${{ needs.resolve-php-versions.outputs.php-8-3-tag }}" ;;
+                        8.4) PHP_TAG="${{ needs.resolve-php-versions.outputs.php-8-4-tag }}" ;;
+                        8.5) PHP_TAG="${{ needs.resolve-php-versions.outputs.php-8-5-tag }}" ;;
+                    esac
 
-                    # Get all tags for the version and find the latest stable release
-                    PHP_TAG=$(git ls-remote --tags https://github.com/php/php-src.git | \
-                      grep "refs/tags/php-${PHP_VERSION}\." | \
-                      grep -v '\^{}' | \
-                      grep -v 'RC\|alpha\|beta' | \
-                      sed 's/.*refs\/tags\///' | \
-                      sort -V | \
-                      tail -1)
-
-                    if [ -z "$PHP_TAG" ]; then
-                        echo "No stable tag found for PHP ${PHP_VERSION}, using branch PHP-${PHP_VERSION}"
-                        PHP_TAG="PHP-${PHP_VERSION}"
-                    else
-                        echo "Using latest stable tag: ${PHP_TAG}"
-                    fi
-
+                    echo "Using resolved PHP tag: ${PHP_TAG}"
                     git clone --depth=1 --branch="${PHP_TAG}" \
                       https://github.com/php/php-src.git ~/php-src
 
@@ -563,6 +578,7 @@ jobs:
                     path: ${{ steps.package.outputs.asset_path }}
 
     build-php-windows:
+        needs: resolve-php-versions
         strategy:
             fail-fast: false
             matrix:
@@ -591,34 +607,15 @@ jobs:
             -   name: Clone PHP and copy extension
                 shell: pwsh
                 run: |
-                    # Fetch the latest stable tag for the PHP version dynamically
-                    $phpVersion = "${{ matrix.php-version }}"
-
-                    # Get all tags for the version and find the latest stable release
-                    $tags = git ls-remote --tags https://github.com/php/php-src.git
-                    $phpTag = $tags | Where-Object { $_ -match "refs/tags/php-$phpVersion\." } |
-                              Where-Object { $_ -notmatch '\^{}' } |
-                              Where-Object { $_ -notmatch 'RC|alpha|beta' } |
-                              ForEach-Object { $_ -replace '.*refs/tags/php-', '' } |
-                              ForEach-Object {
-                                  $parts = $_ -split '\.'
-                                  [PSCustomObject]@{
-                                      Tag = "php-$_"
-                                      Major = [int]$parts[0]
-                                      Minor = [int]$parts[1]
-                                      Patch = [int]$parts[2]
-                                  }
-                              } |
-                              Sort-Object -Property Major,Minor,Patch -Descending |
-                              Select-Object -First 1 -ExpandProperty Tag
-
-                    if (-not $phpTag) {
-                        Write-Host "No stable tag found for PHP $phpVersion, using branch PHP-$phpVersion"
-                        $phpTag = "PHP-$phpVersion"
-                    } else {
-                        Write-Host "Using latest stable tag: $phpTag"
+                    # Use the pre-resolved PHP tag from the resolve-php-versions job
+                    $phpTag = switch ("${{ matrix.php-version }}") {
+                        "8.2" { "${{ needs.resolve-php-versions.outputs.php-8-2-tag }}" }
+                        "8.3" { "${{ needs.resolve-php-versions.outputs.php-8-3-tag }}" }
+                        "8.4" { "${{ needs.resolve-php-versions.outputs.php-8-4-tag }}" }
+                        "8.5" { "${{ needs.resolve-php-versions.outputs.php-8-5-tag }}" }
                     }
 
+                    Write-Host "Using resolved PHP tag: $phpTag"
                     git clone --depth=1 --branch=$phpTag https://github.com/php/php-src.git C:\php-sdk\phpdev\vs17\x64\php-src
                     xcopy /E /I /Y ext-src C:\php-sdk\phpdev\vs17\x64\php-src\ext\php_debugger
 
@@ -708,7 +705,7 @@ jobs:
 
                     Write-Host "Found PHP at: $php"
                     Copy-Item $php -Destination $assetName
-                    echo "asset_name=${assetName}" >> $env:GITHUB_OUTPUT
+                    Add-Content -Path $env:GITHUB_OUTPUT -Value "asset_name=${assetName}" -Encoding utf8
 
             -   name: Upload artifact
                 uses: actions/upload-artifact@v6
