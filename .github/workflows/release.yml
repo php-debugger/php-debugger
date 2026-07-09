@@ -8,7 +8,65 @@ on:
 permissions:
     contents: write
 
+env:
+    # Common configure flags for all Unix builds (JIT disabled - incompatible with php-debugger)
+    CONFIGURE_FLAGS: >-
+      --with-mhash
+      --with-pic
+      --enable-mbstring
+      --enable-mysqlnd
+      --with-password-argon2
+      --with-sodium=shared
+      --with-openssl
+      --with-zlib
+      --disable-phpdbg
+      --enable-opcache
+      --disable-opcache-jit
+      --enable-php-debugger
+
+    # macOS-specific flags (iconv path is set dynamically from SDK, using system sqlite and curl)
+    MACOS_FLAGS: --with-pdo-sqlite --with-sqlite3 --without-readline --with-curl
+
+    # Linux-specific flags
+    LINUX_FLAGS: --with-pdo-sqlite=/usr --with-sqlite3=/usr --with-iconv --with-readline --with-curl
+
+    # Windows-specific flags (JIT disabled - incompatible with php-debugger)
+    WINDOWS_FLAGS: --enable-php-debugger --with-mhash --with-pic --enable-mbstring --enable-mysqlnd --with-sodium=shared --with-curl --with-openssl --disable-phpdbg --disable-opcache-jit
+
 jobs:
+    resolve-php-versions:
+        runs-on: ubuntu-latest
+        outputs:
+            php-8-2-tag: ${{ steps.resolve.outputs.php-8-2-tag }}
+            php-8-3-tag: ${{ steps.resolve.outputs.php-8-3-tag }}
+            php-8-4-tag: ${{ steps.resolve.outputs.php-8-4-tag }}
+            php-8-5-tag: ${{ steps.resolve.outputs.php-8-5-tag }}
+        steps:
+            -   name: Resolve PHP version tags
+                id: resolve
+                run: |
+                    for version in 8.2 8.3 8.4 8.5; do
+                        # Get all tags for the version and find the latest stable release
+                        PHP_TAG=$(git ls-remote --tags https://github.com/php/php-src.git | \
+                          grep "refs/tags/php-${version}\." | \
+                          grep -v '\^{}' | \
+                          grep -vE 'RC|alpha|beta' | \
+                          sed 's/.*refs\/tags\///' | \
+                          sort -V | \
+                          tail -1)
+
+                        if [ -z "$PHP_TAG" ]; then
+                            echo "No stable tag found for PHP ${version}, using branch PHP-${version}"
+                            PHP_TAG="PHP-${version}"
+                        else
+                            echo "Using latest stable tag for PHP ${version}: ${PHP_TAG}"
+                        fi
+
+                        # Set output with underscores instead of dots for output names
+                        output_name="php-$(echo $version | tr '.' '-')-tag"
+                        echo "${output_name}=${PHP_TAG}" >> $GITHUB_OUTPUT
+                    done
+
     build-macos:
         strategy:
             fail-fast: false
@@ -78,7 +136,7 @@ jobs:
                     echo "asset_name=${ASSET_NAME}" >> $GITHUB_OUTPUT
 
             -   name: Upload artifact
-                uses: actions/upload-artifact@v4
+                uses: actions/upload-artifact@v6
                 with:
                     name: ${{ steps.package.outputs.asset_name }}
                     path: ${{ steps.package.outputs.asset_name }}
@@ -103,7 +161,7 @@ jobs:
         runs-on: ${{ matrix.arch.runner }}
         name: "Linux — PHP ${{ matrix.php-version }} — ${{ matrix.arch.arch }} — ${{ matrix.ts == 'ts' && 'TS' || 'NTS' }}"
         steps:
-            -   uses: actions/checkout@v6
+            -   uses: actions/checkout@v7
 
             -   name: Setup PHP
                 uses: shivammathur/setup-php@v2
@@ -212,7 +270,444 @@ jobs:
                     if (-not $dll) { Write-Error "DLL not found in zip"; exit 1 }
                     Write-Host "Found DLL at: $($dll.FullName)"
                     Copy-Item $dll.FullName -Destination $assetName
-                    echo "asset_name=${assetName}" >> $env:GITHUB_OUTPUT
+                    Add-Content -Path $env:GITHUB_OUTPUT -Value "asset_name=${assetName}" -Encoding utf8
+
+            -   name: Upload artifact
+                uses: actions/upload-artifact@v6
+                with:
+                    name: ${{ steps.package.outputs.asset_name }}
+                    path: ${{ steps.package.outputs.asset_name }}
+
+    build-php-macos:
+        needs: resolve-php-versions
+        strategy:
+            fail-fast: false
+            matrix:
+                php-version:
+                    - '8.2'
+                    - '8.3'
+                    - '8.4'
+                    - '8.5'
+                ts:
+                    - nts
+                    - ts
+                arch:
+                    - arm64
+                    - x86_64
+        runs-on: macos-latest
+        name: "PHP Binary MacOS — PHP ${{ matrix.php-version }} — ${{ matrix.arch }} — ${{ matrix.ts == 'ts' && 'TS' || 'NTS' }}"
+        steps:
+            -   name: Checkout extension
+                uses: actions/checkout@v7
+                with:
+                    path: ext-src
+
+            -   name: Install build dependencies
+                run: |
+                    if [[ "${{ matrix.arch }}" == "x86_64" ]]; then
+                        # x86_64 cross-compilation needs x86_64 versions of libraries
+                        arch -x86_64 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+                        arch -x86_64 /usr/local/bin/brew install autoconf automake libtool bison re2c pkg-config \
+                          openssl@3 argon2 oniguruma libsodium
+                    else
+                        # arm64 native build - explicitly install dependencies for reliability
+                        brew install autoconf automake libtool bison re2c pkg-config \
+                          openssl@3 argon2 oniguruma libsodium
+                    fi
+
+            -   name: Clone PHP source
+                run: |
+                    # Use the pre-resolved PHP tag from the resolve-php-versions job
+                    case "${{ matrix.php-version }}" in
+                        8.2) PHP_TAG="${{ needs.resolve-php-versions.outputs.php-8-2-tag }}" ;;
+                        8.3) PHP_TAG="${{ needs.resolve-php-versions.outputs.php-8-3-tag }}" ;;
+                        8.4) PHP_TAG="${{ needs.resolve-php-versions.outputs.php-8-4-tag }}" ;;
+                        8.5) PHP_TAG="${{ needs.resolve-php-versions.outputs.php-8-5-tag }}" ;;
+                    esac
+
+                    echo "Using resolved PHP tag: ${PHP_TAG}"
+                    git clone --depth=1 --branch="${PHP_TAG}" \
+                      https://github.com/php/php-src.git ~/php-src
+
+            -   name: Copy extension into php-src
+                run: |
+                    cp -r ext-src ~/php-src/ext/php_debugger
+                    mkdir -p ~/php-src/m4
+                    cp ext-src/m4/*.m4 ~/php-src/m4/
+
+            -   name: Build PHP with static php_debugger
+                run: |
+                    cd ~/php-src
+
+                    # Get macOS SDK path for iconv headers
+                    SDK_PATH=$(xcrun --show-sdk-path)
+                    ICONV_PATH="${SDK_PATH}/usr"
+
+                    # Extract the actual PHP version from the cloned source (from main/php_version.h)
+                    PHP_FULL_VERSION=$(grep 'PHP_VERSION ' main/php_version.h | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+                    PHP_MINOR_VERSION="${{ matrix.php-version }}"
+
+                    if [[ "${{ matrix.arch }}" == "arm64" ]]; then
+                        export PATH="/opt/homebrew/opt/bison/bin:/opt/homebrew/bin:$PATH"
+
+                        PREFIX="/opt/homebrew/Cellar/php@${PHP_MINOR_VERSION}/${PHP_FULL_VERSION}"
+                        LOCALSTATEDIR="/opt/homebrew/var"
+                        SYSCONFDIR="/opt/homebrew/etc/php/${PHP_MINOR_VERSION}"
+                        CONFIG_FILE_PATH="/opt/homebrew/etc/php/${PHP_MINOR_VERSION}"
+                        CONFIG_FILE_SCAN_DIR="/opt/homebrew/etc/php/${PHP_MINOR_VERSION}/conf.d"
+
+                        # Create directories if they don't exist
+                        sudo mkdir -p "${PREFIX}"
+                        sudo mkdir -p "${LOCALSTATEDIR}"
+                        sudo mkdir -p "${CONFIG_FILE_SCAN_DIR}"
+
+                        ./buildconf --force
+
+                        CFLAGS="-arch arm64" \
+                        LDFLAGS="-arch arm64" \
+                        ./configure \
+                          --prefix="${PREFIX}" \
+                          --localstatedir="${LOCALSTATEDIR}" \
+                          --sysconfdir="${SYSCONFDIR}" \
+                          --with-config-file-path="${CONFIG_FILE_PATH}" \
+                          --with-config-file-scan-dir="${CONFIG_FILE_SCAN_DIR}" \
+                          $CONFIGURE_FLAGS \
+                          $MACOS_FLAGS \
+                          --with-iconv="${ICONV_PATH}" \
+                          ${{ matrix.ts == 'ts' && '--enable-zts' || '' }}
+                    else
+                        # x86_64 needs explicit library paths for cross-compilation
+                        export PATH="/usr/local/opt/bison/bin:/usr/local/bin:$PATH"
+                        export PKG_CONFIG_PATH="/usr/local/opt/openssl@3/lib/pkgconfig:/usr/local/opt/oniguruma/lib/pkgconfig"
+
+                        PREFIX="/usr/local/Cellar/php@${PHP_MINOR_VERSION}/${PHP_FULL_VERSION}"
+                        LOCALSTATEDIR="/usr/local/var"
+                        SYSCONFDIR="/usr/local/etc/php/${PHP_MINOR_VERSION}"
+                        CONFIG_FILE_PATH="/usr/local/etc/php/${PHP_MINOR_VERSION}"
+                        CONFIG_FILE_SCAN_DIR="/usr/local/etc/php/${PHP_MINOR_VERSION}/conf.d"
+
+                        # Create directories if they don't exist
+                        sudo mkdir -p "${PREFIX}"
+                        sudo mkdir -p "${LOCALSTATEDIR}"
+                        sudo mkdir -p "${CONFIG_FILE_SCAN_DIR}"
+
+                        ./buildconf --force
+
+                        CFLAGS="-arch x86_64" \
+                        LDFLAGS="-arch x86_64 -L/usr/local/opt/openssl@3/lib" \
+                        ./configure \
+                          --prefix="${PREFIX}" \
+                          --localstatedir="${LOCALSTATEDIR}" \
+                          --sysconfdir="${SYSCONFDIR}" \
+                          --with-config-file-path="${CONFIG_FILE_PATH}" \
+                          --with-config-file-scan-dir="${CONFIG_FILE_SCAN_DIR}" \
+                          $CONFIGURE_FLAGS \
+                          $MACOS_FLAGS \
+                          --with-iconv="${ICONV_PATH}" \
+                          ${{ matrix.ts == 'ts' && '--enable-zts' || '' }}
+                    fi
+
+                    make -j$(sysctl -n hw.logicalcpu)
+
+            -   name: Verify extension is statically linked
+                run: |
+                    cd ~/php-src
+                    if [[ "${{ matrix.arch }}" == "x86_64" ]]; then
+                        # Run x86_64 binary using Rosetta
+                        arch -x86_64 ./sapi/cli/php -m | grep -q php_debugger
+                        arch -x86_64 ./sapi/cli/php -m | grep -q xdebug
+                        arch -x86_64 ./sapi/cli/php -v | grep -q "PHP Debugger"
+                    else
+                        ./sapi/cli/php -m | grep -q php_debugger
+                        ./sapi/cli/php -m | grep -q xdebug
+                        ./sapi/cli/php -v | grep -q "PHP Debugger"
+                    fi
+
+            -   name: Test extension functionality
+                run: |
+                    cd ~/php-src
+                    if [[ "${{ matrix.arch }}" == "x86_64" ]]; then
+                        # Run x86_64 binary using Rosetta
+                        arch -x86_64 ./sapi/cli/php -r "
+                          assert(extension_loaded('php_debugger'), 'php_debugger not loaded');
+                          assert(extension_loaded('xdebug'), 'xdebug compat alias not loaded');
+                          assert(function_exists('xdebug_break'), 'xdebug_break missing');
+                          assert(function_exists('xdebug_info'), 'xdebug_info missing');
+                          assert(function_exists('php_debugger_info'), 'php_debugger_info missing');
+                          assert(ini_get('xdebug.client_port') !== false, 'xdebug.* INI missing');
+                          assert(ini_get('php_debugger.client_port') !== false, 'php_debugger.* INI missing');
+                          echo 'All tests passed!' . PHP_EOL;
+                        "
+                    else
+                        ./sapi/cli/php -r "
+                          assert(extension_loaded('php_debugger'), 'php_debugger not loaded');
+                          assert(extension_loaded('xdebug'), 'xdebug compat alias not loaded');
+                          assert(function_exists('xdebug_break'), 'xdebug_break missing');
+                          assert(function_exists('xdebug_info'), 'xdebug_info missing');
+                          assert(function_exists('php_debugger_info'), 'php_debugger_info missing');
+                          assert(ini_get('xdebug.client_port') !== false, 'xdebug.* INI missing');
+                          assert(ini_get('php_debugger.client_port') !== false, 'php_debugger.* INI missing');
+                          echo 'All tests passed!' . PHP_EOL;
+                        "
+                    fi
+
+            -   name: Package artifact
+                id: package
+                run: |
+                    cd ~/php-src
+                    PHP_VER="${{ matrix.php-version }}"
+                    OS_TAG="macos"
+                    ARCH_TAG="${{ matrix.arch }}"
+                    TS_TAG="${{ matrix.ts }}"
+                    ASSET_NAME="php-php${PHP_VER}-${TS_TAG}-${OS_TAG}-${ARCH_TAG}"
+                    cp sapi/cli/php "${ASSET_NAME}"
+                    chmod +x "${ASSET_NAME}"
+                    echo "asset_name=${ASSET_NAME}" >> $GITHUB_OUTPUT
+                    echo "asset_path=${HOME}/php-src/${ASSET_NAME}" >> $GITHUB_OUTPUT
+
+            -   name: Upload artifact
+                uses: actions/upload-artifact@v6
+                with:
+                    name: ${{ steps.package.outputs.asset_name }}
+                    path: ${{ steps.package.outputs.asset_path }}
+
+    build-php-linux:
+        needs: resolve-php-versions
+        strategy:
+            fail-fast: false
+            matrix:
+                php-version:
+                    - '8.2'
+                    - '8.3'
+                    - '8.4'
+                    - '8.5'
+                ts:
+                    - nts
+                    - ts
+                arch:
+                    - runner: ubuntu-latest
+                      arch: x86_64
+                    - runner: ubuntu-24.04-arm
+                      arch: arm64
+        runs-on: ${{ matrix.arch.runner }}
+        name: "PHP Binary Linux — PHP ${{ matrix.php-version }} — ${{ matrix.arch.arch }} — ${{ matrix.ts == 'ts' && 'TS' || 'NTS' }}"
+        steps:
+            -   name: Checkout extension
+                uses: actions/checkout@v7
+                with:
+                    path: ext-src
+
+            -   name: Install build dependencies
+                run: |
+                    sudo apt-get update
+                    sudo apt-get install -y autoconf automake libtool bison re2c pkg-config \
+                      libxml2-dev libsqlite3-dev libcurl4-openssl-dev libssl-dev libreadline-dev \
+                      libsodium-dev libargon2-dev libonig-dev build-essential
+
+            -   name: Clone PHP source
+                run: |
+                    # Use the pre-resolved PHP tag from the resolve-php-versions job
+                    case "${{ matrix.php-version }}" in
+                        8.2) PHP_TAG="${{ needs.resolve-php-versions.outputs.php-8-2-tag }}" ;;
+                        8.3) PHP_TAG="${{ needs.resolve-php-versions.outputs.php-8-3-tag }}" ;;
+                        8.4) PHP_TAG="${{ needs.resolve-php-versions.outputs.php-8-4-tag }}" ;;
+                        8.5) PHP_TAG="${{ needs.resolve-php-versions.outputs.php-8-5-tag }}" ;;
+                    esac
+
+                    echo "Using resolved PHP tag: ${PHP_TAG}"
+                    git clone --depth=1 --branch="${PHP_TAG}" \
+                      https://github.com/php/php-src.git ~/php-src
+
+            -   name: Copy extension into php-src
+                run: |
+                    cp -r ext-src ~/php-src/ext/php_debugger
+                    mkdir -p ~/php-src/m4
+                    cp ext-src/m4/*.m4 ~/php-src/m4/
+
+            -   name: Build PHP with static php_debugger
+                run: |
+                    cd ~/php-src
+                    ./buildconf --force
+                    ./configure \
+                      --with-config-file-path=/usr/local/etc/php \
+                      --with-config-file-scan-dir=/usr/local/etc/php/conf.d \
+                      $CONFIGURE_FLAGS \
+                      $LINUX_FLAGS \
+                      ${{ matrix.ts == 'ts' && '--enable-zts' || '' }}
+                    make -j$(nproc)
+
+            -   name: Verify extension is statically linked
+                run: |
+                    cd ~/php-src
+                    ./sapi/cli/php -m | grep -q php_debugger
+                    ./sapi/cli/php -m | grep -q xdebug
+                    ./sapi/cli/php -v | grep -q "PHP Debugger"
+
+            -   name: Test extension functionality
+                run: |
+                    cd ~/php-src
+                    ./sapi/cli/php -r "
+                      assert(extension_loaded('php_debugger'), 'php_debugger not loaded');
+                      assert(extension_loaded('xdebug'), 'xdebug compat alias not loaded');
+                      assert(function_exists('xdebug_break'), 'xdebug_break missing');
+                      assert(function_exists('xdebug_info'), 'xdebug_info missing');
+                      assert(function_exists('php_debugger_info'), 'php_debugger_info missing');
+                      assert(ini_get('xdebug.client_port') !== false, 'xdebug.* INI missing');
+                      assert(ini_get('php_debugger.client_port') !== false, 'php_debugger.* INI missing');
+                      echo 'All tests passed!' . PHP_EOL;
+                    "
+
+            -   name: Package artifact
+                id: package
+                run: |
+                    cd ~/php-src
+                    PHP_VER="${{ matrix.php-version }}"
+                    OS_TAG="linux"
+                    ARCH_TAG="${{ matrix.arch.arch }}"
+                    TS_TAG="${{ matrix.ts }}"
+                    ASSET_NAME="php-php${PHP_VER}-${TS_TAG}-${OS_TAG}-${ARCH_TAG}"
+                    cp sapi/cli/php "${ASSET_NAME}"
+                    chmod +x "${ASSET_NAME}"
+                    echo "asset_name=${ASSET_NAME}" >> $GITHUB_OUTPUT
+                    echo "asset_path=${HOME}/php-src/${ASSET_NAME}" >> $GITHUB_OUTPUT
+
+            -   name: Upload artifact
+                uses: actions/upload-artifact@v6
+                with:
+                    name: ${{ steps.package.outputs.asset_name }}
+                    path: ${{ steps.package.outputs.asset_path }}
+
+    build-php-windows:
+        needs: resolve-php-versions
+        strategy:
+            fail-fast: false
+            matrix:
+                php-version:
+                    - '8.2'
+                    - '8.3'
+                    - '8.4'
+                    - '8.5'
+                ts:
+                    - nts
+                    - ts
+        runs-on: windows-2022
+        name: "PHP Binary Windows — PHP ${{ matrix.php-version }} — ${{ matrix.ts == 'ts' && 'TS' || 'NTS' }}"
+        steps:
+            -   name: Checkout extension
+                uses: actions/checkout@v7
+                with:
+                    path: ext-src
+
+            -   name: Setup SDK and build tree
+                shell: cmd
+                run: |
+                    git clone https://github.com/php/php-sdk-binary-tools.git C:\php-sdk
+                    C:\php-sdk\bin\phpsdk_buildtree.bat phpdev vs17 x64
+
+            -   name: Clone PHP and copy extension
+                shell: pwsh
+                run: |
+                    # Use the pre-resolved PHP tag from the resolve-php-versions job
+                    $phpTag = switch ("${{ matrix.php-version }}") {
+                        "8.2" { "${{ needs.resolve-php-versions.outputs.php-8-2-tag }}" }
+                        "8.3" { "${{ needs.resolve-php-versions.outputs.php-8-3-tag }}" }
+                        "8.4" { "${{ needs.resolve-php-versions.outputs.php-8-4-tag }}" }
+                        "8.5" { "${{ needs.resolve-php-versions.outputs.php-8-5-tag }}" }
+                    }
+
+                    Write-Host "Using resolved PHP tag: $phpTag"
+                    git clone --depth=1 --branch=$phpTag https://github.com/php/php-src.git C:\php-sdk\phpdev\vs17\x64\php-src
+                    xcopy /E /I /Y ext-src C:\php-sdk\phpdev\vs17\x64\php-src\ext\php_debugger
+
+            -   name: Create build script
+                shell: cmd
+                run: |
+                    echo @echo off > C:\php-sdk\phpdev\vs17\x64\php-src\build.bat
+                    echo cd /d C:\php-sdk\phpdev\vs17\x64\php-src >> C:\php-sdk\phpdev\vs17\x64\php-src\build.bat
+                    echo if errorlevel 1 exit /b 1 >> C:\php-sdk\phpdev\vs17\x64\php-src\build.bat
+                    echo call buildconf.bat --force >> C:\php-sdk\phpdev\vs17\x64\php-src\build.bat
+                    echo if errorlevel 1 exit /b 1 >> C:\php-sdk\phpdev\vs17\x64\php-src\build.bat
+                    echo call configure.bat ${{ env.WINDOWS_FLAGS }} ${{ matrix.ts == 'ts' && '--enable-zts' || '' }} >> C:\php-sdk\phpdev\vs17\x64\php-src\build.bat
+                    echo if errorlevel 1 exit /b 1 >> C:\php-sdk\phpdev\vs17\x64\php-src\build.bat
+                    echo nmake >> C:\php-sdk\phpdev\vs17\x64\php-src\build.bat
+
+            -   name: Build PHP
+                shell: cmd
+                run: C:\php-sdk\phpsdk-starter.bat -c vs17 -a x64 -t C:\php-sdk\phpdev\vs17\x64\php-src\build.bat
+
+            -   name: Test extension functionality
+                shell: pwsh
+                run: |
+                    $possiblePaths = @(
+                        "C:\php-sdk\phpdev\vs17\x64\php-src\x64\Release${{ matrix.ts == 'ts' && '_TS' || '' }}\php.exe",
+                        "C:\php-sdk\phpdev\vs17\x64\php-src\Release${{ matrix.ts == 'ts' && '_TS' || '' }}\php.exe",
+                        "C:\php-sdk\phpdev\vs17\x64\php-src\x64\Release\php.exe",
+                        "C:\php-sdk\phpdev\vs17\x64\php-src\Release\php.exe"
+                    )
+
+                    $php = $null
+                    foreach ($path in $possiblePaths) {
+                        if (Test-Path $path) {
+                            $php = $path
+                            break
+                        }
+                    }
+
+                    if (-not $php) {
+                        Write-Host "php.exe not found in expected locations. Searching..."
+                        Get-ChildItem -Path "C:\php-sdk\phpdev\vs17\x64\php-src" -Recurse -Filter "php.exe" -ErrorAction SilentlyContinue | Select-Object -First 1 | ForEach-Object { $php = $_.FullName }
+                    }
+
+                    if (-not $php) {
+                        Write-Error "php.exe not found anywhere in build directory"; exit 1
+                    }
+                    Write-Host "Found PHP at: $php"
+
+                    if (-not (& $php -m | Select-String -Pattern "php_debugger" -Quiet)) {
+                        Write-Error "php_debugger not in module list"; exit 1
+                    }
+
+                    if (-not (& $php -m | Select-String -Pattern "xdebug" -Quiet)) {
+                        Write-Error "xdebug not in module list"; exit 1
+                    }
+
+                    & $php -r "assert(extension_loaded('php_debugger'), 'php_debugger not loaded'); assert(extension_loaded('xdebug'), 'xdebug compat alias not loaded'); assert(function_exists('xdebug_info'), 'xdebug_info missing'); echo 'All tests passed!' . PHP_EOL;"
+                    if ($LASTEXITCODE -ne 0) { Write-Error "PHP tests failed"; exit 1 }
+
+            -   name: Package artifact
+                id: package
+                shell: pwsh
+                run: |
+                    $phpVer = "${{ matrix.php-version }}"
+                    $tsTag = "${{ matrix.ts }}"
+                    $assetName = "php-php${phpVer}-${tsTag}-windows-x64.exe"
+
+                    $possiblePaths = @(
+                        "C:\php-sdk\phpdev\vs17\x64\php-src\x64\Release${{ matrix.ts == 'ts' && '_TS' || '' }}\php.exe",
+                        "C:\php-sdk\phpdev\vs17\x64\php-src\Release${{ matrix.ts == 'ts' && '_TS' || '' }}\php.exe",
+                        "C:\php-sdk\phpdev\vs17\x64\php-src\x64\Release\php.exe",
+                        "C:\php-sdk\phpdev\vs17\x64\php-src\Release\php.exe"
+                    )
+
+                    $php = $null
+                    foreach ($path in $possiblePaths) {
+                        if (Test-Path $path) {
+                            $php = $path
+                            break
+                        }
+                    }
+
+                    if (-not $php) {
+                        Get-ChildItem -Path "C:\php-sdk\phpdev\vs17\x64\php-src" -Recurse -Filter "php.exe" -ErrorAction SilentlyContinue | Select-Object -First 1 | ForEach-Object { $php = $_.FullName }
+                    }
+
+                    if (-not $php) {
+                        Write-Error "php.exe not found"; exit 1
+                    }
+
+                    Write-Host "Found PHP at: $php"
+                    Copy-Item $php -Destination $assetName
+                    Add-Content -Path $env:GITHUB_OUTPUT -Value "asset_name=${assetName}" -Encoding utf8
 
             -   name: Upload artifact
                 uses: actions/upload-artifact@v6
@@ -221,21 +716,23 @@ jobs:
                     path: ${{ steps.package.outputs.asset_name }}
 
     release:
-        needs: [build-macos, build-linux, build-windows]
+        needs: [build-macos, build-linux, build-windows, build-php-macos, build-php-linux, build-php-windows]
         runs-on: ubuntu-latest
         steps:
             -   uses: actions/checkout@v7
 
             -   name: Download all artifacts
-                uses: actions/download-artifact@v4
+                uses: actions/download-artifact@v6
                 with:
                     path: artifacts
-                    pattern: php*debugger*.{so,dll}
 
             -   name: Collect release assets
                 run: |
                     mkdir release-assets
+                    # Copy extension files (.so and .dll)
                     find artifacts -type f \( -name '*.so' -o -name '*.dll' \) -exec cp {} release-assets/ \;
+                    # Copy PHP interpreter binaries (no extension for Unix, .exe for Windows)
+                    find artifacts -type f -name 'php-php*' ! -name '*.zip' -exec cp {} release-assets/ \;
                     ls -la release-assets/
 
             -   name: Create release
