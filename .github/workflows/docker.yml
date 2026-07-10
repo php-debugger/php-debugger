@@ -18,8 +18,35 @@ concurrency:
     group: docker-${{ github.ref }}
     cancel-in-progress: false
 
+# ---------------------------------------------------------------------------
+# Build matrix configuration
+# ---------------------------------------------------------------------------
 env:
     IMAGE_REPO: phpdebugger/php-dev
+
+    # supported PHP minor versions, oldest first: the last one is the newest
+    # stable and its cli image also gets the "latest" tag
+    PHP_VERSIONS: '["8.2", "8.3", "8.4", "8.5"]'
+
+    # official image variants to mirror (apache only exists on Debian);
+    # family selects the Dockerfile (docker/Dockerfile.<family>)
+    VARIANTS: |
+        [
+            {"variant": "cli",        "family": "debian"},
+            {"variant": "fpm",        "family": "debian"},
+            {"variant": "apache",     "family": "debian"},
+            {"variant": "zts",        "family": "debian"},
+            {"variant": "cli-alpine", "family": "alpine"},
+            {"variant": "fpm-alpine", "family": "alpine"},
+            {"variant": "zts-alpine", "family": "alpine"}
+        ]
+
+    # architectures and the native runners that build them (no QEMU)
+    ARCHS: |
+        [
+            {"arch": "amd64", "runner": "ubuntu-latest"},
+            {"arch": "arm64", "runner": "ubuntu-24.04-arm"}
+        ]
 
 jobs:
     resolve:
@@ -29,6 +56,7 @@ jobs:
             debugger-sha: ${{ steps.release.outputs.sha }}
             variants: ${{ steps.matrix.outputs.variants }}
             builds: ${{ steps.matrix.outputs.builds }}
+            latest-php: ${{ steps.matrix.outputs.latest-php }}
         steps:
             -   name: Resolve release to build
                 id: release
@@ -53,15 +81,13 @@ jobs:
             -   name: Compute build matrix
                 id: matrix
                 run: |
-                    cat > /tmp/variants.json <<'EOF'
-                    [
-                        {"php": "8.4", "variant": "cli",        "family": "debian"},
-                        {"php": "8.4", "variant": "fpm-alpine", "family": "alpine"}
-                    ]
-                    EOF
+                    echo "latest-php=$(jq -rn --argjson v "$PHP_VERSIONS" '$v | last')" >> "$GITHUB_OUTPUT"
+                    # PHP versions x variants
+                    jq -cn --argjson versions "$PHP_VERSIONS" --argjson variants "$VARIANTS" \
+                        '[$versions[] as $php | $variants[] | {php: $php} + .]' > /tmp/variants.json
                     echo "variants=$(jq -c '{include: .}' /tmp/variants.json)" >> "$GITHUB_OUTPUT"
-                    # cross product with the architectures / native runners
-                    echo "builds=$(jq -c '{include: [.[] as $v | ({arch: "amd64", runner: "ubuntu-latest"}, {arch: "arm64", runner: "ubuntu-24.04-arm"}) | $v + .]}' /tmp/variants.json)" >> "$GITHUB_OUTPUT"
+                    # ... x architectures
+                    echo "builds=$(jq -c --argjson archs "$ARCHS" '{include: [.[] as $v | $archs[] | $v + .]}' /tmp/variants.json)" >> "$GITHUB_OUTPUT"
 
     build:
         needs: resolve
@@ -92,6 +118,9 @@ jobs:
                     platforms: linux/${{ matrix.arch }}
                     # always re-pull the base so new PHP patch releases are picked up
                     pull: true
+                    # no provenance attestations: keeps the manifest index to
+                    # exactly one image per arch and halves registry requests
+                    provenance: false
                     build-args: |
                         BASE_TAG=${{ matrix.php }}-${{ matrix.variant }}
                         DEBUGGER_REPO=https://github.com/${{ github.repository }}.git
@@ -112,7 +141,9 @@ jobs:
             -   name: Upload digest
                 uses: actions/upload-artifact@v4
                 with:
-                    name: digests-${{ matrix.php }}-${{ matrix.variant }}-${{ matrix.arch }}
+                    # "--" delimiter keeps the merge job's download pattern from
+                    # also matching sibling variants (e.g. cli vs cli-alpine)
+                    name: digests-${{ matrix.php }}-${{ matrix.variant }}--${{ matrix.arch }}
                     path: /tmp/digests/*
                     if-no-files-found: error
                     retention-days: 1
@@ -121,6 +152,8 @@ jobs:
         needs: [resolve, build]
         strategy:
             fail-fast: false
+            # keep bursts against the Docker Hub rate limit small
+            max-parallel: 8
             matrix: ${{ fromJSON(needs.resolve.outputs.variants) }}
         name: merge ${{ matrix.php }}-${{ matrix.variant }}
         runs-on: ubuntu-latest
@@ -128,7 +161,7 @@ jobs:
             -   name: Download digests
                 uses: actions/download-artifact@v4
                 with:
-                    pattern: digests-${{ matrix.php }}-${{ matrix.variant }}-*
+                    pattern: digests-${{ matrix.php }}-${{ matrix.variant }}--*
                     merge-multiple: true
                     path: /tmp/digests
 
@@ -143,10 +176,35 @@ jobs:
 
             -   name: Create multi-arch manifest
                 working-directory: /tmp/digests
+                env:
+                    LATEST_PHP: ${{ needs.resolve.outputs.latest-php }}
                 run: |
-                    docker buildx imagetools create \
-                        --tag "$IMAGE_REPO:${{ matrix.php }}-${{ matrix.variant }}" \
-                        $(printf "$IMAGE_REPO@sha256:%s " *)
+                    # alias tags mirroring the official image: "8.x" -> cli,
+                    # "8.x-alpine" -> cli-alpine, "latest" -> newest stable cli
+                    EXTRA_TAGS=()
+                    case "${{ matrix.variant }}" in
+                        cli)
+                            EXTRA_TAGS+=(--tag "$IMAGE_REPO:${{ matrix.php }}")
+                            if [ "${{ matrix.php }}" = "$LATEST_PHP" ]; then
+                                EXTRA_TAGS+=(--tag "$IMAGE_REPO:latest")
+                            fi
+                            ;;
+                        cli-alpine)
+                            EXTRA_TAGS+=(--tag "$IMAGE_REPO:${{ matrix.php }}-alpine")
+                            ;;
+                    esac
+                    # retry with backoff: transient 429s from the registry are
+                    # expected when many jobs talk to Docker Hub at once
+                    for attempt in 1 2 3 4 5; do
+                        if docker buildx imagetools create \
+                            --tag "$IMAGE_REPO:${{ matrix.php }}-${{ matrix.variant }}" \
+                            "${EXTRA_TAGS[@]}" \
+                            $(printf "$IMAGE_REPO@sha256:%s " *); then
+                            break
+                        fi
+                        [ "$attempt" -lt 5 ] || exit 1
+                        sleep $((attempt * 60))
+                    done
 
             -   name: Inspect manifest
                 run: docker buildx imagetools inspect "$IMAGE_REPO:${{ matrix.php }}-${{ matrix.variant }}"
@@ -159,15 +217,33 @@ jobs:
         name: verify ${{ matrix.php }}-${{ matrix.variant }} ${{ matrix.arch }}
         runs-on: ${{ matrix.runner }}
         steps:
+            # authenticated pulls: anonymous runners share IPs and hit Docker
+            # Hub's unauthenticated rate limit almost immediately
+            -   name: Login to Docker Hub
+                uses: docker/login-action@v3
+                with:
+                    username: ${{ secrets.DOCKERHUB_USERNAME }}
+                    password: ${{ secrets.DOCKERHUB_TOKEN }}
+
             -   name: Smoke test image
                 env:
                     DEBUGGER_REF: ${{ needs.resolve.outputs.debugger-ref }}
                 run: |
                     set -eux
                     IMAGE="$IMAGE_REPO:${{ matrix.php }}-${{ matrix.variant }}"
+                    # the manifest must hold exactly one image per architecture
+                    # (a merge that swept up digests from a sibling variant
+                    # would show duplicated platforms here)
+                    EXPECTED="$(jq -rn --argjson a "$ARCHS" '$a | length')"
+                    ACTUAL="$(docker buildx imagetools inspect --raw "$IMAGE" | jq '[.manifests[] | select(.platform.os != "unknown")] | length')"
+                    [ "$ACTUAL" = "$EXPECTED" ]
                     docker pull "$IMAGE"
+                    # the base distro must match the variant family
+                    case "${{ matrix.family }}" in
+                        debian) docker run --rm "$IMAGE" sh -c 'grep -qi "ID=debian" /etc/os-release' ;;
+                        alpine) docker run --rm "$IMAGE" sh -c 'grep -qi "ID=alpine" /etc/os-release' ;;
+                    esac
                     docker run --rm "$IMAGE" php -v
                     docker run --rm "$IMAGE" php -v | grep -F "PHP Debugger v$DEBUGGER_REF"
                     docker run --rm "$IMAGE" php -m | grep -ix xdebug
                     docker run --rm "$IMAGE" php -r 'exit(extension_loaded("xdebug") ? 0 : 1);'
-                    docker run --rm "$IMAGE" php -i | grep -F "JIT => Not Available"
