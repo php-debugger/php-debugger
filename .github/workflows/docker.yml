@@ -1,0 +1,173 @@
+name: Docker Images
+
+# Step 3 skeleton: manual trigger only, reduced matrix, pushes to the -dev
+# Docker Hub repo. Release/schedule triggers and the full matrix follow once
+# the pipeline is proven.
+
+on:
+    release:
+        types: [published]
+    # manual fallback: rebuilds the latest release (e.g. to pick up a new
+    # PHP patch version without cutting a new debugger release)
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+concurrency:
+    group: docker-${{ github.ref }}
+    cancel-in-progress: false
+
+env:
+    IMAGE_REPO: phpdebugger/php-dev
+
+jobs:
+    resolve:
+        runs-on: ubuntu-latest
+        outputs:
+            debugger-ref: ${{ steps.release.outputs.ref }}
+            debugger-sha: ${{ steps.release.outputs.sha }}
+            variants: ${{ steps.matrix.outputs.variants }}
+            builds: ${{ steps.matrix.outputs.builds }}
+        steps:
+            -   name: Resolve release to build
+                id: release
+                env:
+                    GH_TOKEN: ${{ github.token }}
+                    EVENT_TAG: ${{ github.event.release.tag_name }}
+                run: |
+                    # on a release event build that release; on manual dispatch
+                    # fall back to the repo's latest published release
+                    REF="$EVENT_TAG"
+                    if [ -z "$REF" ]; then
+                        REF="$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName)"
+                    fi
+                    # Resolve to the commit the tag points at: passed to the
+                    # build so a re-pointed tag busts the clone layer's cache
+                    # and a mismatched clone fails loudly.
+                    SHA="$(gh api "repos/$GITHUB_REPOSITORY/commits/$REF" --jq .sha)"
+                    echo "ref=$REF" >> "$GITHUB_OUTPUT"
+                    echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+                    echo "Building php-debugger $REF ($SHA)"
+
+            -   name: Compute build matrix
+                id: matrix
+                run: |
+                    cat > /tmp/variants.json <<'EOF'
+                    [
+                        {"php": "8.4", "variant": "cli",        "family": "debian"},
+                        {"php": "8.4", "variant": "fpm-alpine", "family": "alpine"}
+                    ]
+                    EOF
+                    echo "variants=$(jq -c '{include: .}' /tmp/variants.json)" >> "$GITHUB_OUTPUT"
+                    # cross product with the architectures / native runners
+                    echo "builds=$(jq -c '{include: [.[] as $v | ({arch: "amd64", runner: "ubuntu-latest"}, {arch: "arm64", runner: "ubuntu-24.04-arm"}) | $v + .]}' /tmp/variants.json)" >> "$GITHUB_OUTPUT"
+
+    build:
+        needs: resolve
+        strategy:
+            fail-fast: false
+            matrix: ${{ fromJSON(needs.resolve.outputs.builds) }}
+        name: build ${{ matrix.php }}-${{ matrix.variant }} ${{ matrix.arch }}
+        runs-on: ${{ matrix.runner }}
+        steps:
+            -   name: Checkout
+                uses: actions/checkout@v7
+
+            -   name: Set up Docker Buildx
+                uses: docker/setup-buildx-action@v3
+
+            -   name: Login to Docker Hub
+                uses: docker/login-action@v3
+                with:
+                    username: ${{ secrets.DOCKERHUB_USERNAME }}
+                    password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+            -   name: Build and push by digest
+                id: build
+                uses: docker/build-push-action@v6
+                with:
+                    context: docker
+                    file: docker/Dockerfile.${{ matrix.family }}
+                    platforms: linux/${{ matrix.arch }}
+                    # always re-pull the base so new PHP patch releases are picked up
+                    pull: true
+                    build-args: |
+                        BASE_TAG=${{ matrix.php }}-${{ matrix.variant }}
+                        DEBUGGER_REPO=https://github.com/${{ github.repository }}.git
+                        DEBUGGER_REF=${{ needs.resolve.outputs.debugger-ref }}
+                        DEBUGGER_SHA=${{ needs.resolve.outputs.debugger-sha }}
+                    labels: |
+                        org.opencontainers.image.version=${{ needs.resolve.outputs.debugger-ref }}
+                    outputs: type=image,name=${{ env.IMAGE_REPO }},push-by-digest=true,name-canonical=true,push=true
+                    cache-from: type=gha,scope=${{ matrix.php }}-${{ matrix.variant }}-${{ matrix.arch }}
+                    cache-to: type=gha,mode=max,scope=${{ matrix.php }}-${{ matrix.variant }}-${{ matrix.arch }}
+
+            -   name: Export digest
+                run: |
+                    mkdir -p /tmp/digests
+                    digest="${{ steps.build.outputs.digest }}"
+                    touch "/tmp/digests/${digest#sha256:}"
+
+            -   name: Upload digest
+                uses: actions/upload-artifact@v4
+                with:
+                    name: digests-${{ matrix.php }}-${{ matrix.variant }}-${{ matrix.arch }}
+                    path: /tmp/digests/*
+                    if-no-files-found: error
+                    retention-days: 1
+
+    merge:
+        needs: [resolve, build]
+        strategy:
+            fail-fast: false
+            matrix: ${{ fromJSON(needs.resolve.outputs.variants) }}
+        name: merge ${{ matrix.php }}-${{ matrix.variant }}
+        runs-on: ubuntu-latest
+        steps:
+            -   name: Download digests
+                uses: actions/download-artifact@v4
+                with:
+                    pattern: digests-${{ matrix.php }}-${{ matrix.variant }}-*
+                    merge-multiple: true
+                    path: /tmp/digests
+
+            -   name: Set up Docker Buildx
+                uses: docker/setup-buildx-action@v3
+
+            -   name: Login to Docker Hub
+                uses: docker/login-action@v3
+                with:
+                    username: ${{ secrets.DOCKERHUB_USERNAME }}
+                    password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+            -   name: Create multi-arch manifest
+                working-directory: /tmp/digests
+                run: |
+                    docker buildx imagetools create \
+                        --tag "$IMAGE_REPO:${{ matrix.php }}-${{ matrix.variant }}" \
+                        $(printf "$IMAGE_REPO@sha256:%s " *)
+
+            -   name: Inspect manifest
+                run: docker buildx imagetools inspect "$IMAGE_REPO:${{ matrix.php }}-${{ matrix.variant }}"
+
+    verify:
+        needs: [resolve, merge]
+        strategy:
+            fail-fast: false
+            matrix: ${{ fromJSON(needs.resolve.outputs.builds) }}
+        name: verify ${{ matrix.php }}-${{ matrix.variant }} ${{ matrix.arch }}
+        runs-on: ${{ matrix.runner }}
+        steps:
+            -   name: Smoke test image
+                env:
+                    DEBUGGER_REF: ${{ needs.resolve.outputs.debugger-ref }}
+                run: |
+                    set -eux
+                    IMAGE="$IMAGE_REPO:${{ matrix.php }}-${{ matrix.variant }}"
+                    docker pull "$IMAGE"
+                    docker run --rm "$IMAGE" php -v
+                    docker run --rm "$IMAGE" php -v | grep -F "PHP Debugger v$DEBUGGER_REF"
+                    docker run --rm "$IMAGE" php -m | grep -ix xdebug
+                    docker run --rm "$IMAGE" php -r 'exit(extension_loaded("xdebug") ? 0 : 1);'
+                    docker run --rm "$IMAGE" php -i | grep -F "JIT => Not Available"

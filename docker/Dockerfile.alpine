@@ -33,9 +33,17 @@ RUN set -eux; \
 		sqlite-dev \
 		zlib-dev
 
+# DEBUGGER_SHA is optional: when set (CI passes the commit the release tag
+# points at) it busts this layer's build cache if the tag is ever re-pointed,
+# and fails the build if the clone doesn't match the expected commit.
+ARG DEBUGGER_SHA=
+
 RUN set -eux; \
 	docker-php-source extract; \
 	git clone --depth 1 --branch "${DEBUGGER_REF}" "${DEBUGGER_REPO}" /usr/src/php/ext/php_debugger; \
+	if [ -n "${DEBUGGER_SHA}" ]; then \
+		[ "$(git -C /usr/src/php/ext/php_debugger rev-parse HEAD)" = "${DEBUGGER_SHA}" ]; \
+	fi; \
 	mkdir -p /usr/src/php/m4; \
 	cp /usr/src/php/ext/php_debugger/m4/*.m4 /usr/src/php/m4/
 
