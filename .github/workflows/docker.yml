@@ -260,3 +260,21 @@ jobs:
                     docker run --rm "$IMAGE" php -v | grep -F "PHP Debugger v$DEBUGGER_REF"
                     docker run --rm "$IMAGE" php -m | grep -ix xdebug
                     docker run --rm "$IMAGE" php -r 'exit(extension_loaded("xdebug") ? 0 : 1);'
+
+    # keep the Docker Hub repo description (of whichever repo this run
+    # pushed to) in sync with docker/README.md, after a fully verified run
+    description:
+        needs: verify
+        runs-on: ubuntu-latest
+        steps:
+            -   name: Checkout
+                uses: actions/checkout@v7
+
+            -   name: Update Docker Hub description
+                uses: peter-evans/dockerhub-description@v4
+                with:
+                    username: ${{ secrets.DOCKERHUB_USERNAME }}
+                    password: ${{ secrets.DOCKERHUB_TOKEN }}
+                    repository: ${{ env.IMAGE_REPO }}
+                    short-description: "Official PHP images with the PHP Debugger extension statically compiled in"
+                    readme-filepath: docker/README.md

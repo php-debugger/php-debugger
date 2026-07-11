@@ -67,6 +67,16 @@ For this reason, we recommend enabling this setting only if you specifically req
 
 ## Installation
 
+### Docker
+
+Drop-in replacements for the [official PHP images](https://hub.docker.com/_/php) with PHP Debugger statically compiled in — just add the `phpdebugger/` prefix to your base image:
+
+```dockerfile
+FROM phpdebugger/php:8.4-fpm
+```
+
+All official variants are available (`cli`, `fpm`, `apache`, `zts`, and their Alpine equivalents) for PHP 8.2–8.5, on amd64 and arm64. Tags exist per minor version only (no `8.4.23`); each always contains the latest patch release. Everything from the official images works unchanged, including `docker-php-ext-install`. See [docker/README.md](docker/README.md) for tags and debugging setup.
+
 ### Manual download
 
 Grab the right binary from [Releases](https://github.com/php-debugger/php-debugger/releases), copy it to your extension directory, and add to `php.ini`:
