@@ -1,28 +1,41 @@
 name: Docker Images
 
-# Step 3 skeleton: manual trigger only, reduced matrix, pushes to the -dev
-# Docker Hub repo. Release/schedule triggers and the full matrix follow once
-# the pipeline is proven.
+# Builds the phpdebugger/php base images (official php:* images with
+# php-debugger statically compiled in) for every release, and weekly to pick
+# up new PHP patch releases in the official images.
 
 on:
     release:
         types: [published]
-    # manual fallback: rebuilds the latest release (e.g. to pick up a new
-    # PHP patch version without cutting a new debugger release)
+    # weekly rebuild of the latest release against current official images
+    schedule:
+        -   cron: '30 4 * * 1'
+    # manual run; pushes to the -dev repo unless target is set to prod
     workflow_dispatch:
+        inputs:
+            target:
+                description: "Docker Hub repo to push to"
+                type: choice
+                options: [dev, prod]
+                default: dev
 
 permissions:
     contents: read
 
+# one run at a time per target repo: release, schedule and manual runs all
+# push the same tags, so they must not interleave
 concurrency:
-    group: docker-${{ github.ref }}
+    group: docker-${{ (inputs.target == 'prod' || ((github.event_name == 'release' || github.event_name == 'schedule') && github.repository_owner == 'php-debugger')) && 'prod' || 'dev' }}
     cancel-in-progress: false
 
 # ---------------------------------------------------------------------------
 # Build matrix configuration
 # ---------------------------------------------------------------------------
 env:
-    IMAGE_REPO: phpdebugger/php-dev
+    # releases and the weekly schedule go to production — but only from the
+    # upstream repo, so fork releases used for testing stay on -dev; manual
+    # runs go to -dev unless explicitly dispatched with target=prod
+    IMAGE_REPO: ${{ (inputs.target == 'prod' || ((github.event_name == 'release' || github.event_name == 'schedule') && github.repository_owner == 'php-debugger')) && 'phpdebugger/php' || 'phpdebugger/php-dev' }}
 
     # supported PHP minor versions, oldest first: the last one is the newest
     # stable and its cli image also gets the "latest" tag
@@ -64,8 +77,8 @@ jobs:
                     GH_TOKEN: ${{ github.token }}
                     EVENT_TAG: ${{ github.event.release.tag_name }}
                 run: |
-                    # on a release event build that release; on manual dispatch
-                    # fall back to the repo's latest published release
+                    # on a release event build that release; on schedule or
+                    # manual dispatch fall back to the latest published release
                     REF="$EVENT_TAG"
                     if [ -z "$REF" ]; then
                         REF="$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName)"
