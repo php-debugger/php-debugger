@@ -192,6 +192,9 @@ jobs:
                 env:
                     LATEST_PHP: ${{ needs.resolve.outputs.latest-php }}
                 run: |
+                    # exactly one digest per architecture: a glob that swept up
+                    # a sibling variant's artifacts would show up here
+                    [ "$(ls | wc -l)" -eq "$(jq -rn --argjson a "$ARCHS" '$a | length')" ]
                     # alias tags mirroring the official image: "8.x" -> cli,
                     # "8.x-alpine" -> cli-alpine, "latest" -> newest stable cli
                     EXTRA_TAGS=()
@@ -219,9 +222,6 @@ jobs:
                         sleep $((attempt * 60))
                     done
 
-            -   name: Inspect manifest
-                run: docker manifest inspect "$IMAGE_REPO:${{ matrix.php }}-${{ matrix.variant }}"
-
     verify:
         needs: [resolve, merge]
         strategy:
@@ -246,18 +246,14 @@ jobs:
                 run: |
                     set -eux
                     IMAGE="$IMAGE_REPO:${{ matrix.php }}-${{ matrix.variant }}"
-                    # the manifest must hold exactly one image per architecture
-                    # (a merge that swept up digests from a sibling variant
-                    # would show duplicated platforms here)
-                    EXPECTED="$(jq -rn --argjson a "$ARCHS" '$a | length')"
-                    ACTUAL="$(docker manifest inspect "$IMAGE" | jq '[.manifests[] | select(.platform.os != "unknown")] | length')"
-                    [ "$ACTUAL" = "$EXPECTED" ]
-                    # retry with backoff: shared runner IPs can hit transient 429s
+                    # retry with backoff: transient registry 429s
                     for attempt in 1 2 3 4 5; do
                         docker pull "$IMAGE" && break
                         [ "$attempt" -lt 5 ] || exit 1
                         sleep $((attempt * 60))
                     done
+                    # the pulled image must match this runner's architecture
+                    [ "$(docker image inspect --format '{{.Architecture}}' "$IMAGE")" = "${{ matrix.arch }}" ]
                     # the base distro must match the variant family
                     case "${{ matrix.family }}" in
                         debian) docker run --rm "$IMAGE" sh -c 'grep -qi "ID=debian" /etc/os-release' ;;
