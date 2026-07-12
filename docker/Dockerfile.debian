@@ -16,15 +16,16 @@ ARG DEBUGGER_REF
 ARG DEBUGGER_REPO=https://github.com/php-debugger/php-debugger.git
 
 # The toolchain ($PHPIZE_DEPS: autoconf, gcc, make, re2c, ...) is
-# preinstalled on Debian variants; we only add git for the clone and the
-# -dev packages matching the official image's configure options (the
-# official build purges these after compiling, keeping just the runtime
-# libs). bison is not needed: the bundled source tarball ships
-# pre-generated parsers. apache2-dev only applies when the base was
-# built --with-apxs2.
+# preinstalled on Debian variants but listed anyway in case upstream ever
+# makes it transient; git is needed for the clone and the -dev packages
+# match the official image's configure options (the official build purges
+# these after compiling, keeping just the runtime libs). bison is not
+# needed: the bundled source tarball ships pre-generated parsers.
+# apache2-dev only applies when the base was built --with-apxs2.
 RUN set -eux; \
 	apt-get update; \
 	apt-get install -y --no-install-recommends \
+		$PHPIZE_DEPS \
 		git \
 		libargon2-dev \
 		libcurl4-openssl-dev \
