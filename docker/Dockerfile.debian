@@ -1,8 +1,9 @@
 # Rebuilds the official php:<BASE_TAG> image with php-debugger statically
 # compiled into the interpreter. The official image ships its own source
-# (docker-php-source) and records its configure options (php-config
-# --configure-options), so we re-run the exact same build with the extension
-# added and opcache JIT disabled (JIT is incompatible with php-debugger).
+# (docker-php-source) and records its full configure command (the
+# "Configure Command" line in php -i), so we re-run the exact same build
+# with the extension added and opcache JIT disabled (JIT is incompatible
+# with php-debugger).
 #
 # Usage:
 #   docker build -f Dockerfile.debian --build-arg BASE_TAG=8.4-cli --build-arg DEBUGGER_REF=0.1.0 .
