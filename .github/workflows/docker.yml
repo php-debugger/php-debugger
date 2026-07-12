@@ -168,6 +168,9 @@ jobs:
                     retention-days: 1
 
     merge:
+        # deliberately waits for the whole build matrix: if any build fails,
+        # no tags are updated at all, so the published tag set never has
+        # mixed debugger/PHP versions across variants
         needs: [resolve, build]
         strategy:
             fail-fast: false
@@ -266,7 +269,8 @@ jobs:
                         alpine) docker run --rm "$IMAGE" sh -c 'grep -qi "ID=alpine" /etc/os-release' ;;
                     esac
                     docker run --rm "$IMAGE" php -v
-                    docker run --rm "$IMAGE" php -v | grep -F "PHP Debugger v$DEBUGGER_REF"
+                    # tolerate release tags with or without a leading "v"
+                    docker run --rm "$IMAGE" php -v | grep -F "PHP Debugger v${DEBUGGER_REF#v}"
                     docker run --rm "$IMAGE" php -m | grep -ix xdebug
                     docker run --rm "$IMAGE" php -r 'exit(extension_loaded("xdebug") ? 0 : 1);'
 
