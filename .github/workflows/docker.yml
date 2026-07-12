@@ -67,6 +67,7 @@ jobs:
         outputs:
             debugger-ref: ${{ steps.release.outputs.ref }}
             debugger-sha: ${{ steps.release.outputs.sha }}
+            build-date: ${{ steps.release.outputs.build-date }}
             variants: ${{ steps.matrix.outputs.variants }}
             builds: ${{ steps.matrix.outputs.builds }}
             latest-php: ${{ steps.matrix.outputs.latest-php }}
@@ -89,6 +90,7 @@ jobs:
                     SHA="$(gh api "repos/$GITHUB_REPOSITORY/commits/$REF" --jq .sha)"
                     echo "ref=$REF" >> "$GITHUB_OUTPUT"
                     echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+                    echo "build-date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
                     echo "Building php-debugger $REF ($SHA)"
 
             -   name: Compute build matrix
@@ -139,8 +141,12 @@ jobs:
                         DEBUGGER_REPO=https://github.com/${{ github.repository }}.git
                         DEBUGGER_REF=${{ needs.resolve.outputs.debugger-ref }}
                         DEBUGGER_SHA=${{ needs.resolve.outputs.debugger-sha }}
+                    # created/revision distinguish weekly rebuilds that carry
+                    # the same debugger version but a newer PHP patch release
                     labels: |
                         org.opencontainers.image.version=${{ needs.resolve.outputs.debugger-ref }}
+                        org.opencontainers.image.revision=${{ needs.resolve.outputs.debugger-sha }}
+                        org.opencontainers.image.created=${{ needs.resolve.outputs.build-date }}
                     outputs: type=image,name=${{ env.IMAGE_REPO }},push-by-digest=true,name-canonical=true,push=true
                     cache-from: type=gha,scope=${{ matrix.php }}-${{ matrix.variant }}-${{ matrix.arch }}
                     cache-to: type=gha,mode=max,scope=${{ matrix.php }}-${{ matrix.variant }}-${{ matrix.arch }}
@@ -248,7 +254,7 @@ jobs:
                     IMAGE="$IMAGE_REPO:${{ matrix.php }}-${{ matrix.variant }}"
                     # retry with backoff: transient registry 429s
                     for attempt in 1 2 3 4 5; do
-                        docker pull "$IMAGE" && break
+                        docker pull --platform "linux/${{ matrix.arch }}" "$IMAGE" && break
                         [ "$attempt" -lt 5 ] || exit 1
                         sleep $((attempt * 60))
                     done

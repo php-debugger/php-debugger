@@ -51,7 +51,7 @@ RUN set -eux; \
 	cd /usr/src/php; \
 	./buildconf --force; \
 	export CFLAGS="$PHP_CFLAGS" CPPFLAGS="$PHP_CPPFLAGS" LDFLAGS="$PHP_LDFLAGS"; \
-	configureCommand="$(php -i | sed -n 's/^Configure Command => *//p')"; \
+	configureCommand="$(php -i | sed -n 's/^Configure Command => *//p' | head -n 1)"; \
 	eval "$configureCommand" \
 		--enable-php-debugger \
 		--disable-opcache-jit; \

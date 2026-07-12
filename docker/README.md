@@ -75,9 +75,9 @@ No INI configuration is needed: the debugger is active by default and connects t
 
 ```console
 $ docker run --rm phpdebugger/php:8.4-cli php -v
-PHP 8.4.23 (cli) ... (NTS)
+PHP 8.4.x (cli) ... (NTS)
     with Zend OPcache ...
-    with PHP Debugger v0.1.0, Copyright (c) 2002-2026, by Derick Rethans
+    with PHP Debugger vX.Y.Z, Copyright (c) 2002-2026, by Derick Rethans
 ```
 
 ## License
