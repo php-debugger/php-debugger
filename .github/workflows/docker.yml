@@ -120,17 +120,11 @@ jobs:
                     # ... x architectures
                     echo "builds=$(jq -c --argjson archs "$ARCHS" '{include: [.[] as $v | $archs[] | $v + .]}' /tmp/variants.json)" >> "$GITHUB_OUTPUT"
 
-            -   name: Set up Docker Buildx
-                uses: docker/setup-buildx-action@v3
-
-            -   name: Login to Docker Hub
-                uses: docker/login-action@v3
-                with:
-                    username: ${{ secrets.DOCKERHUB_USERNAME }}
-                    password: ${{ secrets.DOCKERHUB_TOKEN }}
-
             -   name: Resolve base image digests
                 id: base-digests
+                env:
+                    DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+                    DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
                 run: |
                     # pin every official php:<php>-<variant> tag used by this
                     # run to a digest, once, up front. The build matrix spans
@@ -141,10 +135,38 @@ jobs:
                     # single variant across PHP patch releases per
                     # architecture and undermining the all-or-nothing
                     # consistent tag set the merge job relies on.
+                    #
+                    # Queried directly against the registry API (a HEAD
+                    # request for the Docker-Content-Digest header) instead
+                    # of via `docker`/`buildx imagetools`: those go through
+                    # the runner's local builder, which doesn't reliably
+                    # inherit `docker login` credentials for metadata-only
+                    # calls like this and silently falls back to anonymous
+                    # access — which this workflow's concurrent CI load
+                    # burns through Docker Hub's anonymous rate limit on
+                    # almost immediately.
+                    token=""
+                    for attempt in 1 2 3 4 5; do
+                        token="$(curl -fsS -u "$DOCKERHUB_USERNAME:$DOCKERHUB_TOKEN" \
+                            "https://auth.docker.io/token?service=registry.docker.io&scope=repository:library/php:pull" \
+                            | jq -r .token)" && [ -n "$token" ] && [ "$token" != "null" ] && break
+                        [ "$attempt" -lt 5 ] || { echo "::error::Failed to obtain a Docker Hub registry token" >&2; exit 1; }
+                        sleep $((attempt * 10))
+                    done
+
                     digests="{}"
                     while IFS= read -r combo; do
                         tag="$(jq -r '"\(.php)-\(.variant)"' <<<"$combo")"
-                        digest="$(docker buildx imagetools inspect "php:$tag" --format '{{.Manifest.Digest}}')"
+                        digest=""
+                        for attempt in 1 2 3 4 5; do
+                            digest="$(curl -fsSI \
+                                -H "Authorization: Bearer $token" \
+                                -H "Accept: application/vnd.oci.image.index.v1+json,application/vnd.docker.distribution.manifest.list.v2+json,application/vnd.oci.image.manifest.v1+json,application/vnd.docker.distribution.manifest.v2+json" \
+                                "https://registry-1.docker.io/v2/library/php/manifests/$tag" \
+                                | tr -d '\r' | awk -F': ' 'tolower($1) == "docker-content-digest" {print $2}')" && [ -n "$digest" ] && break
+                            [ "$attempt" -lt 5 ] || { echo "::error::Failed to resolve digest for php:$tag" >&2; exit 1; }
+                            sleep $((attempt * 10))
+                        done
                         digests="$(jq --arg k "$tag" --arg v "$digest" '. + {($k): $v}' <<<"$digests")"
                     done < <(jq -c '.[]' /tmp/variants.json)
                     echo "digests=$(jq -c '.' <<<"$digests")" >> "$GITHUB_OUTPUT"
