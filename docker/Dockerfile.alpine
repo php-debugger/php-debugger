@@ -58,7 +58,7 @@ RUN set -eux; \
 	make -j"$(nproc)"; \
 	make install; \
 	php -v; \
-	php -m | grep -i xdebug; \
+	php -m | grep -ix xdebug; \
 	php -r 'exit(extension_loaded("xdebug") ? 0 : 1);'
 
 FROM php:${BASE_TAG}
@@ -73,4 +73,4 @@ COPY --from=builder /usr/local /usr/local
 
 RUN set -eux; \
 	php -v; \
-	php -m | grep -i xdebug
+	php -m | grep -ix xdebug

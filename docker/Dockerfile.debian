@@ -74,7 +74,7 @@ RUN set -eux; \
 		cp -a /usr/lib/apache2/modules/libphp* /opt/php-debugger/apache2-modules/; \
 	fi; \
 	php -v; \
-	php -m | grep -i xdebug; \
+	php -m | grep -ix xdebug; \
 	php -r 'exit(extension_loaded("xdebug") ? 0 : 1);'
 
 FROM php:${BASE_TAG}
@@ -94,4 +94,4 @@ RUN set -eux; \
 	fi; \
 	rm -rf /opt/php-debugger; \
 	php -v; \
-	php -m | grep -i xdebug
+	php -m | grep -ix xdebug
