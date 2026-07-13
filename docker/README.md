@@ -42,11 +42,18 @@ Everything from the official images works unchanged — same entrypoints, same h
 ```dockerfile
 FROM phpdebugger/php:8.4-fpm
 
-RUN docker-php-ext-install -j$(nproc) pdo_mysql opcache
+RUN docker-php-ext-install -j$(nproc) pdo_mysql bcmath
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 ```
 
 The only difference from the official image: PHP Debugger is compiled in (as a static extension — it does not appear in `conf.d/` and cannot be uninstalled), and opcache's JIT compiler is disabled, since it is incompatible with the debugger's engine hooks.
+
+> [!WARNING]
+> The JIT compiler is disabled only in the opcache build that ships with the image. If you rebuild opcache yourself (`docker-php-ext-install opcache`), pass `--disable-opcache-jit` to `docker-php-ext-configure` first, or JIT will be compiled back in:
+> ```dockerfile
+> RUN docker-php-ext-configure opcache --disable-opcache-jit \
+>     && docker-php-ext-install -j$(nproc) opcache
+> ```
 
 ### Debugging
 

@@ -71,7 +71,23 @@ jobs:
             variants: ${{ steps.matrix.outputs.variants }}
             builds: ${{ steps.matrix.outputs.builds }}
             latest-php: ${{ steps.matrix.outputs.latest-php }}
+            base-digests: ${{ steps.base-digests.outputs.digests }}
         steps:
+            -   name: Guard manual prod dispatch
+                if: github.event_name == 'workflow_dispatch' && inputs.target == 'prod'
+                run: |
+                    # a manual dispatch with target=prod can run from any
+                    # branch the dispatcher picks in the UI, using whatever
+                    # workflow/Dockerfile is on it — unlike release/schedule
+                    # runs, which are inherently tied to a published release.
+                    # Restrict it to the upstream repo's main branch so a
+                    # manual prod run can't publish phpdebugger/php tags
+                    # built from an untrusted or modified branch.
+                    if [ "${{ github.repository_owner }}" != "php-debugger" ] || [ "${{ github.ref }}" != "refs/heads/main" ]; then
+                        echo "::error::Manual dispatch with target=prod is only allowed from php-debugger/php-debugger on refs/heads/main (got owner=${{ github.repository_owner }}, ref=${{ github.ref }})."
+                        exit 1
+                    fi
+
             -   name: Resolve release to build
                 id: release
                 env:
@@ -104,6 +120,35 @@ jobs:
                     # ... x architectures
                     echo "builds=$(jq -c --argjson archs "$ARCHS" '{include: [.[] as $v | $archs[] | $v + .]}' /tmp/variants.json)" >> "$GITHUB_OUTPUT"
 
+            -   name: Set up Docker Buildx
+                uses: docker/setup-buildx-action@v3
+
+            -   name: Login to Docker Hub
+                uses: docker/login-action@v3
+                with:
+                    username: ${{ secrets.DOCKERHUB_USERNAME }}
+                    password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+            -   name: Resolve base image digests
+                id: base-digests
+                run: |
+                    # pin every official php:<php>-<variant> tag used by this
+                    # run to a digest, once, up front. The build matrix spans
+                    # dozens of jobs across two architectures; without this,
+                    # each job's independent "FROM php:<tag>" pull could
+                    # resolve to a different underlying image if Docker
+                    # Official Images re-pushes the tag mid-run, splitting a
+                    # single variant across PHP patch releases per
+                    # architecture and undermining the all-or-nothing
+                    # consistent tag set the merge job relies on.
+                    digests="{}"
+                    while IFS= read -r combo; do
+                        tag="$(jq -r '"\(.php)-\(.variant)"' <<<"$combo")"
+                        digest="$(docker buildx imagetools inspect "php:$tag" --format '{{.Manifest.Digest}}')"
+                        digests="$(jq --arg k "$tag" --arg v "$digest" '. + {($k): $v}' <<<"$digests")"
+                    done < <(jq -c '.[]' /tmp/variants.json)
+                    echo "digests=$(jq -c '.' <<<"$digests")" >> "$GITHUB_OUTPUT"
+
     build:
         needs: resolve
         strategy:
@@ -131,13 +176,15 @@ jobs:
                     context: docker
                     file: docker/Dockerfile.${{ matrix.family }}
                     platforms: linux/${{ matrix.arch }}
-                    # always re-pull the base so new PHP patch releases are picked up
+                    # base digest was resolved once in the resolve job, so
+                    # this always re-pulls that exact image rather than
+                    # relying on a (possibly stale) local layer cache
                     pull: true
                     # no provenance attestations: keeps the manifest index to
                     # exactly one image per arch and halves registry requests
                     provenance: false
                     build-args: |
-                        BASE_TAG=${{ matrix.php }}-${{ matrix.variant }}
+                        BASE_TAG=${{ matrix.php }}-${{ matrix.variant }}@${{ fromJSON(needs.resolve.outputs.base-digests)[format('{0}-{1}', matrix.php, matrix.variant)] }}
                         DEBUGGER_REPO=https://github.com/${{ github.repository }}.git
                         DEBUGGER_REF=${{ needs.resolve.outputs.debugger-ref }}
                         DEBUGGER_SHA=${{ needs.resolve.outputs.debugger-sha }}
@@ -167,13 +214,84 @@ jobs:
                     if-no-files-found: error
                     retention-days: 1
 
-    merge:
-        # deliberately waits for the whole build matrix: if any build fails,
-        # no tags are updated at all, so the published tag set never has
-        # mixed debugger/PHP versions across variants
+    verify:
+        # smoke-test each digest-pushed image before any public tag is
+        # created, so a broken image never becomes reachable via
+        # phpdebugger/php:* — only images that pass this get tagged by merge
         needs: [resolve, build]
         strategy:
             fail-fast: false
+            # keep bursts against the Docker Hub rate limit small
+            max-parallel: 8
+            matrix: ${{ fromJSON(needs.resolve.outputs.builds) }}
+        name: verify ${{ matrix.php }}-${{ matrix.variant }} ${{ matrix.arch }}
+        runs-on: ${{ matrix.runner }}
+        steps:
+            -   name: Download digest
+                uses: actions/download-artifact@v4
+                with:
+                    name: digests-${{ matrix.php }}-${{ matrix.variant }}--${{ matrix.arch }}
+                    path: /tmp/digests
+
+            # authenticated pulls: anonymous runners share IPs and hit Docker
+            # Hub's unauthenticated rate limit almost immediately
+            -   name: Login to Docker Hub
+                uses: docker/login-action@v3
+                with:
+                    username: ${{ secrets.DOCKERHUB_USERNAME }}
+                    password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+            -   name: Smoke test image
+                working-directory: /tmp/digests
+                env:
+                    DEBUGGER_REF: ${{ needs.resolve.outputs.debugger-ref }}
+                run: |
+                    set -eux
+                    # pull by digest, not by tag: at this point no public tag
+                    # exists yet for this image
+                    IMAGE="$IMAGE_REPO@sha256:$(ls)"
+                    # retry with backoff: transient registry 429s
+                    for attempt in 1 2 3 4 5; do
+                        docker pull --platform "linux/${{ matrix.arch }}" "$IMAGE" && break
+                        [ "$attempt" -lt 5 ] || exit 1
+                        sleep $((attempt * 60))
+                    done
+                    # the pulled image must match this runner's architecture
+                    [ "$(docker image inspect --format '{{.Architecture}}' "$IMAGE")" = "${{ matrix.arch }}" ]
+                    # the base distro must match the variant family
+                    case "${{ matrix.family }}" in
+                        debian) docker run --rm "$IMAGE" sh -c 'grep -qi "ID=debian" /etc/os-release' ;;
+                        alpine) docker run --rm "$IMAGE" sh -c 'grep -qi "ID=alpine" /etc/os-release' ;;
+                    esac
+                    docker run --rm "$IMAGE" php -v
+                    # tolerate release tags with or without a leading "v"
+                    docker run --rm "$IMAGE" php -v | grep -F "PHP Debugger v${DEBUGGER_REF#v}"
+                    docker run --rm "$IMAGE" php -m | grep -ix xdebug
+                    docker run --rm "$IMAGE" php -r 'exit(extension_loaded("xdebug") ? 0 : 1);'
+                    # the php_debugger.* function alias must resolve, not just
+                    # the xdebug-compat surface
+                    docker run --rm "$IMAGE" php -r 'exit(function_exists("php_debugger_info") ? 0 : 1);'
+                    docker run --rm "$IMAGE" php -r 'php_debugger_info();'
+                    # the image must still be usable as a base for further
+                    # docker-php-ext-install layers, same as the official image
+                    docker run --rm "$IMAGE" sh -c 'docker-php-ext-install -j$(nproc) bcmath >/dev/null && php -m | grep -qi bcmath'
+
+    merge:
+        # deliberately waits for the whole build matrix and its verification:
+        # if any build or smoke test fails, no tag publish is even attempted,
+        # so the published tag set never has mixed debugger/PHP versions
+        # across variants, and never points at an image that failed
+        # verification. That guarantee covers build+verify only, though: the
+        # publish step below is 28 independent Docker Hub API calls (one per
+        # variant, each already retried with backoff), and Docker Hub has no
+        # atomic multi-tag update — a registry-side failure partway through
+        # can still leave some variants' tags updated and others not.
+        # fail-fast here stops queued variants from publishing once one
+        # fails, to shrink that window rather than push every remaining tag
+        # regardless.
+        needs: [resolve, build, verify]
+        strategy:
+            fail-fast: true
             # keep bursts against the Docker Hub rate limit small
             max-parallel: 8
             matrix: ${{ fromJSON(needs.resolve.outputs.variants) }}
@@ -231,53 +349,11 @@ jobs:
                         sleep $((attempt * 60))
                     done
 
-    verify:
-        needs: [resolve, merge]
-        strategy:
-            fail-fast: false
-            # keep bursts against the Docker Hub rate limit small
-            max-parallel: 8
-            matrix: ${{ fromJSON(needs.resolve.outputs.builds) }}
-        name: verify ${{ matrix.php }}-${{ matrix.variant }} ${{ matrix.arch }}
-        runs-on: ${{ matrix.runner }}
-        steps:
-            # authenticated pulls: anonymous runners share IPs and hit Docker
-            # Hub's unauthenticated rate limit almost immediately
-            -   name: Login to Docker Hub
-                uses: docker/login-action@v3
-                with:
-                    username: ${{ secrets.DOCKERHUB_USERNAME }}
-                    password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-            -   name: Smoke test image
-                env:
-                    DEBUGGER_REF: ${{ needs.resolve.outputs.debugger-ref }}
-                run: |
-                    set -eux
-                    IMAGE="$IMAGE_REPO:${{ matrix.php }}-${{ matrix.variant }}"
-                    # retry with backoff: transient registry 429s
-                    for attempt in 1 2 3 4 5; do
-                        docker pull --platform "linux/${{ matrix.arch }}" "$IMAGE" && break
-                        [ "$attempt" -lt 5 ] || exit 1
-                        sleep $((attempt * 60))
-                    done
-                    # the pulled image must match this runner's architecture
-                    [ "$(docker image inspect --format '{{.Architecture}}' "$IMAGE")" = "${{ matrix.arch }}" ]
-                    # the base distro must match the variant family
-                    case "${{ matrix.family }}" in
-                        debian) docker run --rm "$IMAGE" sh -c 'grep -qi "ID=debian" /etc/os-release' ;;
-                        alpine) docker run --rm "$IMAGE" sh -c 'grep -qi "ID=alpine" /etc/os-release' ;;
-                    esac
-                    docker run --rm "$IMAGE" php -v
-                    # tolerate release tags with or without a leading "v"
-                    docker run --rm "$IMAGE" php -v | grep -F "PHP Debugger v${DEBUGGER_REF#v}"
-                    docker run --rm "$IMAGE" php -m | grep -ix xdebug
-                    docker run --rm "$IMAGE" php -r 'exit(extension_loaded("xdebug") ? 0 : 1);'
-
     # keep the Docker Hub repo description (of whichever repo this run
-    # pushed to) in sync with docker/README.md, after a fully verified run
+    # pushed to) in sync with docker/README.md, after a fully verified,
+    # fully tagged run
     description:
-        needs: verify
+        needs: merge
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout
