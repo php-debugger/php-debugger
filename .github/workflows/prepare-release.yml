@@ -27,8 +27,7 @@ jobs:
             -   uses: actions/checkout@v7
                 with:
                     ref: main
-                    fetch-depth: 1
-                    fetch-tags: false
+                    fetch-depth: 0
                     token: ${{ secrets.GITHUB_TOKEN }}
 
             -   name: Validate version
@@ -73,13 +72,27 @@ jobs:
                             fi
                             echo "Push rejected, rebasing onto latest main and retrying..."
                             git fetch origin main
-                            git rebase origin/main || { git rebase --abort; continue; }
+                            if ! git rebase origin/main; then
+                                git rebase --abort
+                                echo "::error::Rebase onto origin/main hit a conflict (likely another concurrent version bump touching php_xdebug.h) — resolve manually and rerun"
+                                exit 1
+                            fi
                         done
                     fi
 
-                    # If the commit push above succeeds but this tag push fails, main ends up
-                    # bumped but untagged. Self-healing: rerunning with the same VERSION is a
-                    # no-op for the sed/commit (already at that version) and just creates+pushes
-                    # the missing tag.
-                    git tag "${VERSION}"
+                    # Tag the commit that actually introduced this version line, not just
+                    # whatever HEAD happens to be right now — on the self-healing rerun path
+                    # above, main may have moved on past the bump commit in the meantime.
+                    LINE=$(grep -n '^#define XDEBUG_VERSION' php_xdebug.h | head -1 | cut -d: -f1)
+                    BUMP_SHA=$(git blame -l -L "${LINE},${LINE}" -- php_xdebug.h | awk '{print $1}')
+                    if [ -z "$BUMP_SHA" ]; then
+                        echo "::error::Could not determine the commit that set XDEBUG_VERSION to ${VERSION}"
+                        exit 1
+                    fi
+
+                    # If this tag push fails after the commit push above already succeeded, main
+                    # ends up bumped but untagged. Self-healing: rerunning with the same VERSION
+                    # is a no-op for the sed/commit (already at that version) and just re-resolves
+                    # BUMP_SHA and pushes the missing tag.
+                    git tag "${VERSION}" "${BUMP_SHA}"
                     git push origin "refs/tags/${VERSION}"
