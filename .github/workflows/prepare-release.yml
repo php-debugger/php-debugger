@@ -1,0 +1,98 @@
+name: Prepare Release
+
+on:
+    workflow_dispatch:
+        inputs:
+            version:
+                description: 'Release version (e.g. 0.3.0, no leading "v")'
+                required: true
+
+permissions:
+    contents: write
+
+concurrency:
+    group: prepare-release-main
+    cancel-in-progress: false
+
+jobs:
+    # Pushes the version-bump commit directly to `main` with GITHUB_TOKEN (see the
+    # "Bump XDEBUG_VERSION and tag" step). If branch protection is ever enabled on
+    # `main` (required PRs/reviews/status checks/signed commits), this push will
+    # start failing — either exempt github-actions[bot] from those rules, or switch
+    # this job to open a PR instead of pushing straight to main.
+    bump-and-tag:
+        runs-on: ubuntu-latest
+        if: github.repository == 'php-debugger/php-debugger'
+        steps:
+            -   uses: actions/checkout@v7
+                with:
+                    ref: main
+                    fetch-depth: 0
+                    token: ${{ secrets.GITHUB_TOKEN }}
+
+            -   name: Validate version
+                run: |
+                    VERSION="${{ inputs.version }}"
+                    if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+                        echo "::error::'${VERSION}' doesn't look like a version (expected X.Y.Z or X.Y.Z-suffix)"
+                        exit 1
+                    fi
+                    if git ls-remote --exit-code --tags origin "refs/tags/${VERSION}" >/dev/null 2>&1; then
+                        echo "::error::Tag ${VERSION} already exists"
+                        exit 1
+                    fi
+
+            -   name: Bump XDEBUG_VERSION and tag
+                run: |
+                    VERSION="${{ inputs.version }}"
+
+                    sed -i -E "s/^(#define XDEBUG_VERSION[[:space:]]+)\"[^\"]*\"/\1\"${VERSION}\"/" php_xdebug.h
+
+                    if ! grep -qE "^#define XDEBUG_VERSION[[:space:]]+\"${VERSION}\"" php_xdebug.h; then
+                        echo "::error::sed did not update XDEBUG_VERSION to ${VERSION} — pattern likely no longer matches php_xdebug.h"
+                        exit 1
+                    fi
+
+                    git config user.name "github-actions[bot]"
+                    git config user.email "github-actions[bot]@users.noreply.github.com"
+
+                    if git diff --quiet -- php_xdebug.h; then
+                        echo "php_xdebug.h already at version ${VERSION}, nothing to commit."
+                    else
+                        git add php_xdebug.h
+                        git commit -m "chore: update version number to ${VERSION}"
+
+                        for attempt in 1 2 3 4 5; do
+                            if git push origin HEAD:main; then
+                                break
+                            fi
+                            if [ "$attempt" -eq 5 ]; then
+                                echo "::error::Failed to push to main after ${attempt} attempts (main kept moving)"
+                                exit 1
+                            fi
+                            echo "Push rejected, rebasing onto latest main and retrying..."
+                            git fetch origin main
+                            if ! git rebase origin/main; then
+                                git rebase --abort
+                                echo "::error::Rebase onto origin/main hit a conflict (likely another concurrent version bump touching php_xdebug.h) — resolve manually and rerun"
+                                exit 1
+                            fi
+                        done
+                    fi
+
+                    # Tag the commit that actually introduced this version line, not just
+                    # whatever HEAD happens to be right now — on the self-healing rerun path
+                    # above, main may have moved on past the bump commit in the meantime.
+                    LINE=$(grep -n '^#define XDEBUG_VERSION' php_xdebug.h | head -1 | cut -d: -f1)
+                    BUMP_SHA=$(git blame -l -L "${LINE},${LINE}" -- php_xdebug.h | awk '{print $1}')
+                    if [ -z "$BUMP_SHA" ]; then
+                        echo "::error::Could not determine the commit that set XDEBUG_VERSION to ${VERSION}"
+                        exit 1
+                    fi
+
+                    # If this tag push fails after the commit push above already succeeded, main
+                    # ends up bumped but untagged. Self-healing: rerunning with the same VERSION
+                    # is a no-op for the sed/commit (already at that version) and just re-resolves
+                    # BUMP_SHA and pushes the missing tag.
+                    git tag "${VERSION}" "${BUMP_SHA}"
+                    git push origin "refs/tags/${VERSION}"
