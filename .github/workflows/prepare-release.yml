@@ -69,9 +69,13 @@ jobs:
                             fi
                             echo "Push rejected, rebasing onto latest main and retrying..."
                             git fetch origin main
-                            git rebase origin/main
+                            git rebase origin/main || { git rebase --abort; continue; }
                         done
                     fi
 
+                    # If the commit push above succeeds but this tag push fails, main ends up
+                    # bumped but untagged. Self-healing: rerunning with the same VERSION is a
+                    # no-op for the sed/commit (already at that version) and just creates+pushes
+                    # the missing tag.
                     git tag "${VERSION}"
                     git push origin "refs/tags/${VERSION}"
