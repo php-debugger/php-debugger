@@ -9,6 +9,7 @@ on:
 
 permissions:
     contents: write
+    actions: write
 
 concurrency:
     group: prepare-release-main
@@ -96,3 +97,14 @@ jobs:
                     # BUMP_SHA and pushes the missing tag.
                     git tag "${VERSION}" "${BUMP_SHA}"
                     git push origin "refs/tags/${VERSION}"
+
+            -   name: Trigger release build
+                env:
+                    GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                run: |
+                    # The tag push above was made with GITHUB_TOKEN, and GitHub Actions
+                    # deliberately doesn't let a GITHUB_TOKEN-authored push trigger other
+                    # workflows (anti-recursion protection) — so release.yml's `push: tags`
+                    # trigger would never fire for it. Explicitly dispatching it via the API
+                    # instead is unaffected by that restriction.
+                    gh workflow run release.yml --ref main -f "tag=${{ inputs.version }}"

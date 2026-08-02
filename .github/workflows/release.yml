@@ -4,11 +4,30 @@ on:
     push:
         tags:
             - '*'
+    # prepare-release.yml pushes the release tag using GITHUB_TOKEN, and
+    # GitHub Actions deliberately does not let a GITHUB_TOKEN-authored push
+    # trigger other workflows (anti-recursion protection) — so the `push`
+    # trigger above never fires for tags created that way. prepare-release.yml
+    # explicitly dispatches this workflow via `gh workflow run` instead, which
+    # is unaffected by that restriction. A human pushing a tag directly still
+    # hits the `push` trigger as normal.
+    workflow_dispatch:
+        inputs:
+            tag:
+                description: 'Tag to build and release (e.g. 0.3.0)'
+                required: true
 
 permissions:
     contents: write
 
 env:
+    # The tag to build: the pushed tag on a `push` trigger, or the input on a
+    # manual/`gh workflow run` dispatch. Every checkout step below and the
+    # final release-creation step key off this instead of the default ref, so
+    # a workflow_dispatch run (which otherwise checks out the branch selected
+    # in the UI, not the tag) still builds and releases the right commit.
+    RELEASE_REF: ${{ github.event.inputs.tag || github.ref_name }}
+
     # Common configure flags for all Unix builds (JIT disabled - incompatible with php-debugger)
     CONFIGURE_FLAGS: >-
       --with-mhash
@@ -86,6 +105,8 @@ jobs:
         name: "MacOS — PHP ${{ matrix.php-version }} — ${{ matrix.arch }} — ${{ matrix.ts == 'ts' && 'TS' || 'NTS' }}"
         steps:
             -   uses: actions/checkout@v7
+                with:
+                    ref: ${{ env.RELEASE_REF }}
 
             -   name: Setup PHP
                 uses: shivammathur/setup-php@v2
@@ -162,6 +183,8 @@ jobs:
         name: "Linux — PHP ${{ matrix.php-version }} — ${{ matrix.arch.arch }} — ${{ matrix.ts == 'ts' && 'TS' || 'NTS' }}"
         steps:
             -   uses: actions/checkout@v7
+                with:
+                    ref: ${{ env.RELEASE_REF }}
 
             -   name: Setup PHP
                 uses: shivammathur/setup-php@v2
@@ -223,6 +246,8 @@ jobs:
         name: "Windows — PHP ${{ matrix.php-version }} — ${{ matrix.ts == 'ts' && 'TS' || 'NTS' }}"
         steps:
             -   uses: actions/checkout@v7
+                with:
+                    ref: ${{ env.RELEASE_REF }}
 
             -   name: Build the extension
                 uses: php/php-windows-builder/extension@v1
@@ -300,6 +325,7 @@ jobs:
             -   name: Checkout extension
                 uses: actions/checkout@v7
                 with:
+                    ref: ${{ env.RELEASE_REF }}
                     path: ext-src
 
             -   name: Install build dependencies
@@ -495,6 +521,7 @@ jobs:
             -   name: Checkout extension
                 uses: actions/checkout@v7
                 with:
+                    ref: ${{ env.RELEASE_REF }}
                     path: ext-src
 
             -   name: Install build dependencies
@@ -596,6 +623,7 @@ jobs:
             -   name: Checkout extension
                 uses: actions/checkout@v7
                 with:
+                    ref: ${{ env.RELEASE_REF }}
                     path: ext-src
 
             -   name: Setup SDK and build tree
@@ -720,6 +748,8 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   uses: actions/checkout@v7
+                with:
+                    ref: ${{ env.RELEASE_REF }}
 
             -   name: Download all artifacts
                 uses: actions/download-artifact@v6
@@ -738,5 +768,9 @@ jobs:
             -   name: Create release
                 uses: softprops/action-gh-release@v3
                 with:
+                    # on a `push` trigger this is inferred from GITHUB_REF; on
+                    # workflow_dispatch GITHUB_REF is the branch picked in the
+                    # UI, not the tag, so it must be set explicitly here too
+                    tag_name: ${{ env.RELEASE_REF }}
                     generate_release_notes: true
                     files: release-assets/*
