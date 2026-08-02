@@ -1,0 +1,54 @@
+name: Prepare Release
+
+on:
+    workflow_dispatch:
+        inputs:
+            version:
+                description: 'Release version (e.g. 0.3.0, no leading "v")'
+                required: true
+
+permissions:
+    contents: write
+
+jobs:
+    bump-and-tag:
+        runs-on: ubuntu-latest
+        if: github.repository == 'php-debugger/php-debugger'
+        steps:
+            -   uses: actions/checkout@v7
+                with:
+                    ref: main
+                    fetch-depth: 0
+                    token: ${{ secrets.GITHUB_TOKEN }}
+
+            -   name: Validate version
+                run: |
+                    VERSION="${{ inputs.version }}"
+                    if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+                        echo "::error::'${VERSION}' doesn't look like a version (expected X.Y.Z or X.Y.Z-suffix)"
+                        exit 1
+                    fi
+                    if git rev-parse "refs/tags/${VERSION}" >/dev/null 2>&1; then
+                        echo "::error::Tag ${VERSION} already exists"
+                        exit 1
+                    fi
+
+            -   name: Bump XDEBUG_VERSION and tag
+                run: |
+                    VERSION="${{ inputs.version }}"
+
+                    sed -i -E "s/^#define XDEBUG_VERSION[[:space:]]+\"[^\"]*\"/#define XDEBUG_VERSION    \"${VERSION}\"/" php_xdebug.h
+
+                    git config user.name "github-actions[bot]"
+                    git config user.email "github-actions[bot]@users.noreply.github.com"
+
+                    if git diff --quiet -- php_xdebug.h; then
+                        echo "php_xdebug.h already at version ${VERSION}, nothing to commit."
+                    else
+                        git add php_xdebug.h
+                        git commit -m "chore: update version number to ${VERSION}"
+                        git push origin HEAD:main
+                    fi
+
+                    git tag "${VERSION}"
+                    git push origin "refs/tags/${VERSION}"

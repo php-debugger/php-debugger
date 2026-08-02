@@ -34,47 +34,6 @@ env:
     WINDOWS_FLAGS: --enable-php-debugger --with-mhash --with-pic --enable-mbstring --enable-mysqlnd --with-sodium=shared --with-curl --with-openssl --disable-phpdbg --disable-opcache-jit
 
 jobs:
-    bump-version:
-        runs-on: ubuntu-latest
-        outputs:
-            sha: ${{ steps.push.outputs.sha }}
-        steps:
-            -   uses: actions/checkout@v7
-                with:
-                    ref: main
-                    fetch-depth: 0
-                    token: ${{ secrets.GITHUB_TOKEN }}
-
-            -   name: Update XDEBUG_VERSION to match the release tag
-                id: push
-                run: |
-                    if [ "${{ github.repository }}" != "php-debugger/php-debugger" ]; then
-                        echo "Not the canonical repo, skipping version bump/push."
-                        echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-                        exit 0
-                    fi
-
-                    VERSION="${GITHUB_REF_NAME#v}"
-                    if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
-                        echo "Tag '${GITHUB_REF_NAME}' doesn't look like a version, leaving php_xdebug.h untouched."
-                        echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-                        exit 0
-                    fi
-
-                    sed -i -E "s/^#define XDEBUG_VERSION[[:space:]]+\"[^\"]*\"/#define XDEBUG_VERSION    \"${VERSION}\"/" php_xdebug.h
-
-                    if git diff --quiet -- php_xdebug.h; then
-                        echo "php_xdebug.h already at version ${VERSION}, nothing to commit."
-                    else
-                        git config user.name "github-actions[bot]"
-                        git config user.email "github-actions[bot]@users.noreply.github.com"
-                        git add php_xdebug.h
-                        git commit -m "chore: update version number to ${VERSION}"
-                        git push origin HEAD:main
-                    fi
-
-                    echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-
     resolve-php-versions:
         runs-on: ubuntu-latest
         outputs:
@@ -109,7 +68,6 @@ jobs:
                     done
 
     build-macos:
-        needs: bump-version
         strategy:
             fail-fast: false
             matrix:
@@ -128,8 +86,6 @@ jobs:
         name: "MacOS — PHP ${{ matrix.php-version }} — ${{ matrix.arch }} — ${{ matrix.ts == 'ts' && 'TS' || 'NTS' }}"
         steps:
             -   uses: actions/checkout@v7
-                with:
-                    ref: ${{ needs.bump-version.outputs.sha }}
 
             -   name: Setup PHP
                 uses: shivammathur/setup-php@v2
@@ -186,7 +142,6 @@ jobs:
                     path: ${{ steps.package.outputs.asset_name }}
 
     build-linux:
-        needs: bump-version
         strategy:
             fail-fast: false
             matrix:
@@ -207,8 +162,6 @@ jobs:
         name: "Linux — PHP ${{ matrix.php-version }} — ${{ matrix.arch.arch }} — ${{ matrix.ts == 'ts' && 'TS' || 'NTS' }}"
         steps:
             -   uses: actions/checkout@v7
-                with:
-                    ref: ${{ needs.bump-version.outputs.sha }}
 
             -   name: Setup PHP
                 uses: shivammathur/setup-php@v2
@@ -255,7 +208,6 @@ jobs:
                     path: ${{ steps.package.outputs.asset_name }}
 
     build-windows:
-        needs: bump-version
         strategy:
             fail-fast: false
             matrix:
@@ -271,8 +223,6 @@ jobs:
         name: "Windows — PHP ${{ matrix.php-version }} — ${{ matrix.ts == 'ts' && 'TS' || 'NTS' }}"
         steps:
             -   uses: actions/checkout@v7
-                with:
-                    ref: ${{ needs.bump-version.outputs.sha }}
 
             -   name: Build the extension
                 uses: php/php-windows-builder/extension@v1
@@ -329,7 +279,7 @@ jobs:
                     path: ${{ steps.package.outputs.asset_name }}
 
     build-php-macos:
-        needs: [bump-version, resolve-php-versions]
+        needs: resolve-php-versions
         strategy:
             fail-fast: false
             matrix:
@@ -350,7 +300,6 @@ jobs:
             -   name: Checkout extension
                 uses: actions/checkout@v7
                 with:
-                    ref: ${{ needs.bump-version.outputs.sha }}
                     path: ext-src
 
             -   name: Install build dependencies
@@ -523,7 +472,7 @@ jobs:
                     path: ${{ steps.package.outputs.asset_path }}
 
     build-php-linux:
-        needs: [bump-version, resolve-php-versions]
+        needs: resolve-php-versions
         strategy:
             fail-fast: false
             matrix:
@@ -546,7 +495,6 @@ jobs:
             -   name: Checkout extension
                 uses: actions/checkout@v7
                 with:
-                    ref: ${{ needs.bump-version.outputs.sha }}
                     path: ext-src
 
             -   name: Install build dependencies
@@ -630,7 +578,7 @@ jobs:
                     path: ${{ steps.package.outputs.asset_path }}
 
     build-php-windows:
-        needs: [bump-version, resolve-php-versions]
+        needs: resolve-php-versions
         strategy:
             fail-fast: false
             matrix:
@@ -648,7 +596,6 @@ jobs:
             -   name: Checkout extension
                 uses: actions/checkout@v7
                 with:
-                    ref: ${{ needs.bump-version.outputs.sha }}
                     path: ext-src
 
             -   name: Setup SDK and build tree
