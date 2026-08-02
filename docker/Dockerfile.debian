@@ -1,0 +1,97 @@
+# Rebuilds the official php:<BASE_TAG> image with php-debugger statically
+# compiled into the interpreter. The official image ships its own source
+# (docker-php-source) and records its full configure command (the
+# "Configure Command" line in php -i), so we re-run the exact same build
+# with the extension added and opcache JIT disabled (JIT is incompatible
+# with php-debugger).
+#
+# Usage:
+#   docker build -f Dockerfile.debian --build-arg BASE_TAG=8.4-cli --build-arg DEBUGGER_REF=0.1.0 .
+
+ARG BASE_TAG
+
+FROM php:${BASE_TAG} AS builder
+
+ARG DEBUGGER_REF
+ARG DEBUGGER_REPO=https://github.com/php-debugger/php-debugger.git
+
+# The toolchain ($PHPIZE_DEPS: autoconf, gcc, make, re2c, ...) is
+# preinstalled on Debian variants but listed anyway in case upstream ever
+# makes it transient; git is needed for the clone and the -dev packages
+# match the official image's configure options (the official build purges
+# these after compiling, keeping just the runtime libs). bison is not
+# needed: the bundled source tarball ships pre-generated parsers.
+# apache2-dev only applies when the base was built --with-apxs2.
+RUN set -eux; \
+	apt-get update; \
+	apt-get install -y --no-install-recommends \
+		$PHPIZE_DEPS \
+		git \
+		libargon2-dev \
+		libcurl4-openssl-dev \
+		libedit-dev \
+		libonig-dev \
+		libreadline-dev \
+		libsodium-dev \
+		libsqlite3-dev \
+		libssl-dev \
+		libxml2-dev \
+		zlib1g-dev \
+	; \
+	if php-config --configure-options | grep -q -- --with-apxs2; then \
+		apt-get install -y --no-install-recommends apache2-dev; \
+	fi; \
+	rm -rf /var/lib/apt/lists/*
+
+# DEBUGGER_SHA is optional: when set (CI passes the commit the release tag
+# points at) it busts this layer's build cache if the tag is ever re-pointed,
+# and fails the build if the clone doesn't match the expected commit.
+ARG DEBUGGER_SHA=
+
+RUN set -eux; \
+	docker-php-source extract; \
+	git clone --depth 1 --branch "${DEBUGGER_REF}" "${DEBUGGER_REPO}" /usr/src/php/ext/php_debugger; \
+	if [ -n "${DEBUGGER_SHA}" ]; then \
+		[ "$(git -C /usr/src/php/ext/php_debugger rev-parse HEAD)" = "${DEBUGGER_SHA}" ]; \
+	fi; \
+	mkdir -p /usr/src/php/m4; \
+	cp /usr/src/php/ext/php_debugger/m4/*.m4 /usr/src/php/m4/
+
+RUN set -eux; \
+	cd /usr/src/php; \
+	./buildconf --force; \
+	export CFLAGS="$PHP_CFLAGS" CPPFLAGS="$PHP_CPPFLAGS" LDFLAGS="$PHP_LDFLAGS"; \
+	configureCommand="$(php -i | sed -n 's/^Configure Command => *//p' | head -n 1)"; \
+	eval "$configureCommand" \
+		--enable-php-debugger \
+		--disable-opcache-jit; \
+	make -j"$(nproc)"; \
+	make install; \
+	# the apache SAPI installs libphp outside /usr/local — stage it so the
+	# final image can pick it up (empty dir for the other variants)
+	mkdir -p /opt/php-debugger/apache2-modules; \
+	if [ -d /usr/lib/apache2/modules ]; then \
+		cp -a /usr/lib/apache2/modules/libphp* /opt/php-debugger/apache2-modules/; \
+	fi; \
+	php -v; \
+	php -m | grep -ix xdebug; \
+	php -r 'exit(extension_loaded("xdebug") ? 0 : 1);'
+
+FROM php:${BASE_TAG}
+
+ARG DEBUGGER_REF
+
+LABEL org.opencontainers.image.source="https://github.com/php-debugger/php-debugger" \
+	org.opencontainers.image.description="Official PHP image with php-debugger statically compiled into the interpreter" \
+	org.opencontainers.image.version="${DEBUGGER_REF}"
+
+COPY --from=builder /usr/local /usr/local
+COPY --from=builder /opt/php-debugger/apache2-modules /opt/php-debugger/apache2-modules
+
+RUN set -eux; \
+	if [ -d /usr/lib/apache2/modules ]; then \
+		cp -a /opt/php-debugger/apache2-modules/. /usr/lib/apache2/modules/; \
+	fi; \
+	rm -rf /opt/php-debugger; \
+	php -v; \
+	php -m | grep -ix xdebug
