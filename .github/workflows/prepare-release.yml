@@ -10,6 +10,10 @@ on:
 permissions:
     contents: write
 
+concurrency:
+    group: prepare-release-main
+    cancel-in-progress: false
+
 jobs:
     # Pushes the version-bump commit directly to `main` with GITHUB_TOKEN (see the
     # "Bump XDEBUG_VERSION and tag" step). If branch protection is ever enabled on
