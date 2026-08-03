@@ -824,6 +824,18 @@ jobs:
                 # dispatch it explicitly instead. target=prod is required: without it,
                 # docker.yml only auto-selects prod for an actual `release` event, and a
                 # workflow_dispatch run would otherwise default to pushing -dev images.
+                #
+                # No tag is passed through: docker.yml resolves "which release to build"
+                # from `gh release view` (latest published) when dispatched manually. That
+                # means re-releasing an older tag via this workflow's own workflow_dispatch
+                # (e.g. rebuilding 0.1.5 while 0.2.3 is latest) will publish Docker images
+                # for whatever is currently latest, not the tag just released. Fine for the
+                # normal case (releasing the newest tag) — if you ever need to re-release an
+                # older tag's Docker images specifically, dispatch docker.yml by hand instead.
+                # The GitHub release above has already been published by this point — a
+                # failure here means the docker.yml mirror didn't get kicked off, not that
+                # the release itself failed. Warn rather than fail the job, so a red X here
+                # doesn't get misread as "the release failed and needs rerunning".
                 if: github.repository == 'php-debugger/php-debugger'
                 env:
                     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -832,5 +844,4 @@ jobs:
                         gh workflow run docker.yml --ref main -f target=prod && exit 0
                         [ "$attempt" -lt 3 ] && sleep 5
                     done
-                    echo "::error::Failed to dispatch docker.yml after 3 attempts — rerun it manually from the Actions UI with target=prod"
-                    exit 1
+                    echo "::warning::Failed to dispatch docker.yml after 3 attempts — the release itself published fine, but rerun docker.yml manually from the Actions UI with target=prod to publish matching Docker images"
