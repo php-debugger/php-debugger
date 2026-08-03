@@ -19,6 +19,7 @@ on:
 
 permissions:
     contents: write
+    actions: write
 
 # Serializes runs per tag, so a rerun (or a race between a human tag push and
 # a prepare-release.yml dispatch for the same version) can't fire two release
@@ -812,3 +813,24 @@ jobs:
                     tag_name: ${{ env.RELEASE_REF }}
                     generate_release_notes: true
                     files: release-assets/*
+
+            -   name: Trigger Docker image build
+                # This step's own release-publish above used GITHUB_TOKEN, and GitHub
+                # Actions deliberately doesn't let a GITHUB_TOKEN-authored event —
+                # including the `release: published` event that action just fired —
+                # trigger other workflows (the same anti-recursion protection that made
+                # prepare-release.yml's tag push not trigger this workflow). So
+                # docker.yml's `release: published` trigger never fires here either;
+                # dispatch it explicitly instead. target=prod is required: without it,
+                # docker.yml only auto-selects prod for an actual `release` event, and a
+                # workflow_dispatch run would otherwise default to pushing -dev images.
+                if: github.repository == 'php-debugger/php-debugger'
+                env:
+                    GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                run: |
+                    for attempt in 1 2 3; do
+                        gh workflow run docker.yml --ref main -f target=prod && exit 0
+                        [ "$attempt" -lt 3 ] && sleep 5
+                    done
+                    echo "::error::Failed to dispatch docker.yml after 3 attempts — rerun it manually from the Actions UI with target=prod"
+                    exit 1
