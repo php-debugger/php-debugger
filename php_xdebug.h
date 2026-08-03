@@ -18,7 +18,7 @@
 #define PHP_XDEBUG_H
 
 #define XDEBUG_NAME       "PHP Debugger"
-#define XDEBUG_VERSION    "0.2.1"
+#define XDEBUG_VERSION    "0.2.2"
 #define XDEBUG_AUTHOR     "Derick Rethans"
 #define XDEBUG_COPYRIGHT  "Copyright (c) 2002-2026 by Derick Rethans"
 #define XDEBUG_COPYRIGHT_SHORT "Copyright (c) 2002-2026"
