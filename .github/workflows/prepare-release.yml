@@ -107,4 +107,22 @@ jobs:
                     # workflows (anti-recursion protection) — so release.yml's `push: tags`
                     # trigger would never fire for it. Explicitly dispatching it via the API
                     # instead is unaffected by that restriction.
-                    gh workflow run release.yml --ref main -f "tag=${{ inputs.version }}"
+                    #
+                    # --ref main is deliberate and not a typo for the tag: it pins which
+                    # *copy of the release.yml workflow file* runs (always today's CI logic
+                    # on main), while RELEASE_REF inside that workflow controls what commit
+                    # actually gets checked out and built (the tag). Do not change this to
+                    # --ref "${{ inputs.version }}" — that would run the tag's own (possibly
+                    # older/different) copy of release.yml instead, which is not what we want.
+                    #
+                    # The tag is already pushed at this point regardless of whether this
+                    # dispatch succeeds. If it still fails after retrying (e.g. a longer API
+                    # outage), the tag isn't lost: rerun release.yml manually from the Actions
+                    # UI (or `gh workflow run release.yml --ref main -f tag=${{ inputs.version }}`)
+                    # with the same tag.
+                    for attempt in 1 2 3; do
+                        gh workflow run release.yml --ref main -f "tag=${{ inputs.version }}" && exit 0
+                        [ "$attempt" -lt 3 ] && sleep 5
+                    done
+                    echo "::error::Failed to dispatch release.yml after 3 attempts — tag ${{ inputs.version }} was pushed, rerun release.yml manually for it"
+                    exit 1

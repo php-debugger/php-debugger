@@ -20,6 +20,14 @@ on:
 permissions:
     contents: write
 
+# Serializes runs per tag, so a rerun (or a race between a human tag push and
+# a prepare-release.yml dispatch for the same version) can't fire two release
+# builds for the same tag in parallel — e.g. two matrices doing duplicate work
+# and softprops/action-gh-release racing to create the same release.
+concurrency:
+    group: release-${{ github.event.inputs.tag || github.ref_name }}
+    cancel-in-progress: false
+
 env:
     # The tag to build: the pushed tag on a `push` trigger, or the input on a
     # manual/`gh workflow run` dispatch. Every checkout step below and the
@@ -53,6 +61,33 @@ env:
     WINDOWS_FLAGS: --enable-php-debugger --with-mhash --with-pic --enable-mbstring --enable-mysqlnd --with-sodium=shared --with-curl --with-openssl --disable-phpdbg --disable-opcache-jit
 
 jobs:
+    # A `push: tags` run always has a real, already-existing tag (RELEASE_REF
+    # is just github.ref_name). A manual workflow_dispatch run instead takes
+    # the tag as free-text UI/API input, so it gets stricter treatment: format
+    # is checked with the same regex prepare-release.yml uses before it ever
+    # creates a tag, and — for both trigger types — existence is confirmed
+    # against the remote before the full build matrix fans out, so a typo
+    # fails in seconds instead of burning a whole matrix of runner minutes on
+    # every job's checkout.
+    validate-tag:
+        runs-on: ubuntu-latest
+        steps:
+            -   name: Validate tag
+                env:
+                    GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                run: |
+                    TAG="${{ env.RELEASE_REF }}"
+                    if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+                        if ! [[ "$TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+                            echo "::error::'${TAG}' doesn't look like a version (expected X.Y.Z or X.Y.Z-suffix)"
+                            exit 1
+                        fi
+                    fi
+                    if ! gh api "repos/${{ github.repository }}/git/ref/tags/${TAG}" >/dev/null 2>&1; then
+                        echo "::error::Tag '${TAG}' does not exist in ${{ github.repository }}"
+                        exit 1
+                    fi
+
     resolve-php-versions:
         runs-on: ubuntu-latest
         outputs:
@@ -87,6 +122,7 @@ jobs:
                     done
 
     build-macos:
+        needs: validate-tag
         strategy:
             fail-fast: false
             matrix:
@@ -163,6 +199,7 @@ jobs:
                     path: ${{ steps.package.outputs.asset_name }}
 
     build-linux:
+        needs: validate-tag
         strategy:
             fail-fast: false
             matrix:
@@ -231,6 +268,7 @@ jobs:
                     path: ${{ steps.package.outputs.asset_name }}
 
     build-windows:
+        needs: validate-tag
         strategy:
             fail-fast: false
             matrix:
@@ -304,7 +342,7 @@ jobs:
                     path: ${{ steps.package.outputs.asset_name }}
 
     build-php-macos:
-        needs: resolve-php-versions
+        needs: [validate-tag, resolve-php-versions]
         strategy:
             fail-fast: false
             matrix:
@@ -498,7 +536,7 @@ jobs:
                     path: ${{ steps.package.outputs.asset_path }}
 
     build-php-linux:
-        needs: resolve-php-versions
+        needs: [validate-tag, resolve-php-versions]
         strategy:
             fail-fast: false
             matrix:
@@ -605,7 +643,7 @@ jobs:
                     path: ${{ steps.package.outputs.asset_path }}
 
     build-php-windows:
-        needs: resolve-php-versions
+        needs: [validate-tag, resolve-php-versions]
         strategy:
             fail-fast: false
             matrix:
