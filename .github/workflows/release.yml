@@ -17,9 +17,13 @@ on:
                 description: 'Tag to build and release (e.g. 0.3.0)'
                 required: true
 
+# Least-privilege default: build/validate jobs only ever check out code and
+# upload/download workflow artifacts, none of which needs write access.
+# `contents: write` and `actions: write` are granted only on the `release`
+# job below, which is the one that actually publishes the GitHub release and
+# dispatches docker.yml.
 permissions:
-    contents: write
-    actions: write
+    contents: read
 
 # Serializes runs per tag, so a rerun (or a race between a human tag push and
 # a prepare-release.yml dispatch for the same version) can't fire two release
@@ -785,6 +789,9 @@ jobs:
     release:
         needs: [build-macos, build-linux, build-windows, build-php-macos, build-php-linux, build-php-windows]
         runs-on: ubuntu-latest
+        permissions:
+            contents: write
+            actions: write
         steps:
             -   uses: actions/checkout@v7
                 with:
