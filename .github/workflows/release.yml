@@ -17,8 +17,13 @@ on:
                 description: 'Tag to build and release (e.g. 0.3.0)'
                 required: true
 
+# Least-privilege default: build/validate jobs only ever check out code and
+# upload/download workflow artifacts, none of which needs write access.
+# `contents: write` and `actions: write` are granted only on the `release`
+# job below, which is the one that actually publishes the GitHub release and
+# dispatches docker.yml.
 permissions:
-    contents: write
+    contents: read
 
 # Serializes runs per tag, so a rerun (or a race between a human tag push and
 # a prepare-release.yml dispatch for the same version) can't fire two release
@@ -784,6 +789,9 @@ jobs:
     release:
         needs: [build-macos, build-linux, build-windows, build-php-macos, build-php-linux, build-php-windows]
         runs-on: ubuntu-latest
+        permissions:
+            contents: write
+            actions: write
         steps:
             -   uses: actions/checkout@v7
                 with:
@@ -812,3 +820,35 @@ jobs:
                     tag_name: ${{ env.RELEASE_REF }}
                     generate_release_notes: true
                     files: release-assets/*
+
+            -   name: Trigger Docker image build
+                # This step's own release-publish above used GITHUB_TOKEN, and GitHub
+                # Actions deliberately doesn't let a GITHUB_TOKEN-authored event —
+                # including the `release: published` event that action just fired —
+                # trigger other workflows (the same anti-recursion protection that made
+                # prepare-release.yml's tag push not trigger this workflow). So
+                # docker.yml's `release: published` trigger never fires here either;
+                # dispatch it explicitly instead. target=prod is required: without it,
+                # docker.yml only auto-selects prod for an actual `release` event, and a
+                # workflow_dispatch run would otherwise default to pushing -dev images.
+                #
+                # No tag is passed through: docker.yml resolves "which release to build"
+                # from `gh release view` (latest published) when dispatched manually. That
+                # means re-releasing an older tag via this workflow's own workflow_dispatch
+                # (e.g. rebuilding 0.1.5 while 0.2.3 is latest) will publish Docker images
+                # for whatever is currently latest, not the tag just released. Fine for the
+                # normal case (releasing the newest tag) — if you ever need to re-release an
+                # older tag's Docker images specifically, dispatch docker.yml by hand instead.
+                # The GitHub release above has already been published by this point — a
+                # failure here means the docker.yml mirror didn't get kicked off, not that
+                # the release itself failed. Warn rather than fail the job, so a red X here
+                # doesn't get misread as "the release failed and needs rerunning".
+                if: github.repository == 'php-debugger/php-debugger'
+                env:
+                    GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                run: |
+                    for attempt in 1 2 3; do
+                        gh workflow run docker.yml --ref main -f target=prod && exit 0
+                        [ "$attempt" -lt 3 ] && sleep 5
+                    done
+                    echo "::warning::Failed to dispatch docker.yml after 3 attempts — the release itself published fine, but rerun docker.yml manually from the Actions UI with target=prod to publish matching Docker images"
