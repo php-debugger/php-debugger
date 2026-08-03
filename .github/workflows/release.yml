@@ -4,11 +4,38 @@ on:
     push:
         tags:
             - '*'
+    # prepare-release.yml pushes the release tag using GITHUB_TOKEN, and
+    # GitHub Actions deliberately does not let a GITHUB_TOKEN-authored push
+    # trigger other workflows (anti-recursion protection) — so the `push`
+    # trigger above never fires for tags created that way. prepare-release.yml
+    # explicitly dispatches this workflow via `gh workflow run` instead, which
+    # is unaffected by that restriction. A human pushing a tag directly still
+    # hits the `push` trigger as normal.
+    workflow_dispatch:
+        inputs:
+            tag:
+                description: 'Tag to build and release (e.g. 0.3.0)'
+                required: true
 
 permissions:
     contents: write
 
+# Serializes runs per tag, so a rerun (or a race between a human tag push and
+# a prepare-release.yml dispatch for the same version) can't fire two release
+# builds for the same tag in parallel — e.g. two matrices doing duplicate work
+# and softprops/action-gh-release racing to create the same release.
+concurrency:
+    group: release-${{ github.event.inputs.tag || github.ref_name }}
+    cancel-in-progress: false
+
 env:
+    # The tag to build: the pushed tag on a `push` trigger, or the input on a
+    # manual/`gh workflow run` dispatch. Every checkout step below and the
+    # final release-creation step key off this instead of the default ref, so
+    # a workflow_dispatch run (which otherwise checks out the branch selected
+    # in the UI, not the tag) still builds and releases the right commit.
+    RELEASE_REF: ${{ github.event.inputs.tag || github.ref_name }}
+
     # Common configure flags for all Unix builds (JIT disabled - incompatible with php-debugger)
     CONFIGURE_FLAGS: >-
       --with-mhash
@@ -34,6 +61,33 @@ env:
     WINDOWS_FLAGS: --enable-php-debugger --with-mhash --with-pic --enable-mbstring --enable-mysqlnd --with-sodium=shared --with-curl --with-openssl --disable-phpdbg --disable-opcache-jit
 
 jobs:
+    # A `push: tags` run always has a real, already-existing tag (RELEASE_REF
+    # is just github.ref_name). A manual workflow_dispatch run instead takes
+    # the tag as free-text UI/API input, so it gets stricter treatment: format
+    # is checked with the same regex prepare-release.yml uses before it ever
+    # creates a tag, and — for both trigger types — existence is confirmed
+    # against the remote before the full build matrix fans out, so a typo
+    # fails in seconds instead of burning a whole matrix of runner minutes on
+    # every job's checkout.
+    validate-tag:
+        runs-on: ubuntu-latest
+        steps:
+            -   name: Validate tag
+                env:
+                    GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                run: |
+                    TAG="${{ env.RELEASE_REF }}"
+                    if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+                        if ! [[ "$TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+                            echo "::error::'${TAG}' doesn't look like a version (expected X.Y.Z or X.Y.Z-suffix)"
+                            exit 1
+                        fi
+                    fi
+                    if ! gh api "repos/${{ github.repository }}/git/ref/tags/${TAG}" >/dev/null 2>&1; then
+                        echo "::error::Tag '${TAG}' does not exist in ${{ github.repository }}"
+                        exit 1
+                    fi
+
     resolve-php-versions:
         runs-on: ubuntu-latest
         outputs:
@@ -68,6 +122,7 @@ jobs:
                     done
 
     build-macos:
+        needs: validate-tag
         strategy:
             fail-fast: false
             matrix:
@@ -86,6 +141,8 @@ jobs:
         name: "MacOS — PHP ${{ matrix.php-version }} — ${{ matrix.arch }} — ${{ matrix.ts == 'ts' && 'TS' || 'NTS' }}"
         steps:
             -   uses: actions/checkout@v7
+                with:
+                    ref: ${{ env.RELEASE_REF }}
 
             -   name: Setup PHP
                 uses: shivammathur/setup-php@v2
@@ -142,6 +199,7 @@ jobs:
                     path: ${{ steps.package.outputs.asset_name }}
 
     build-linux:
+        needs: validate-tag
         strategy:
             fail-fast: false
             matrix:
@@ -162,6 +220,8 @@ jobs:
         name: "Linux — PHP ${{ matrix.php-version }} — ${{ matrix.arch.arch }} — ${{ matrix.ts == 'ts' && 'TS' || 'NTS' }}"
         steps:
             -   uses: actions/checkout@v7
+                with:
+                    ref: ${{ env.RELEASE_REF }}
 
             -   name: Setup PHP
                 uses: shivammathur/setup-php@v2
@@ -208,6 +268,7 @@ jobs:
                     path: ${{ steps.package.outputs.asset_name }}
 
     build-windows:
+        needs: validate-tag
         strategy:
             fail-fast: false
             matrix:
@@ -223,6 +284,8 @@ jobs:
         name: "Windows — PHP ${{ matrix.php-version }} — ${{ matrix.ts == 'ts' && 'TS' || 'NTS' }}"
         steps:
             -   uses: actions/checkout@v7
+                with:
+                    ref: ${{ env.RELEASE_REF }}
 
             -   name: Build the extension
                 uses: php/php-windows-builder/extension@v1
@@ -279,7 +342,7 @@ jobs:
                     path: ${{ steps.package.outputs.asset_name }}
 
     build-php-macos:
-        needs: resolve-php-versions
+        needs: [validate-tag, resolve-php-versions]
         strategy:
             fail-fast: false
             matrix:
@@ -300,6 +363,7 @@ jobs:
             -   name: Checkout extension
                 uses: actions/checkout@v7
                 with:
+                    ref: ${{ env.RELEASE_REF }}
                     path: ext-src
 
             -   name: Install build dependencies
@@ -472,7 +536,7 @@ jobs:
                     path: ${{ steps.package.outputs.asset_path }}
 
     build-php-linux:
-        needs: resolve-php-versions
+        needs: [validate-tag, resolve-php-versions]
         strategy:
             fail-fast: false
             matrix:
@@ -495,6 +559,7 @@ jobs:
             -   name: Checkout extension
                 uses: actions/checkout@v7
                 with:
+                    ref: ${{ env.RELEASE_REF }}
                     path: ext-src
 
             -   name: Install build dependencies
@@ -578,7 +643,7 @@ jobs:
                     path: ${{ steps.package.outputs.asset_path }}
 
     build-php-windows:
-        needs: resolve-php-versions
+        needs: [validate-tag, resolve-php-versions]
         strategy:
             fail-fast: false
             matrix:
@@ -596,6 +661,7 @@ jobs:
             -   name: Checkout extension
                 uses: actions/checkout@v7
                 with:
+                    ref: ${{ env.RELEASE_REF }}
                     path: ext-src
 
             -   name: Setup SDK and build tree
@@ -720,6 +786,8 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   uses: actions/checkout@v7
+                with:
+                    ref: ${{ env.RELEASE_REF }}
 
             -   name: Download all artifacts
                 uses: actions/download-artifact@v6
@@ -738,5 +806,9 @@ jobs:
             -   name: Create release
                 uses: softprops/action-gh-release@v3
                 with:
+                    # on a `push` trigger this is inferred from GITHUB_REF; on
+                    # workflow_dispatch GITHUB_REF is the branch picked in the
+                    # UI, not the tag, so it must be set explicitly here too
+                    tag_name: ${{ env.RELEASE_REF }}
                     generate_release_notes: true
                     files: release-assets/*
