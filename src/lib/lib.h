@@ -225,6 +225,7 @@ void xdebug_library_rinit(void);
 void xdebug_library_post_deactivate(void);
 
 void xdebug_disable_opcache_optimizer(void);
+void xdebug_disable_opcache_for_request(void);
 
 #define XDEBUG_MODE_OFF             0
 #define XDEBUG_MODE_STEP_DEBUG   1<<2

@@ -1036,6 +1036,7 @@ void xdebug_base_rinit_if_enabled(void)
 {
 	CG(compiler_options) = CG(compiler_options) | ZEND_COMPILE_EXTENDED_STMT;
 	xdebug_disable_opcache_optimizer();
+	xdebug_disable_opcache_for_request();
 	zend_execute_ex = xdebug_execute_ex;
 
 	/* Hack: We check for a soap header here, if that's existing, we don't use

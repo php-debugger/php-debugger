@@ -143,6 +143,25 @@ void xdebug_disable_opcache_optimizer(void)
 	zend_string_release(value);
 }
 
+/* Instrumentation is decided per request, but opcache is shared across
+ * requests: reusing an op_array cached by a non-instrumented request means
+ * breakpoints silently don't bind and stepping skips those functions, while
+ * storing an instrumented op_array makes every later request pay the
+ * EXT_STMT overhead. So instrumented requests must not read from or write
+ * to opcache at all. opcache.enable's handler turns the accelerator off
+ * immediately (including the file cache) when set to 0 at runtime, and the
+ * INI system restores the value at request shutdown. */
+void xdebug_disable_opcache_for_request(void)
+{
+	zend_string *key = zend_string_init(ZEND_STRL("opcache.enable"), 1);
+	zend_string *value = zend_string_init(ZEND_STRL("0"), 1);
+
+	zend_alter_ini_entry(key, value, ZEND_INI_USER, ZEND_INI_STAGE_RUNTIME);
+
+	zend_string_release(key);
+	zend_string_release(value);
+}
+
 static int xdebug_lib_set_mode_item(const char *mode, int len)
 {
 	if (strncmp(mode, "off", len) == 0) {
