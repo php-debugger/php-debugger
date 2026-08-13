@@ -19,10 +19,11 @@ $cacheDir = getTmpFile( 'opcache-bypass-request-007-cache' );
  * compiled without debugging information. opcache's file cache is used
  * instead of shared memory because it survives into the next process, the
  * way SHM survives into the next request of an FPM worker. */
-$opcacheOptions = "-d opcache.enable=1 -d opcache.enable_cli=1 -d opcache.file_cache={$cacheDir}";
+$null = substr( PHP_OS, 0, 3 ) == 'WIN' ? 'NUL' : '/dev/null';
+$opcacheOptions = '-d opcache.enable=1 -d opcache.enable_cli=1 -d opcache.file_cache=' . escapeshellarg( $cacheDir );
 $primeCommand = getenv( 'TEST_PHP_EXECUTABLE' ) . ' ' . getenv( 'TEST_PHP_ARGS' ) . ' ' . $opcacheOptions
 	. ' -d xdebug.mode=debug -d xdebug.start_with_request=no -d xdebug.on_demand_debugging_enabled=0 '
-	. escapeshellarg( $filename ) . ' > /dev/null 2>&1';
+	. escapeshellarg( $filename ) . " > {$null} 2>&1";
 exec( $primeCommand );
 
 $cached = new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $cacheDir, FilesystemIterator::SKIP_DOTS ) );

@@ -361,7 +361,7 @@ static void xdebug_init_base_globals(xdebug_base_globals_t *xg)
 	xg->error_reporting_overridden = 0;
 	xg->statement_handler_enabled  = false;
 	xg->early_connection = false;
-	xg->opcache_disabled = false;
+	xg->opcache_disabled_for_request = false;
 
 	xg->php_version_compile_time = PHP_VERSION;
 	xg->php_version_run_time     = zend_get_module_version("standard");
@@ -641,7 +641,7 @@ PHP_RINIT_FUNCTION(xdebug)
 		 * process, not just the debugged ones. Say so: on a busy server this
 		 * is a throughput cliff that is otherwise hard to attribute. */
 		xdebug_log_ex(
-			XLOG_CHAN_CONFIG, XLOG_WARN, "OPCACHE-OD",
+			XLOG_CHAN_CONFIG, XLOG_INFO, "OPCACHE-OD",
 			"OPcache is bypassed for every request because xdebug.on_demand_debugging_enabled=1 needs each request compiled with debugging instrumentation. Set it to 0 to keep OPcache active when no debugging client is connected."
 		);
 		XG_BASE(statement_handler_enabled) = false;

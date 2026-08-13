@@ -144,11 +144,11 @@ void xdebug_library_post_deactivate(void)
  * This also covers the optimizer, which only ever runs while opcache caches a
  * script: with the accelerator off, no optimization pass can shift or remove
  * the statements breakpoints are set on. */
-int xdebug_disable_opcache_for_request(void)
+bool xdebug_disable_opcache_for_request(void)
 {
 	zend_string *key = zend_string_init(ZEND_STRL("opcache.enable"), 1);
 	zend_string *value = zend_string_init(ZEND_STRL("0"), 1);
-	int          disabled;
+	bool         disabled;
 
 	/* ZEND_INI_SYSTEM, not ZEND_INI_USER: php_admin_value[opcache.enable] in an
 	 * FPM pool narrows the directive to system-modifiable, which would make a

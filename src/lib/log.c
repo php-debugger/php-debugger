@@ -630,7 +630,7 @@ static void print_step_debug_information(void)
 			"<tr><td class=\"e\">Debugger</td><td class=\"v\">%s</td>"
 			"<td class=\"d\"><a href=\"%sstep_debug\">" DOCS_LINK_ICON "</a></td></tr>\n",
 				is_active ? "Active" : (XG_DBG(detached) ? "Detached" : "Not Active"), xdebug_lib_docs_base());
-		if (XG_BASE(opcache_disabled)) {
+		if (XG_BASE(opcache_disabled_for_request)) {
 			PUTS("<tr><td class=\"e\">OPcache</td><td class=\"v\">Bypassed for this request, so that every file is compiled with debugging information</td><td class=\"d\">&nbsp;</td></tr>\n");
 		}
 		if (XG_DBG(context).connected_hostname) {
@@ -700,7 +700,7 @@ static void print_step_debug_information(void)
 		} else {
 			PUTS("Debugger is not active\n");
 		}
-		if (XG_BASE(opcache_disabled)) {
+		if (XG_BASE(opcache_disabled_for_request)) {
 			PUTS("OPcache is bypassed for this request, so that every file is compiled with debugging information\n");
 		}
 		if (XG_DBG(context).connected_hostname) {

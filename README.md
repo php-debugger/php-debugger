@@ -65,8 +65,8 @@ Note that this has a significant performance impact: instead of achieving up to 
 
 On top of that, every request must be compiled with debugging instrumentation, so OPcache is bypassed for *all* requests in the
 process — not just the ones that end up being debugged. On a busy server (PHP-FPM in particular) that recompilation is a
-substantial throughput cost. The debugger logs a `[Config] WARN` about this at request start, and `xdebug_info()` shows it in its
-diagnostic log.
+substantial throughput cost. The debugger logs a `[Config] INFO` line about this at request start, and `xdebug_info()` reports the
+bypass in its Step Debugging section.
 
 For this reason, we recommend enabling this setting only if you specifically require on-demand debugging.
 

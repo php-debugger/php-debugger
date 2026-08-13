@@ -19,5 +19,4 @@ echo file_get_contents( $logFileName );
 @unlink( $logFileName );
 ?>
 --EXPECTF--
-[%d] Log opened at %s
-[%d] [Config] WARN: OPcache is bypassed for every request because xdebug.on_demand_debugging_enabled=1 needs each request compiled with debugging instrumentation. Set it to 0 to keep OPcache active when no debugging client is connected.
+%A[Config] INFO: OPcache is bypassed for every request because xdebug.on_demand_debugging_enabled=1 needs each request compiled with debugging instrumentation. Set it to 0 to keep OPcache active when no debugging client is connected.%A

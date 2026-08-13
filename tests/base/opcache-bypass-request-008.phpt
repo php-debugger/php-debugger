@@ -18,10 +18,11 @@ $cacheDir = getTmpFile( 'opcache-bypass-request-008-cache' );
 /* Same set-up as opcache-bypass-request-007, but for the normal production
  * path: no on-demand debugging, and the client is connected at request start.
  * The first run stores the file compiled without debugging information. */
-$opcacheOptions = "-d opcache.enable=1 -d opcache.enable_cli=1 -d opcache.file_cache={$cacheDir}";
+$null = substr( PHP_OS, 0, 3 ) == 'WIN' ? 'NUL' : '/dev/null';
+$opcacheOptions = '-d opcache.enable=1 -d opcache.enable_cli=1 -d opcache.file_cache=' . escapeshellarg( $cacheDir );
 $primeCommand = getenv( 'TEST_PHP_EXECUTABLE' ) . ' ' . getenv( 'TEST_PHP_ARGS' ) . ' ' . $opcacheOptions
 	. ' -d xdebug.mode=debug -d xdebug.start_with_request=no -d xdebug.on_demand_debugging_enabled=0 '
-	. escapeshellarg( $filename ) . ' > /dev/null 2>&1';
+	. escapeshellarg( $filename ) . " > {$null} 2>&1";
 exec( $primeCommand );
 
 $cached = new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $cacheDir, FilesystemIterator::SKIP_DOTS ) );
