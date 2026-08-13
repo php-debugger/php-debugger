@@ -132,15 +132,34 @@ void xdebug_library_post_deactivate(void)
 	}
 }
 
-void xdebug_disable_opcache_optimizer(void)
+/* Instrumentation is decided per request, but opcache is shared across
+ * requests: reusing an op_array cached by a non-instrumented request means
+ * breakpoints silently don't bind and stepping skips those functions, while
+ * storing an instrumented op_array makes every later request pay the
+ * EXT_STMT overhead. So instrumented requests must not read from or write
+ * to opcache at all. opcache.enable's handler turns the accelerator off
+ * immediately (including the file cache) when set to 0 at runtime, and the
+ * INI system restores the value at request shutdown.
+ *
+ * This also covers the optimizer, which only ever runs while opcache caches a
+ * script: with the accelerator off, no optimization pass can shift or remove
+ * the statements breakpoints are set on. */
+bool xdebug_disable_opcache_for_request(void)
 {
-	zend_string *key = zend_string_init(ZEND_STRL("opcache.optimization_level"), 1);
+	zend_string *key = zend_string_init(ZEND_STRL("opcache.enable"), 1);
 	zend_string *value = zend_string_init(ZEND_STRL("0"), 1);
+	bool         disabled;
 
-	zend_alter_ini_entry(key, value, ZEND_INI_SYSTEM, ZEND_INI_STAGE_STARTUP);
+	/* ZEND_INI_SYSTEM, not ZEND_INI_USER: php_admin_value[opcache.enable] in an
+	 * FPM pool narrows the directive to system-modifiable, which would make a
+	 * user-level change fail for the whole worker. Failure here means opcache
+	 * isn't loaded, which needs no handling — there is nothing to bypass. */
+	disabled = (zend_alter_ini_entry(key, value, ZEND_INI_SYSTEM, ZEND_INI_STAGE_RUNTIME) == SUCCESS);
 
 	zend_string_release(key);
 	zend_string_release(value);
+
+	return disabled;
 }
 
 static int xdebug_lib_set_mode_item(const char *mode, int len)

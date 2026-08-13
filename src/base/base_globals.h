@@ -54,6 +54,7 @@ typedef struct _xdebug_base_globals_t {
 	char         *last_exception_trace;
 	zend_bool     statement_handler_enabled;
 	zend_bool	  early_connection;
+	zend_bool     opcache_disabled_for_request;
 
 	/* in-execution checking */
 	zend_bool  in_execution;
