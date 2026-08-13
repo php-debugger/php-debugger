@@ -975,6 +975,7 @@ void xdebug_base_rinit(void)
 {
 	XG_BASE(statement_handler_enabled) = true;
 	XG_BASE(observer_active) = true;
+	XG_BASE(opcache_disabled) = false;
 
 	{
 		zend_string *fiber_key = create_key_for_fiber(EG(main_fiber_context));
@@ -1035,8 +1036,7 @@ void xdebug_base_rinit(void)
 void xdebug_base_rinit_if_enabled(void)
 {
 	CG(compiler_options) = CG(compiler_options) | ZEND_COMPILE_EXTENDED_STMT;
-	xdebug_disable_opcache_optimizer();
-	xdebug_disable_opcache_for_request();
+	XG_BASE(opcache_disabled) = xdebug_disable_opcache_for_request();
 	zend_execute_ex = xdebug_execute_ex;
 
 	/* Hack: We check for a soap header here, if that's existing, we don't use

@@ -560,65 +560,12 @@ static int ide_key_is_cloud_id(void)
 	return 1;
 }
 
-static bool is_opcache_enabled(void)
-{
-	zend_string *opcache_enable = ZSTR_INIT_LITERAL("opcache.enable", 0);
-	zend_string *opcache_enable_cli = ZSTR_INIT_LITERAL("opcache.enable_cli", 0);
-	zend_string *opcache_optimization_level = ZSTR_INIT_LITERAL("opcache.optimization_level", 0);
-
-	zend_string *opcache_enable_v = zend_ini_get_value(opcache_enable);
-	zend_string *opcache_enable_cli_v = zend_ini_get_value(opcache_enable_cli);
-	zend_string *opcache_optimization_level_v = zend_ini_get_value(opcache_optimization_level);
-
-	zend_string_release(opcache_enable);
-	zend_string_release(opcache_enable_cli);
-	zend_string_release(opcache_optimization_level);
-
-	if (!opcache_enable_v || zend_string_equals_literal(opcache_enable_v, "0")) {
-		return false;
-	}
-	if (!opcache_enable_cli_v || zend_string_equals_literal(opcache_enable_cli_v, "0")) {
-		return false;
-	}
-	if (!opcache_optimization_level_v || zend_string_equals_literal(opcache_optimization_level_v, "0")) {
-		return false;
-	}
-
-	return true;
-}
-
-static void warn_if_opcache_is_loaded_after_xdebug(void)
-{
-	bool xdebug_loaded = false;
-	zend_llist_element *ext_ptr = zend_extensions.head;
-
-	do
-	{
-		zend_extension *zext = (zend_extension *)ext_ptr->data;
-
-		if (strcmp(zext->name, "Xdebug") == 0) {
-			xdebug_loaded = true;
-		}
-
-		if (strcmp(zext->name, "Zend OPcache") == 0 && is_opcache_enabled()) {
-			if (xdebug_loaded) {
-				xdebug_log_ex(XLOG_CHAN_DEBUG, XLOG_WARN, "OPCACHE", "Debugger is not working optimally, as Xdebug is loaded before Zend OPcache");
-			}
-			return;
-		}
-
-		ext_ptr = ext_ptr->next;
-	} while (ext_ptr != NULL);
-}
-
 static void xdebug_init_debugger(void)
 {
 	xdebug_str *connection_attempts = xdebug_str_new();
 
 	/* Get handler from mode */
 	XG_DBG(context).handler = &xdebug_handler_dbgp;
-
-	warn_if_opcache_is_loaded_after_xdebug();
 
 	/* If socket was already established by early connect at RINIT,
 	 * skip straight to protocol initialization */
@@ -677,8 +624,6 @@ int xdebug_early_connect_to_client(void)
 	xdebug_str *connection_attempts = xdebug_str_new();
 
 	XG_DBG(context).handler = &xdebug_handler_dbgp;
-
-	warn_if_opcache_is_loaded_after_xdebug();
 
 	/* Cloud connections can't be probed early */
 	if (strcmp(XINI_DBG(cloud_id), "") != 0) {

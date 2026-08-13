@@ -63,6 +63,11 @@ INI setting: `php_debugger.on_demand_debugging_enabled` (default: false)
 When this setting is enabled, on-demand debugging features remain active even if no client is connected at startup. 
 Note that this has a significant performance impact: instead of achieving up to a 97% performance improvement, the average improvement drops to around 60%.
 
+On top of that, every request must be compiled with debugging instrumentation, so OPcache is bypassed for *all* requests in the
+process — not just the ones that end up being debugged. On a busy server (PHP-FPM in particular) that recompilation is a
+substantial throughput cost. The debugger logs a `[Config] WARN` about this at request start, and `xdebug_info()` shows it in its
+diagnostic log.
+
 For this reason, we recommend enabling this setting only if you specifically require on-demand debugging.
 
 ## Installation
@@ -116,6 +121,20 @@ xdebug.client_host = 127.0.0.1
 xdebug.client_port = 9003
 xdebug.start_with_request = trigger
 ```
+
+### OPcache
+
+Debugging needs every file compiled with debugging information, and OPcache is shared between requests, so PHP Debugger switches
+OPcache off for the requests it instruments — those with a debugging client attached, and all requests when
+`on_demand_debugging_enabled` is on. Other requests keep OPcache exactly as you configured it.
+
+Without this, a file first compiled by a non-debugged request stays cached without debugging information: breakpoints in it never
+fire and stepping walks straight past its functions. It also keeps instrumented code from being cached and slowing down requests
+that are not being debugged. As a side effect, JIT does not run for debugged requests either — it is part of OPcache, and it is
+incompatible with debugging anyway.
+
+`xdebug_info()` says `OPcache is bypassed for this request` when this applies, so you can tell this apart from OPcache being off
+for some other reason.
 
 ## IDE Setup
 
