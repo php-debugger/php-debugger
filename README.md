@@ -126,7 +126,7 @@ xdebug.start_with_request = trigger
 
 Debugging needs every file compiled with debugging information, and OPcache is shared between requests, so PHP Debugger switches
 OPcache off for the requests it instruments — those with a debugging client attached, and all requests when
-`on_demand_debugging_enabled` is on. Other requests keep OPcache exactly as you configured it.
+`php_debugger.on_demand_debugging_enabled` (aka `xdebug.on_demand_debugging_enabled`) is on. Other requests keep OPcache exactly as you configured it.
 
 Without this, a file first compiled by a non-debugged request stays cached without debugging information: breakpoints in it never
 fire and stepping walks straight past its functions. It also keeps instrumented code from being cached and slowing down requests
