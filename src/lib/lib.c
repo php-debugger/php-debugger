@@ -143,7 +143,12 @@ void xdebug_disable_opcache_optimizer(void)
 	zend_string *key = zend_string_init(ZEND_STRL("opcache.optimization_level"), 1);
 	zend_string *value = zend_string_init(ZEND_STRL("0"), 1);
 
-	zend_alter_ini_entry(key, value, ZEND_INI_SYSTEM, ZEND_INI_STAGE_STARTUP);
+	/* ZEND_INI_SYSTEM is the part that matters: the directive is
+	 * PHP_INI_SYSTEM, and zend_alter_ini_entry() refuses a change whose
+	 * modify type the directive does not allow. The stage is only handed to
+	 * the directive's handler, OnUpdateLong, which ignores it — so RUNTIME,
+	 * which is what we actually are, works as well as STARTUP would. */
+	zend_alter_ini_entry(key, value, ZEND_INI_SYSTEM, ZEND_INI_STAGE_RUNTIME);
 
 	zend_string_release(key);
 	zend_string_release(value);

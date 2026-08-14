@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Minimal DBGp listener to reproduce php-debugger issue #63.
+"""Minimal DBGp listener, used by run-worker-tests.sh and for manual probing.
 
 On accept:
   1. Read init packet.
@@ -9,13 +9,18 @@ On accept:
 
 DBGp framing: <length>\0<xml>\0
 """
+import os
 import socket
 import sys
 import threading
 import time
 
 HOST = "0.0.0.0"
-PORT = 9003
+PORT = int(os.environ.get("DBGP_PORT", "9003"))
+# What to break on. A line breakpoint is served by the statement handler; a
+# call breakpoint is served by the observer's begin handler, so the two cover
+# different halves of the plumbing.
+BREAKPOINT = os.environ.get("DBGP_BREAKPOINT", "-t line -f file:///app/lib.php -n 4")
 
 def read_packet(sock):
     """Read one DBGp packet: length\\0xml\\0."""
@@ -49,7 +54,7 @@ def handle_one(conn, addr, label):
     print(f"<<< init: {init}", flush=True)
 
     txn = 1
-    send(conn, f"breakpoint_set -i {txn} -t line -f file:///app/lib.php -n 4")
+    send(conn, f"breakpoint_set -i {txn} {BREAKPOINT}")
     txn += 1
     resp = read_packet(conn)
     print(f"<<< {resp}", flush=True)
@@ -64,6 +69,15 @@ def handle_one(conn, addr, label):
         print(f"<<< {resp}", flush=True)
         if "status=\"break\"" in resp:
             print(f"!!! BREAKPOINT HIT in [{label}]", flush=True)
+            # The stack is built by the observer handlers, which are a
+            # separate mechanism from the statement handler that fires the
+            # breakpoint. Ask for it so a regression in either shows up.
+            send(conn, f"stack_get -i {txn}")
+            txn += 1
+            stack = read_packet(conn)
+            print(f"<<< {stack}", flush=True)
+            if stack and 'where="workload"' in stack:
+                print(f"!!! STACK OK in [{label}]", flush=True)
             send(conn, f"run -i {txn}")
             txn += 1
         elif "status=\"stopping\"" in resp or "status=\"stopped\"" in resp:

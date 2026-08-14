@@ -117,7 +117,7 @@ static int xdebug_frankenphp_sapi_activate(void)
 	 * stack frame for the current function. xdebug_debugger_statement_call
 	 * would then bail out on its empty-stack check, so breakpoints in the
 	 * function that triggered the connection (and any function entered
-	 * before observer activation) would be missed. See issue #63. */
+	 * before observer activation) would be missed. */
 	if (xdebug_lib_start_with_request() || has_debug_trigger()) {
 		XG_DBG(context).do_connect_to_client = 1;
 		XG_BASE(observer_active) = 1;
@@ -149,12 +149,12 @@ static int xdebug_frankenphp_sapi_deactivate(void)
 
 void xdebug_frankenphp_minit(void)
 {
-	/* Note: at MINIT time on the FrankenPHP SAPI, sapi_module.name is set
-	 * to "frankenphp" but sapi_module.activate may still be NULL — the SAPI
-	 * fills the activate hook in later. We install our wrapper here, which
-	 * the SAPI's per-request dispatch then invokes (FrankenPHP's worker loop
-	 * calls activate/deactivate around each request even though it does not
-	 * re-run RINIT/RSHUTDOWN). */
+	/* FrankenPHP's worker loop dispatches through sapi_module.activate and
+	 * .deactivate around every request, while RINIT and RSHUTDOWN run once
+	 * per worker — so these two pointers are the only per-request hook we
+	 * get. FrankenPHP itself installs no activate hook (the pointer is NULL
+	 * here, unlike deactivate), which is why the wrapper below calls the
+	 * saved original only when there is one. */
 	if (!sapi_module.name || strcmp(sapi_module.name, "frankenphp") != 0) {
 		return;
 	}
@@ -177,8 +177,7 @@ void xdebug_frankenphp_minit(void)
 	 * per-statement overhead is acceptable for a SAPI that exists to
 	 * serve interactive workloads. Unlike an INI setting this survives
 	 * worker restarts, as the engine never resets compiler_options.
-	 * The matching optimizer disable lives in sapi_activate. See issue
-	 * #63. */
+	 * The matching optimizer disable lives in sapi_activate. */
 	CG(compiler_options) |= ZEND_COMPILE_EXTENDED_STMT;
 }
 

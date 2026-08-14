@@ -362,7 +362,6 @@ static void xdebug_init_base_globals(xdebug_base_globals_t *xg)
 	xg->statement_handler_enabled  = false;
 	xg->early_connection = false;
 	xg->opcache_disabled_for_request = false;
-	xg->observer_can_activate_mid_call = false;
 
 	xg->php_version_compile_time = PHP_VERSION;
 	xg->php_version_run_time     = zend_get_module_version("standard");

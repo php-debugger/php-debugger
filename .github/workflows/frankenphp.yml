@@ -1,0 +1,22 @@
+name: FrankenPHP
+
+on:
+    push:
+        branches:
+            - main
+    pull_request:
+
+jobs:
+    worker-mode:
+        runs-on: ubuntu-latest
+        name: "Worker mode"
+        timeout-minutes: 20
+        steps:
+            -   name: Checkout
+                uses: actions/checkout@v7
+
+            -   name: Worker-mode regression tests
+                run: tests/frankenphp/run-worker-tests.sh
+                env:
+                    HTTP_PORT: 8080
+                    DBGP_PORT: 9003

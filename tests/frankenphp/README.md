@@ -1,3 +1,34 @@
+# FrankenPHP worker-mode tests
+
+`run-worker-tests.sh` is the automated check; the rest of this document is the
+manual procedure for working on the SAPI hooks by hand with an IDE.
+
+## Automated (what CI runs)
+
+```bash
+tests/frankenphp/run-worker-tests.sh
+```
+
+Builds the image, runs a worker with `dbgp_listener.py` standing in for an
+IDE, and asserts that breakpoints still fire after the worker has served
+requests with no debugger attached — without that, a single un-debugged
+request stops every later request from breaking. It also checks that the
+reported stack includes the calling function, and repeats the trigger on a
+fresh worker as a control.
+
+Overrides: `IMAGE`, `HTTP_PORT` (default 8081), `DBGP_PORT` (default 9004,
+because an IDE usually holds 9003), `POISON_REQUESTS`, `TRIGGER_REQUESTS`,
+`SKIP_BUILD=1` to reuse an image you already built.
+
+The script exits non-zero with the listener transcript on failure. It is run
+by `.github/workflows/frankenphp.yml` on every push and pull request, and it
+was verified to fail (0/5 breakpoints) against the code from before the worker
+-mode fix, so a regression is caught rather than silently passing.
+
+`dbgp_listener.py` can also be pointed at a different breakpoint for ad-hoc
+work — `DBGP_BREAKPOINT="-t call -m workload"` exercises the observer's begin
+handler instead of the statement handler that serves line breakpoints.
+
 # Manual FrankenPHP worker-mode test
 
 Smoke-tests the SAPI activate/deactivate hooks added in `src/debugger/frankenphp.c`.
@@ -79,44 +110,16 @@ PhpStorm should pause on the opening `<?php` regardless of any path config.
 If even that doesn't fire, the connection isn't being made — see the
 **Troubleshooting** section.
 
-## What to verify
+## What to verify manually
 
-Open `tests/frankenphp/app/index.php` in your IDE and put a breakpoint on
-the `$pid = getmypid();` line.
+The script already covers the basics: a request without a trigger must not
+pause, a request with one must, and repeated debug requests against the same
+worker must all pause. What is left needs either a real IDE or a clean
+shutdown, so it stays a hand check.
 
-### 1. No trigger ⇒ no pause
+### 1. Breakpoint added between requests (the `xdebug_dbgp_poll_pending` test)
 
-```bash
-curl -s http://localhost:8080/
-```
-
-Returns immediately. The IDE must not pause. `tail -f /tmp/xdebug.log`
-inside the container shows `Trigger value ... not found, so not activating`.
-
-### 2. Trigger ⇒ pause
-
-```bash
-curl -s -b 'XDEBUG_SESSION=PHPSTORM' http://localhost:8080/
-```
-
-PhpStorm pauses on the breakpoint. Resume (F9) — request completes.
-
-### 3. Same worker, multiple debug requests
-
-```bash
-for i in 1 2 3; do
-  curl -s -b 'XDEBUG_SESSION=PHPSTORM' http://localhost:8080/
-done
-```
-
-The `pid=` field in every response stays the same (one worker process), but
-the IDE pauses on **every** request. This proves the per-request
-`sapi_module.activate` reset is working — without it, only the first
-request would be debuggable.
-
-### 4. Breakpoint added between requests (the `xdebug_dbgp_poll_pending` test)
-
-This is the scenario that caught the original bug:
+Open `tests/frankenphp/app/index.php` in your IDE, then:
 
 1. Set a breakpoint on **line 4** (`$pid = getmypid();`).
 2. `curl -b 'XDEBUG_SESSION=PHPSTORM' http://localhost:8080/` → pauses on
@@ -131,10 +134,9 @@ This is the scenario that caught the original bug:
    PhpStorm pauses on line 5.
 
    **Without the poll, the IDE's queued `breakpoint_set` is silently
-   ignored and the new breakpoint is never honored** — exactly the
-   symptom this PR fixes.
+   ignored and the new breakpoint is never honored.**
 
-### 5. Logs
+### 2. Logs
 
 ```bash
 docker exec $(docker ps -qf ancestor=php-debugger-frankenphp) \

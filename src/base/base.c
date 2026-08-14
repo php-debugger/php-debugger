@@ -443,15 +443,18 @@ void xdebug_rebuild_stack(void)
 /** Function interceptors and dispatchers to modules ***********************/
 
 /* The begin handlers do nothing when the observer is inactive at call entry,
- * but in some configurations the observer can be switched on part-way through
- * that call — see observer_can_activate_mid_call in xdebug_base_rinit(). The
- * end handler then runs for a call whose frame was never pushed, and popping
- * there would discard the caller's frame instead. Both begin handlers stamp
- * the frame with the calling execute_data, so the end handlers can tell
- * whether the frame on top of the stack is really theirs.
+ * but the observer can be switched on part-way through that call: FrankenPHP
+ * arms it per request inside the worker loop, xdebug_break() and
+ * xdebug_connect_to_client() attach mid-request, and the control socket can
+ * attach from outside at any point. The end handler then runs for a call
+ * whose frame was never pushed, and popping there would discard the caller's
+ * frame instead. Both begin handlers stamp the frame with the calling
+ * execute_data, so the end handlers can tell whether the frame on top of the
+ * stack is really theirs.
  *
- * Only called when that flag is set: this is the return path of every
- * function call, so the common configurations must not pay for it. */
+ * This is the return path of every function call, but only of calls the
+ * engine has installed our handlers on — which happens when a debug session
+ * is active, or on FrankenPHP. Requests with no debugger never reach it. */
 static bool xdebug_frame_belongs_to_call(function_stack_entry *fse, zend_execute_data *execute_data)
 {
 	if (XDEBUG_VECTOR_COUNT(XG_BASE(stack)) == 0 || !fse) {
@@ -520,7 +523,7 @@ static void xdebug_execute_user_code_end(zend_execute_data *execute_data, zval *
 	function_stack_entry *fse = XDEBUG_VECTOR_TAIL(XG_BASE(stack));
 	zval *return_value = NULL;
 
-	if (UNEXPECTED(XG_BASE(observer_can_activate_mid_call)) && !xdebug_frame_belongs_to_call(fse, execute_data)) {
+	if (!xdebug_frame_belongs_to_call(fse, execute_data)) {
 		return;
 	}
 
@@ -662,7 +665,7 @@ static void xdebug_execute_internal_end(zend_execute_data *execute_data, zval *r
 	 * nested calls might have reallocated the vector */
 	fse = XDEBUG_VECTOR_TAIL(XG_BASE(stack));
 
-	if (UNEXPECTED(XG_BASE(observer_can_activate_mid_call)) && !xdebug_frame_belongs_to_call(fse, execute_data)) {
+	if (!xdebug_frame_belongs_to_call(fse, execute_data)) {
 		return;
 	}
 
@@ -730,7 +733,7 @@ static zend_observer_fcall_handlers xdebug_observer_init(zend_execute_data *exec
 	 * across requests within one process, so declining once would blacklist
 	 * the function for the rest of the worker's life — including for later
 	 * requests that do carry a trigger. Install unconditionally there and
-	 * let the handlers fast-path on !observer_active. See issue #63. */
+	 * let the handlers fast-path on !observer_active. */
 	if (!XG_BASE(observer_active) && !xdebug_frankenphp_in_use()) {
 		return (zend_observer_fcall_handlers){NULL, NULL};
 	}
@@ -1013,26 +1016,6 @@ void xdebug_base_rinit(void)
 	XG_BASE(statement_handler_enabled) = true;
 	XG_BASE(observer_active) = true;
 	XG_BASE(opcache_disabled_for_request) = false;
-
-	/* Can the observer go from inactive to active while a call is already
-	 * running? Only then do the end handlers have to check that the frame
-	 * they are about to pop is their own — see
-	 * xdebug_frame_belongs_to_call(). Working this out once per request
-	 * keeps that check off the return path of every function call in the
-	 * configurations that cannot hit it. Two can:
-	 *
-	 *  - FrankenPHP arms the observer per request inside the worker loop,
-	 *    and its handlers stay installed across requests;
-	 *  - on-demand debugging lets xdebug_break(), a late
-	 *    xdebug_connect_to_client(), start_upon_error or the control socket
-	 *    attach part-way through a request.
-	 *
-	 * Those last three cannot fire on their own: they all need code compiled
-	 * with EXT_STMT or our error callback installed, and both only happen
-	 * when a client was already attached at request start — in which case
-	 * the observer was active for the whole request anyway. */
-	XG_BASE(observer_can_activate_mid_call) =
-		xdebug_frankenphp_in_use() || XINI_DBG(on_demand_debugging_enabled);
 
 	{
 		zend_string *fiber_key = create_key_for_fiber(EG(main_fiber_context));
