@@ -69,6 +69,11 @@ static int has_debug_trigger(void)
 	       has_trigger_in_string(SG(request_info).query_string, '&');
 }
 
+int xdebug_frankenphp_in_use(void)
+{
+	return is_frankenphp;
+}
+
 /* Per-request reset, called at the start of each FrankenPHP worker request. */
 static int xdebug_frankenphp_sapi_activate(void)
 {
@@ -77,6 +82,15 @@ static int xdebug_frankenphp_sapi_activate(void)
 	if (!XDEBUG_MODE_IS(XDEBUG_MODE_STEP_DEBUG)) {
 		return result;
 	}
+
+	/* Keep opcache's optimizer off. MINIT forces EXT_STMT for the whole
+	 * process, but opcache stays enabled here, and the optimizer would move
+	 * or drop the statements breakpoints resolve against. This has to happen
+	 * per request rather than once at MINIT: a worker generation is a single
+	 * PHP request, so the engine restores every INI value it altered when
+	 * that generation ends, and MINIT does not run again when FrankenPHP
+	 * starts the next one (max_requests, a watcher restart, a crash). */
+	xdebug_disable_opcache_optimizer();
 
 	/* Reset per-request debugger flags. The full RINIT path already ran once
 	 * for the worker; here we only undo state that should not leak across
@@ -156,15 +170,16 @@ void xdebug_frankenphp_minit(void)
 	/* In worker mode the per-request decision to debug is made by
 	 * sapi_activate, but PHP_RINIT runs only once at worker startup —
 	 * before any request has set a trigger. The normal RINIT path skips
-	 * setting ZEND_COMPILE_EXTENDED_STMT and disabling opcache's
-	 * optimizer when no IDE is connected. With the worker flow, that
-	 * means user files compiled by later trigger requests still have no
-	 * EXT_STMT opcodes, so line breakpoints can never resolve. Force
-	 * both on at MINIT — the small per-statement overhead is acceptable
-	 * for a SAPI that exists to serve interactive workloads. See issue
+	 * setting ZEND_COMPILE_EXTENDED_STMT when no IDE is connected. With
+	 * the worker flow, that means user files compiled by later trigger
+	 * requests still have no EXT_STMT opcodes, so line breakpoints can
+	 * never resolve. Force it on for the whole process — the small
+	 * per-statement overhead is acceptable for a SAPI that exists to
+	 * serve interactive workloads. Unlike an INI setting this survives
+	 * worker restarts, as the engine never resets compiler_options.
+	 * The matching optimizer disable lives in sapi_activate. See issue
 	 * #63. */
 	CG(compiler_options) |= ZEND_COMPILE_EXTENDED_STMT;
-	xdebug_disable_opcache_optimizer();
 }
 
 void xdebug_frankenphp_mshutdown(void)
