@@ -136,6 +136,19 @@ incompatible with debugging anyway.
 `xdebug_info()` says `OPcache is bypassed for this request` when this applies, so you can tell this apart from OPcache being off
 for some other reason.
 
+### FrankenPHP worker mode
+
+The near-zero overhead described above relies on deciding per request whether to compile with debugging information. FrankenPHP
+worker mode cannot work that way: one worker serves many requests from code it compiled once, before it can know that a later
+request will ask to be debugged. PHP Debugger therefore compiles everything with debugging information for the whole worker
+process, and every request pays for the per-statement dispatch that comes with it — including requests with no debugging trigger.
+The dispatch bails out immediately when no client is connected, so the cost is small, but it is not the "you don't pay for what
+you don't use" behaviour you get on CLI and PHP-FPM.
+
+This applies as soon as the extension is loaded with `mode=debug`, whether or not you ever attach an IDE. Setting the mode off
+(`php_debugger.mode=off`, `xdebug.mode=off`, or the `XDEBUG_MODE=off` environment variable) skips the instrumentation entirely, so
+a worker you are not planning to debug runs at full speed.
+
 ## IDE Setup
 
 ### PhpStorm

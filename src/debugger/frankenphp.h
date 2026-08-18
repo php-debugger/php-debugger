@@ -30,4 +30,9 @@
 void xdebug_frankenphp_minit(void);
 void xdebug_frankenphp_mshutdown(void);
 
+/* True once MINIT has confirmed we are running on the FrankenPHP SAPI, which
+ * needs the observer installed for every function regardless of whether a
+ * debug session is active right now. */
+int xdebug_frankenphp_in_use(void);
+
 #endif /* __XDEBUG_DEBUGGER_FRANKENPHP_H__ */

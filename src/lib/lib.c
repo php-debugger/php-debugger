@@ -132,6 +132,28 @@ void xdebug_library_post_deactivate(void)
 	}
 }
 
+/* Keeps opcache from optimising away or moving the statements that
+ * breakpoints are set on. Only needed where instrumented code is compiled
+ * while opcache stays enabled — that is the FrankenPHP worker SAPI, which
+ * forces EXT_STMT for the whole process instead of per request. Everywhere
+ * else xdebug_disable_opcache_for_request() below switches the accelerator
+ * off entirely, which stops the optimizer too. */
+void xdebug_disable_opcache_optimizer(void)
+{
+	zend_string *key = zend_string_init(ZEND_STRL("opcache.optimization_level"), 1);
+	zend_string *value = zend_string_init(ZEND_STRL("0"), 1);
+
+	/* ZEND_INI_SYSTEM is the part that matters: the directive is
+	 * PHP_INI_SYSTEM, and zend_alter_ini_entry() refuses a change whose
+	 * modify type the directive does not allow. The stage is only handed to
+	 * the directive's handler, OnUpdateLong, which ignores it — so RUNTIME,
+	 * which is what we actually are, works as well as STARTUP would. */
+	zend_alter_ini_entry(key, value, ZEND_INI_SYSTEM, ZEND_INI_STAGE_RUNTIME);
+
+	zend_string_release(key);
+	zend_string_release(value);
+}
+
 /* Instrumentation is decided per request, but opcache is shared across
  * requests: reusing an op_array cached by a non-instrumented request means
  * breakpoints silently don't bind and stepping skips those functions, while
