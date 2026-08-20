@@ -14,11 +14,11 @@ if test "$PHP_PHP_DEBUGGER" != "no"; then
   AC_MSG_CHECKING([for supported PHP version])
   PHP_XDEBUG_FOUND_VERSION=`${PHP_CONFIG} --version`
   PHP_XDEBUG_FOUND_VERNUM=`${PHP_CONFIG} --vernum`
-  if test "$PHP_XDEBUG_FOUND_VERNUM" -lt "80000"; then
-    AC_MSG_ERROR([not supported. Need a PHP version >= 8.0.0 and < 8.7.0 (found $PHP_XDEBUG_FOUND_VERSION)])
+  if test "$PHP_XDEBUG_FOUND_VERNUM" -lt "80100"; then
+    AC_MSG_ERROR([not supported. Need a PHP version >= 8.1.0 and < 8.7.0 (found $PHP_XDEBUG_FOUND_VERSION)])
   else
     if test "$PHP_XDEBUG_FOUND_VERNUM" -ge "80700"; then
-      AC_MSG_ERROR([not supported. Need a PHP version >= 8.0.0 and < 8.7.0 (found $PHP_XDEBUG_FOUND_VERSION)])
+      AC_MSG_ERROR([not supported. Need a PHP version >= 8.1.0 and < 8.7.0 (found $PHP_XDEBUG_FOUND_VERSION)])
     else
       AC_MSG_RESULT([supported ($PHP_XDEBUG_FOUND_VERSION)])
     fi
