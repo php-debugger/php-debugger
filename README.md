@@ -167,7 +167,7 @@ PHP Debugger maintains compatibility with Xdebug's debug mode:
 
 | Feature                            | PHP Debugger                                                                 | Xdebug |
 |------------------------------------|------------------------------------------------------------------------------|--------|
-| `extension_loaded("xdebug")`       | ✅ true                                                                       | ✅ true |
+| `extension_loaded("xdebug")`       | ❌ false by default, ✅ true with<br/>`php_debugger.report_xdebug_module=1`   | ✅ true |
 | `extension_loaded("php_debugger")` | ✅ true                                                                       | ❌ false |
 | `xdebug.*` INI settings            | ✅ works                                                                      | ✅ works |
 | `xdebug_break()`                   | ✅ works                                                                      | ✅ works |
@@ -189,6 +189,26 @@ You can also use the new names — they work alongside the Xdebug ones:
 - **Pseudo-hosts:** `php_debugger://gateway` and `php_debugger://nameserver` for `client_host` (Linux only)
 
 The session cookie is named after the trigger you used: `PHP_DEBUGGER_SESSION_START` and `PHP_DEBUGGER_CONFIG` set a `PHP_DEBUGGER_SESSION` cookie, while `XDEBUG_SESSION_START` and `XDEBUG_CONFIG` keep setting `XDEBUG_SESSION`. Both cookie names are accepted as a trigger, and either stop trigger clears both.
+
+### Reporting the `xdebug` module
+
+By default PHP Debugger does **not** register itself under the module name
+`xdebug`, so `extension_loaded("xdebug")` returns `false`. Tools such as
+Composer and PHPUnit use that check to detect Xdebug and then restart PHP with
+the extension disabled — a restart that fails here, because there is no
+`xdebug` Zend extension for them to unload.
+
+Everything else keeps working regardless: `xdebug.*` INI settings, the
+`XDEBUG_*` environment variables and triggers, and the `xdebug_*()` functions.
+
+If you do need `extension_loaded("xdebug")` to report `true` (for a tool that
+gates a feature on it rather than trying to disable it), set:
+
+```ini
+php_debugger.report_xdebug_module = 1
+```
+
+The setting defaults to `0`.
 
 ## Requirements
 
