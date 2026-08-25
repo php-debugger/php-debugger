@@ -30,6 +30,7 @@ foreach ($aliases as $canonical => $alias) {
 echo "\n";
 var_dump(xdebug_info('mode') === php_debugger_info('mode'));
 var_dump(xdebug_is_debugger_active() === php_debugger_is_debugger_active());
+var_dump(xdebug_notify('x') === php_debugger_notify('x'));
 ?>
 --EXPECT--
 php_debugger_break: exists=yes params=same required=same
@@ -38,5 +39,6 @@ php_debugger_info: exists=yes params=same required=same
 php_debugger_is_debugger_active: exists=yes params=same required=same
 php_debugger_notify: exists=yes params=same required=same
 
+bool(true)
 bool(true)
 bool(true)
