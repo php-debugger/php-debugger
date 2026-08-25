@@ -167,7 +167,7 @@ PHP Debugger maintains compatibility with Xdebug's debug mode:
 
 | Feature                            | PHP Debugger                                                                 | Xdebug |
 |------------------------------------|------------------------------------------------------------------------------|--------|
-| `extension_loaded("xdebug")`       | ✅ true                                                                       | ✅ true |
+| `extension_loaded("xdebug")`       | ❌ false by default, ✅ true with<br/>`php_debugger.report_xdebug_module=1`   | ✅ true |
 | `extension_loaded("php_debugger")` | ✅ true                                                                       | ❌ false |
 | `xdebug.*` INI settings            | ✅ works                                                                      | ✅ works |
 | `xdebug_break()`                   | ✅ works                                                                      | ✅ works |
@@ -185,6 +185,26 @@ You can also use the new names — they work alongside the Xdebug ones:
 - **INI:** `php_debugger.mode`, `php_debugger.client_host`, etc.
 - **Functions:** `php_debugger_break()`, `php_debugger_info()`, `php_debugger_connect_to_client()`, `php_debugger_is_debugger_active()`, `php_debugger_notify()`
 - **Triggers:** `PHP_DEBUGGER_SESSION`, `PHP_DEBUGGER_SESSION_START`, `PHP_DEBUGGER_TRIGGER`
+
+### Reporting the `xdebug` module
+
+By default PHP Debugger does **not** register itself under the module name
+`xdebug`, so `extension_loaded("xdebug")` returns `false`. Tools such as
+Composer and PHPUnit use that check to detect Xdebug and then restart PHP with
+the extension disabled — a restart that fails here, because there is no
+`xdebug` Zend extension for them to unload.
+
+Everything else keeps working regardless: `xdebug.*` INI settings, the
+`XDEBUG_*` environment variables and triggers, and the `xdebug_*()` functions.
+
+If you do need `extension_loaded("xdebug")` to report `true` (for a tool that
+gates a feature on it rather than trying to disable it), set:
+
+```ini
+php_debugger.report_xdebug_module = 1
+```
+
+The setting defaults to `0`.
 
 ## Requirements
 

@@ -268,6 +268,8 @@ PHP_INI_BEGIN()
 #endif
 	STD_PHP_INI_ENTRY("xdebug.path_mapping",       "0",                     PHP_INI_ALL,                   OnUpdateBool,   settings.library.path_mapping,     zend_xdebug_globals, xdebug_globals)
 
+	STD_PHP_INI_BOOLEAN("xdebug.report_xdebug_module", "0",           PHP_INI_SYSTEM,                OnUpdateBool,   settings.library.report_xdebug_module, zend_xdebug_globals, xdebug_globals)
+
 	STD_PHP_INI_ENTRY("xdebug.log",       "",           PHP_INI_ALL, OnUpdateString, settings.library.log,       zend_xdebug_globals, xdebug_globals)
 	STD_PHP_INI_ENTRY("xdebug.log_level", XLOG_DEFAULT, PHP_INI_ALL, OnUpdateLong,   settings.library.log_level, zend_xdebug_globals, xdebug_globals)
 
@@ -304,6 +306,9 @@ static const zend_ini_entry_def php_debugger_ini_entries[] = {
 	PHP_INI_ENTRY_EX("php_debugger.control_socket",      "default",               PHP_INI_ALL,                   OnUpdatePhpDebuggerCtrlSocket, display_control_socket)
 #endif
 	STD_PHP_INI_ENTRY("php_debugger.path_mapping",       "0",                     PHP_INI_ALL,                   OnUpdatePhpDebuggerBool,   settings.library.path_mapping,     zend_xdebug_globals, xdebug_globals)
+
+	STD_PHP_INI_BOOLEAN("php_debugger.report_xdebug_module", "0",           PHP_INI_SYSTEM,                OnUpdatePhpDebuggerBool,   settings.library.report_xdebug_module, zend_xdebug_globals, xdebug_globals)
+
 	STD_PHP_INI_ENTRY("php_debugger.log",       "",           PHP_INI_ALL, OnUpdatePhpDebuggerString, settings.library.log,       zend_xdebug_globals, xdebug_globals)
 	STD_PHP_INI_ENTRY("php_debugger.log_level", XLOG_DEFAULT, PHP_INI_ALL, OnUpdatePhpDebuggerLong,   settings.library.log_level, zend_xdebug_globals, xdebug_globals)
 	/* Variable display settings */
@@ -459,9 +464,19 @@ PHP_MINIT_FUNCTION(xdebug)
 	ZEND_INIT_MODULE_GLOBALS(xdebug, php_xdebug_init_globals, php_xdebug_shutdown_globals);
 	REGISTER_INI_ENTRIES();
 
-	/* Register "xdebug" as a module alias so extension_loaded('xdebug') still works.
-	 * Uses a separate dummy module entry to avoid double-free in module_registry cleanup. */
-	{
+	/* register filter constants for backwards compatibility */
+	xdebug_filter_register_constants(INIT_FUNC_ARGS_PASSTHRU);
+
+	/* Register php_debugger.* INI aliases pointing to the same storage as xdebug.* */
+	zend_register_ini_entries(php_debugger_ini_entries, module_number);
+
+	/* Optionally register "xdebug" as a module alias, so that
+	 * extension_loaded('xdebug') reports true. This is off by default: tools such
+	 * as Composer and PHPUnit detect the module and then try to restart PHP
+	 * without it, which fails because there is no "xdebug" zend_extension to
+	 * remove. Uses a separate dummy module entry to avoid double-free in
+	 * module_registry cleanup. */
+	if (XG(settings.library.report_xdebug_module)) {
 		static zend_module_entry xdebug_compat_module_entry = {0};
 		xdebug_compat_module_entry.name = "xdebug";
 		xdebug_compat_module_entry.version = XDEBUG_VERSION;
@@ -472,12 +487,6 @@ PHP_MINIT_FUNCTION(xdebug)
 		zend_hash_add_ptr(&module_registry, alias_name, &xdebug_compat_module_entry);
 		zend_string_release(alias_name);
 	}
-
-	/* register filter constants for backwards compatibility */
-	xdebug_filter_register_constants(INIT_FUNC_ARGS_PASSTHRU);
-
-	/* Register php_debugger.* INI aliases pointing to the same storage as xdebug.* */
-	zend_register_ini_entries(php_debugger_ini_entries, module_number);
 
 	/* Locking in mode as it currently is */
 	if (!xdebug_lib_set_mode(XG(settings.library.requested_mode))) {
