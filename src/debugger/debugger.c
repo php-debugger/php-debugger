@@ -1211,12 +1211,16 @@ PHP_FUNCTION(xdebug_break)
 	RETURN_FALSE_IF_MODE_IS_NOT(XDEBUG_MODE_STEP_DEBUG);
 
 	if (!xdebug_is_debug_connection_active() && !XINI_DBG(on_demand_debugging_enabled)) {
+		/* Report whichever alias was actually called (xdebug_break() or
+		 * php_debugger_break()), so the diagnostic matches the user's code */
+		const char *fname = get_active_function_name();
+
 		xdebug_log_ex(XLOG_CHAN_DEBUG, XLOG_INFO, "JIT-OFF",
-				"xdebug_break() ignored: no active debug connection and "
-				"xdebug.on_demand_debugging_enabled is not enabled");
+				"%s() ignored: no active debug connection and "
+				"xdebug.on_demand_debugging_enabled is not enabled", fname);
 		php_error(E_NOTICE,
-				"xdebug_break() ignored: no active debug session and on-demand debugging is disabled. "
-				"Set xdebug.on_demand_debugging_enabled=1 to enable mid-request debugging");
+				"%s() ignored: no active debug session and on-demand debugging is disabled. "
+				"Set xdebug.on_demand_debugging_enabled=1 to enable mid-request debugging", fname);
 		RETURN_FALSE;
 	}
 
@@ -1245,11 +1249,15 @@ PHP_FUNCTION(xdebug_connect_to_client)
 	RETURN_FALSE_IF_MODE_IS_NOT(XDEBUG_MODE_STEP_DEBUG);
 
 	if (!XINI_DBG(on_demand_debugging_enabled)) {
+		/* Report whichever alias was actually called (xdebug_connect_to_client()
+		 * or php_debugger_connect_to_client()) */
+		const char *fname = get_active_function_name();
+
 		xdebug_log_ex(XLOG_CHAN_DEBUG, XLOG_INFO, "ON-DEMAND-OFF",
-				"xdebug_connect_to_client() ignored: xdebug.on_demand_debugging_enabled is not enabled");
+				"%s() ignored: xdebug.on_demand_debugging_enabled is not enabled", fname);
 		php_error(E_NOTICE,
-				"xdebug_connect_to_client() ignored: On-demand debugging is disabled. "
-				"Set xdebug.on_demand_debugging_enabled=1 to enable mid-request debugging");
+				"%s() ignored: On-demand debugging is disabled. "
+				"Set xdebug.on_demand_debugging_enabled=1 to enable mid-request debugging", fname);
 		RETURN_FALSE;
 	}
 
