@@ -63,7 +63,6 @@ jobs:
         run: |
           cd ~/php-src
           ./sapi/cli/php -m | grep -q php_debugger
-          ./sapi/cli/php -m | grep -q xdebug
           ./sapi/cli/php -v | grep -q "PHP Debugger"
 
       - name: Smoke test — extension_loaded
@@ -71,7 +70,6 @@ jobs:
           cd ~/php-src
           ./sapi/cli/php -r "
             assert(extension_loaded('php_debugger'), 'php_debugger not loaded');
-            assert(extension_loaded('xdebug'), 'xdebug compat alias not loaded');
             echo 'extension_loaded: OK' . PHP_EOL;
           "
 

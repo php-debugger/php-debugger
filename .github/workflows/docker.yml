@@ -288,8 +288,8 @@ jobs:
                     docker run --rm "$IMAGE" php -v
                     # tolerate release tags with or without a leading "v"
                     docker run --rm "$IMAGE" php -v | grep -F "PHP Debugger v${DEBUGGER_REF#v}"
-                    docker run --rm "$IMAGE" php -m | grep -ix xdebug
-                    docker run --rm "$IMAGE" php -r 'exit(extension_loaded("xdebug") ? 0 : 1);'
+                    docker run --rm "$IMAGE" php -m | grep -ix php_debugger
+                    docker run --rm "$IMAGE" php -r 'exit(extension_loaded("php_debugger") ? 0 : 1);'
                     # the php_debugger.* function alias must resolve, not just
                     # the xdebug-compat surface
                     docker run --rm "$IMAGE" php -r 'exit(function_exists("php_debugger_info") ? 0 : 1);'
