@@ -877,6 +877,9 @@ More .INIs  : " , (function_exists(\'php_ini_scanned_files\') ? str_replace("\n"
         'tidy' => ['tidy.clean_output=0'],
         'zlib' => ['zlib.output_compression=Off'],
         'xdebug' => ['xdebug.mode=off','xdebug.start_with_request=default','xdebug.log_level=20'],
+        // the module only reports itself as "xdebug" when
+        // php_debugger.report_xdebug_module is on, so key off both names
+        'php_debugger' => ['xdebug.mode=off','xdebug.start_with_request=default','xdebug.log_level=20'],
     ];
 
     foreach ($info_params_ex as $ext => $ini_overwrites_ex) {
