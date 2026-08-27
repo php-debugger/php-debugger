@@ -192,18 +192,10 @@ typedef struct _xdebug_library_globals_t {
 typedef struct _xdebug_library_settings_t {
 	char         *requested_mode;
 
-	char         *output_dir;
 	char         *trigger_value;
-
-	char         *file_link_format;
-	char         *filename_format;
 
 	/* Whether we should do native path mapping */
 	zend_bool         path_mapping;
-
-	/* Whether to use zlib compression, if ZLIB support
-	 * is enabled */
-	zend_bool     use_compression;
 
 	/* variable dumping limitation settings */
 	zend_long     display_max_children;
@@ -287,8 +279,6 @@ void xdebug_unset_opcode_handler(int opcode);
 void xdebug_set_opcode_multi_handler(int opcode);
 void xdebug_register_with_opcode_multi_handler(int opcode, user_opcode_handler_t handler);
 int xdebug_call_original_opcode_handler_if_set(int opcode, XDEBUG_OPCODE_HANDLER_ARGS);
-
-char *xdebug_lib_get_output_dir(void);
 
 void xdebug_llist_string_dtor(void *dummy, void *elem);
 

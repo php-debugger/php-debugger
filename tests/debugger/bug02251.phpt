@@ -5,7 +5,6 @@ XDEBUG_CONFIG=log={TMPFILE:bug02251.log}
 --INI--
 xdebug.mode=debug
 default_charset=utf-8
-xdebug.filename_format=
 xdebug.client_port=9172
 xdebug.start_with_request=yes
 xdebug.log=

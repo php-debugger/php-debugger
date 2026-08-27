@@ -498,10 +498,7 @@ static void xdebug_print_settings(void)
 			} else {
 				/* Hack for Systemd PrivateTmp */
 				if (
-					(
-						(strcmp(ZSTR_VAL(ini_entry->name), "xdebug.output_dir") == 0) ||
-						(strcmp(ZSTR_VAL(ini_entry->name), "xdebug.log") == 0)
-					) &&
+					(strcmp(ZSTR_VAL(ini_entry->name), "xdebug.log") == 0) &&
 					(ini_entry->value && ZSTR_VAL(ini_entry->value)[0]) &&
 					is_using_private_tmp_directory(ZSTR_VAL(ini_entry->value))
 				) {

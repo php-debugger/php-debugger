@@ -10,7 +10,6 @@ XDEBUG_CONFIG=idekey=testing
 --INI--
 xdebug.mode=debug
 default_charset=utf-8
-xdebug.filename_format=
 xdebug.client_port=9172
 xdebug.log={TMPFILE:bug01782.txt}
 xdebug.log_level=10
