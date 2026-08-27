@@ -141,13 +141,19 @@ void set_keepalive_options(int fd)
 static char* resolve_pseudo_hosts(const char *requested_hostname)
 {
 #if __linux__
-	/* Does it start with 'xdebug://' ? */
-	if (strncmp(requested_hostname, "xdebug://", strlen("xdebug://")) != 0) {
+	const char *pseudo_host;
+
+	/* Does it start with 'xdebug://' or 'php_debugger://' ? */
+	if (strncmp(requested_hostname, "xdebug://", strlen("xdebug://")) == 0) {
+		pseudo_host = requested_hostname + strlen("xdebug://");
+	} else if (strncmp(requested_hostname, "php_debugger://", strlen("php_debugger://")) == 0) {
+		pseudo_host = requested_hostname + strlen("php_debugger://");
+	} else {
 		return NULL;
 	}
 
 	/* Check for 'gateway' pseudo host */
-	if (strcmp(requested_hostname, "xdebug://gateway") == 0) {
+	if (strcmp(pseudo_host, "gateway") == 0) {
 #if XDEBUG_GATEWAY_SUPPORT
 		char *gateway = xdebug_get_gateway_ip();
 
@@ -159,13 +165,13 @@ static char* resolve_pseudo_hosts(const char *requested_hostname)
 		xdebug_log(XLOG_CHAN_DEBUG, XLOG_INFO, "Found 'gateway' pseudo-host, with IP address '%s'.", gateway);
 		return gateway;
 #else
-		xdebug_log_ex(XLOG_CHAN_DEBUG, XLOG_WARN, "PSEUDO-GW-NO-SUPPORT", "Pseudo-host: '%s' is not supported on this host.", requested_hostname + strlen("xdebug://"));
+		xdebug_log_ex(XLOG_CHAN_DEBUG, XLOG_WARN, "PSEUDO-GW-NO-SUPPORT", "Pseudo-host: '%s' is not supported on this host.", pseudo_host);
 		return NULL;
 # endif
 	}
 
 	/* Check for 'nameserver' pseudo host */
-	if (strcmp(requested_hostname, "xdebug://nameserver") == 0) {
+	if (strcmp(pseudo_host, "nameserver") == 0) {
 #if XDEBUG_NAMESERVER_SUPPORT
 		char *gateway = xdebug_get_private_nameserver();
 
@@ -177,12 +183,12 @@ static char* resolve_pseudo_hosts(const char *requested_hostname)
 		xdebug_log(XLOG_CHAN_DEBUG, XLOG_INFO, "Found 'nameserver' pseudo-host, with IP address '%s'.", gateway);
 		return gateway;
 # else
-		xdebug_log_ex(XLOG_CHAN_DEBUG, XLOG_WARN, "PSEUDO-NS-NO-SUPPORT", "Pseudo-host: '%s' is not supported on this host.", requested_hostname + strlen("xdebug://"));
+		xdebug_log_ex(XLOG_CHAN_DEBUG, XLOG_WARN, "PSEUDO-NS-NO-SUPPORT", "Pseudo-host: '%s' is not supported on this host.", pseudo_host);
 		return NULL;
 # endif
 	}
 
-	xdebug_log_ex(XLOG_CHAN_DEBUG, XLOG_WARN, "PSEUDO-UNKNOWN", "Unknown pseudo-host: '%s', only 'gateway' or 'nameserver' are supported.", requested_hostname + strlen("xdebug://"));
+	xdebug_log_ex(XLOG_CHAN_DEBUG, XLOG_WARN, "PSEUDO-UNKNOWN", "Unknown pseudo-host: '%s', only 'gateway' or 'nameserver' are supported.", pseudo_host);
 #endif
 
 	return NULL;
@@ -747,44 +753,59 @@ void xdebug_update_ide_key(char *new_key)
 	XG_DBG(ide_key) = xdstrdup(new_key);
 }
 
+static zval *find_session_start_variable(const char *name)
+{
+	zval *value;
+
+	if ((value = zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_ENV]), name, strlen(name))) != NULL) {
+		return value;
+	}
+	if ((value = zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_GET]), name, strlen(name))) != NULL) {
+		return value;
+	}
+	if ((value = zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_POST]), name, strlen(name))) != NULL) {
+		return value;
+	}
+
+	return NULL;
+}
+
 int xdebug_handle_start_session(void)
 {
-	int   activate_session = 0;
-	int   session_start_found = 0;
-	zval *dummy = NULL;
-	char *dummy_env = NULL;
+	int         activate_session = 0;
+	int         session_start_found = 0;
+	zval       *dummy = NULL;
+	char       *dummy_env = NULL;
+	const char *trigger_name = "XDEBUG_SESSION_START";
+	const char *cookie_name = "XDEBUG_SESSION";
 
 	/* Return cached result if already checked this request to avoid duplicate side effects */
 	if (XG_DBG(start_session_result) != -1) {
 		return XG_DBG(start_session_result);
 	}
 
-	/* Check if session start trigger is present */
-	if (
-		((
-			(dummy = zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_ENV]), "XDEBUG_SESSION_START", sizeof("XDEBUG_SESSION_START") - 1)) != NULL
-		) || (
-			(dummy = zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_GET]), "XDEBUG_SESSION_START", sizeof("XDEBUG_SESSION_START") - 1)) != NULL
-		) || (
-			(dummy = zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_POST]), "XDEBUG_SESSION_START", sizeof("XDEBUG_SESSION_START") - 1)) != NULL
-		) || (
-			(dummy = zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_ENV]), "PHP_DEBUGGER_SESSION_START", sizeof("PHP_DEBUGGER_SESSION_START") - 1)) != NULL
-		) || (
-			(dummy = zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_GET]), "PHP_DEBUGGER_SESSION_START", sizeof("PHP_DEBUGGER_SESSION_START") - 1)) != NULL
-		) || (
-			(dummy = zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_POST]), "PHP_DEBUGGER_SESSION_START", sizeof("PHP_DEBUGGER_SESSION_START") - 1)) != NULL
-		))
-		&& !SG(headers_sent)
-	) {
+	/* Check if session start trigger is present. The cookie we hand back is
+	 * named after whichever spelling the trigger used, so that a
+	 * 'PHP_DEBUGGER_SESSION_START' request results in a
+	 * 'PHP_DEBUGGER_SESSION' cookie. Both names are accepted on the way back
+	 * in, see trigger_enabled() in src/lib/lib.c. */
+	if ((dummy = find_session_start_variable("XDEBUG_SESSION_START")) == NULL) {
+		if ((dummy = find_session_start_variable("PHP_DEBUGGER_SESSION_START")) != NULL) {
+			trigger_name = "PHP_DEBUGGER_SESSION_START";
+			cookie_name = "PHP_DEBUGGER_SESSION";
+		}
+	}
+
+	if (dummy != NULL && !SG(headers_sent)) {
 		session_start_found = 1;
 
 		if (!xdebug_lib_has_shared_secret()) {
-			xdebug_log(XLOG_CHAN_DEBUG, XLOG_DEBUG, "Found 'XDEBUG_SESSION_START' HTTP variable, with value '%s'", Z_STRVAL_P(dummy));
+			xdebug_log(XLOG_CHAN_DEBUG, XLOG_DEBUG, "Found '%s' HTTP variable, with value '%s'", trigger_name, Z_STRVAL_P(dummy));
 
 			convert_to_string_ex(dummy);
 			xdebug_update_ide_key(Z_STRVAL_P(dummy));
 
-			xdebug_setcookie("XDEBUG_SESSION", sizeof("XDEBUG_SESSION") - 1, Z_STRVAL_P(dummy), Z_STRLEN_P(dummy), 0, "/", 1, NULL, 0, 0, 1, 0);
+			xdebug_setcookie(cookie_name, strlen(cookie_name), Z_STRVAL_P(dummy), Z_STRLEN_P(dummy), 0, "/", 1, NULL, 0, 0, 1, 0);
 			activate_session = 1;
 		}
 	} else if (
@@ -793,13 +814,21 @@ int xdebug_handle_start_session(void)
 	) {
 		session_start_found = 1;
 
+		if (getenv("XDEBUG_SESSION_START") != NULL) {
+			trigger_name = "XDEBUG_SESSION_START";
+			cookie_name = "XDEBUG_SESSION";
+		} else {
+			trigger_name = "PHP_DEBUGGER_SESSION_START";
+			cookie_name = "PHP_DEBUGGER_SESSION";
+		}
+
 		if (!xdebug_lib_has_shared_secret()) {
-			xdebug_log(XLOG_CHAN_DEBUG, XLOG_DEBUG, "Found 'XDEBUG_SESSION_START' ENV variable, with value '%s'", dummy_env);
+			xdebug_log(XLOG_CHAN_DEBUG, XLOG_DEBUG, "Found '%s' ENV variable, with value '%s'", trigger_name, dummy_env);
 
 			xdebug_update_ide_key(dummy_env);
 
 			if (!SG(headers_sent)) {
-				xdebug_setcookie("XDEBUG_SESSION", sizeof("XDEBUG_SESSION") - 1, XG_DBG(ide_key), strlen(XG_DBG(ide_key)), 0, "/", 1, NULL, 0, 0, 1, 0);
+				xdebug_setcookie(cookie_name, strlen(cookie_name), XG_DBG(ide_key), strlen(XG_DBG(ide_key)), 0, "/", 1, NULL, 0, 0, 1, 0);
 			}
 
 			activate_session = 1;
@@ -807,11 +836,13 @@ int xdebug_handle_start_session(void)
 	} else if (getenv("XDEBUG_CONFIG") || getenv("PHP_DEBUGGER_CONFIG")) {
 		session_start_found = 1;
 
+		cookie_name = getenv("XDEBUG_CONFIG") ? "XDEBUG_SESSION" : "PHP_DEBUGGER_SESSION";
+
 		if (!xdebug_lib_has_shared_secret()) {
 			xdebug_log(XLOG_CHAN_DEBUG, XLOG_DEBUG, "Found 'XDEBUG_CONFIG' or 'PHP_DEBUGGER_CONFIG' ENV variable");
 
 			if (XG_DBG(ide_key) && *XG_DBG(ide_key) && !SG(headers_sent)) {
-				xdebug_setcookie("XDEBUG_SESSION", sizeof("XDEBUG_SESSION") - 1, XG_DBG(ide_key), strlen(XG_DBG(ide_key)), 0, "/", 1, NULL, 0, 0, 1, 0);
+				xdebug_setcookie(cookie_name, strlen(cookie_name), XG_DBG(ide_key), strlen(XG_DBG(ide_key)), 0, "/", 1, NULL, 0, 0, 1, 0);
 				activate_session = 1;
 			}
 		}
@@ -843,7 +874,10 @@ static void xdebug_handle_stop_session(void)
 		))
 		&& !SG(headers_sent)
 	) {
+		/* We don't know which of the two spellings the session cookie was set
+		 * under, and both are honoured on the way in, so clear both. */
 		xdebug_setcookie("XDEBUG_SESSION", sizeof("XDEBUG_SESSION") - 1, (char*) "", 0, 0, "/", 1, NULL, 0, 0, 1, 0);
+		xdebug_setcookie("PHP_DEBUGGER_SESSION", sizeof("PHP_DEBUGGER_SESSION") - 1, (char*) "", 0, 0, "/", 1, NULL, 0, 0, 1, 0);
 	}
 }
 

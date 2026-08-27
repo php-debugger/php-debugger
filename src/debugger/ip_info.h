@@ -34,4 +34,13 @@ char *xdebug_get_private_nameserver(void);
 # define XDEBUG_NAMESERVER_SUPPORT 0
 #endif
 
+#else  /* __linux__ */
+
+/* Pseudo-host resolution is Linux-only, see resolve_pseudo_hosts() in
+ * src/debugger/com.c. Define the feature macros here as well, so that callers
+ * that only want to report on the feature don't have to repeat the platform
+ * check and risk drifting out of sync with it. */
+# define XDEBUG_GATEWAY_SUPPORT 0
+# define XDEBUG_NAMESERVER_SUPPORT 0
+
 #endif  /* __linux__ */

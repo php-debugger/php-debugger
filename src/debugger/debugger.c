@@ -866,6 +866,13 @@ void xdebug_debugger_minfo(void)
 	php_info_print_table_end();
 }
 
+static bool has_get_or_post_variable(const char *name, size_t name_len)
+{
+	return
+		zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_GET]), name, name_len) != NULL ||
+		zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_POST]), name, name_len) != NULL;
+}
+
 void xdebug_debugger_rinit(void)
 {
 	char *idekey;
@@ -886,22 +893,17 @@ void xdebug_debugger_rinit(void)
 
 	/* Check if we have this special get variable that stops a debugging
 	 * request without executing any code */
-	{
-		zend_string *stop_no_exec = zend_string_init(ZEND_STRL("XDEBUG_SESSION_STOP_NO_EXEC"), 0);
-		if (
-			(
-				(
-					zend_hash_find(Z_ARR(PG(http_globals)[TRACK_VARS_GET]), stop_no_exec) != NULL
-				) || (
-					zend_hash_find(Z_ARR(PG(http_globals)[TRACK_VARS_POST]), stop_no_exec) != NULL
-				)
-			)
-			&& !SG(headers_sent)
-		) {
-			xdebug_setcookie("XDEBUG_SESSION", sizeof("XDEBUG_SESSION") - 1, (char*) "", 0, 0, "/", 1, NULL, 0, 0, 1, 0);
-			XG_DBG(no_exec) = 1;
-		}
-		zend_string_release(stop_no_exec);
+	if (
+		(
+			has_get_or_post_variable(ZEND_STRL("XDEBUG_SESSION_STOP_NO_EXEC")) ||
+			has_get_or_post_variable(ZEND_STRL("PHP_DEBUGGER_SESSION_STOP_NO_EXEC"))
+		)
+		&& !SG(headers_sent)
+	) {
+		/* Clear both spellings, as either may hold the session */
+		xdebug_setcookie("XDEBUG_SESSION", sizeof("XDEBUG_SESSION") - 1, (char*) "", 0, 0, "/", 1, NULL, 0, 0, 1, 0);
+		xdebug_setcookie("PHP_DEBUGGER_SESSION", sizeof("PHP_DEBUGGER_SESSION") - 1, (char*) "", 0, 0, "/", 1, NULL, 0, 0, 1, 0);
+		XG_DBG(no_exec) = 1;
 	}
 
 	xdebug_mark_debug_connection_not_active();

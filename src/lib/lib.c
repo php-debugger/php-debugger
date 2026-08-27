@@ -29,6 +29,7 @@ void xdebug_init_library_globals(xdebug_library_globals_t *xg)
 {
 	xg->headers               = NULL;
 	xg->mode_from_environment = 0;
+	xg->mode_environment_name = NULL;
 
 	xg->log_file             = 0;
 
@@ -222,20 +223,23 @@ static int xdebug_lib_set_mode_from_setting(const char *mode)
 
 int xdebug_lib_set_mode(const char *mode)
 {
-	char *config = getenv("XDEBUG_MODE");
-	int   result = 0;
+	const char *config_name = "XDEBUG_MODE";
+	char       *config = getenv("XDEBUG_MODE");
+	int         result = 0;
 
 	/* XDEBUG_MODE / PHP_DEBUGGER_MODE environment variable */
 	if (!config || !strlen(config)) {
+		config_name = "PHP_DEBUGGER_MODE";
 		config = getenv("PHP_DEBUGGER_MODE");
 	}
 	if (config && strlen(config)) {
 		result = xdebug_lib_set_mode_from_setting(config);
 
 		if (!result) {
-			xdebug_log_ex(XLOG_CHAN_CONFIG, XLOG_CRIT, "ENVMODE", "Invalid mode '%s' set for 'XDEBUG_MODE' environment variable, fall back to 'xdebug.mode' configuration setting", config);
+			xdebug_log_ex(XLOG_CHAN_CONFIG, XLOG_CRIT, "ENVMODE", "Invalid mode '%s' set for '%s' environment variable, fall back to 'xdebug.mode' configuration setting", config, config_name);
 		} else {
 			XG_LIB(mode_from_environment) = 1;
+			XG_LIB(mode_environment_name) = config_name;
 			return result;
 		}
 	}

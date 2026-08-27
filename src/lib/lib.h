@@ -157,7 +157,8 @@ struct _xdebug_multi_opcode_handler_t
 typedef struct _xdebug_library_globals_t {
 	int                    start_with_request; /* One of the XDEBUG_START_WITH_REQUEST_* constants */
 	int                    start_upon_error;   /* One of the XDEBUG_START_UPON_ERROR_* constants */
-	int                    mode_from_environment; /* Keeps track whether the mode was set with XDEBUG_MODE for diagnostics purposes */
+	int                    mode_from_environment; /* Keeps track whether the mode was set through the environment for diagnostics purposes */
+	const char            *mode_environment_name; /* Which of XDEBUG_MODE / PHP_DEBUGGER_MODE did so; a literal, only meaningful when mode_from_environment is set */
 
 	zend_execute_data     *active_execute_data;
 	function_stack_entry  *active_stack_entry;
