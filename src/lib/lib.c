@@ -236,7 +236,7 @@ int xdebug_lib_set_mode(const char *mode)
 		result = xdebug_lib_set_mode_from_setting(config);
 
 		if (!result) {
-			xdebug_log_ex(XLOG_CHAN_CONFIG, XLOG_CRIT, "ENVMODE", "Invalid mode '%s' set for '%s' environment variable, fall back to 'xdebug.mode' configuration setting", config, config_name);
+			xdebug_log_ex(XLOG_CHAN_CONFIG, XLOG_CRIT, "ENVMODE", "Invalid mode '%s' set for '%s' environment variable, fall back to the 'xdebug.mode' / 'php_debugger.mode' configuration setting", config, config_name);
 		} else {
 			XG_LIB(mode_from_environment) = 1;
 			XG_LIB(mode_environment_name) = config_name;
@@ -248,7 +248,7 @@ int xdebug_lib_set_mode(const char *mode)
 	result = xdebug_lib_set_mode_from_setting(mode);
 
 	if (!result) {
-		xdebug_log_ex(XLOG_CHAN_CONFIG, XLOG_CRIT, "MODE", "Invalid mode '%s' set for 'xdebug.mode' configuration setting", mode);
+		xdebug_log_ex(XLOG_CHAN_CONFIG, XLOG_CRIT, "MODE", "Invalid mode '%s' set for the 'xdebug.mode' / 'php_debugger.mode' configuration setting", mode);
 	}
 
 	return result;
