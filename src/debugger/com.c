@@ -154,7 +154,7 @@ static char* resolve_pseudo_hosts(const char *requested_hostname)
 
 	/* Check for 'gateway' pseudo host */
 	if (strcmp(pseudo_host, "gateway") == 0) {
-#if XDEBUG_GATEWAY_SUPPORT
+# if XDEBUG_GATEWAY_SUPPORT
 		char *gateway = xdebug_get_gateway_ip();
 
 		if (!gateway) {
@@ -164,7 +164,7 @@ static char* resolve_pseudo_hosts(const char *requested_hostname)
 
 		xdebug_log(XLOG_CHAN_DEBUG, XLOG_INFO, "Found 'gateway' pseudo-host, with IP address '%s'.", gateway);
 		return gateway;
-#else
+# else
 		xdebug_log_ex(XLOG_CHAN_DEBUG, XLOG_WARN, "PSEUDO-GW-NO-SUPPORT", "Pseudo-host: '%s' is not supported on this host.", requested_hostname);
 		return NULL;
 # endif
@@ -172,7 +172,7 @@ static char* resolve_pseudo_hosts(const char *requested_hostname)
 
 	/* Check for 'nameserver' pseudo host */
 	if (strcmp(pseudo_host, "nameserver") == 0) {
-#if XDEBUG_NAMESERVER_SUPPORT
+# if XDEBUG_NAMESERVER_SUPPORT
 		char *gateway = xdebug_get_private_nameserver();
 
 		if (!gateway) {
@@ -771,7 +771,9 @@ static zval *find_session_start_variable(const char *name)
 }
 
 /* Looks up the 'XDEBUG_' spelling of an environment variable first, then the
- * 'PHP_DEBUGGER_' one, and reports back which of the two won. */
+ * 'PHP_DEBUGGER_' one, and reports back which of the two won. '*found_name' is
+ * only written when one of them is set, so a caller that seeds it with a
+ * default keeps that default when this returns NULL. */
 static char *find_session_start_env(const char *xdebug_name, const char *php_debugger_name, const char **found_name)
 {
 	char *value;

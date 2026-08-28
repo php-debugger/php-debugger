@@ -17,5 +17,6 @@ echo file_get_contents(getTmpFile('session_cookie_name-003.txt'));
 unlink(getTmpFile('session_cookie_name-003.txt'));
 ?>
 --EXPECTF--
+%A Found 'PHP_DEBUGGER_CONFIG' ENV variable
 %A Adding header 'Set-Cookie: PHP_DEBUGGER_SESSION=testing; path=/; SameSite=Lax'.
 %A
