@@ -442,7 +442,7 @@ static zval *get_client_discovery_address(char **header)
 		char *header_name = xdebug_trim(headers->args[i]);
 
 		xdebug_log(XLOG_CHAN_DEBUG, XLOG_INFO, "Checking header '%s'.", header_name);
-		remote_addr = zend_hash_str_find(Z_ARRVAL(PG(http_globals)[TRACK_VARS_SERVER]), header_name, HASH_KEY_STRLEN(header_name));
+		remote_addr = xdebug_lib_find_in_track_vars(TRACK_VARS_SERVER, header_name, HASH_KEY_STRLEN(header_name));
 
 		if (remote_addr) {
 			*header = header_name;
@@ -757,13 +757,13 @@ static zval *find_session_start_variable(const char *name)
 {
 	zval *value;
 
-	if ((value = zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_ENV]), name, strlen(name))) != NULL) {
+	if ((value = xdebug_lib_find_in_track_vars(TRACK_VARS_ENV, name, strlen(name))) != NULL) {
 		return value;
 	}
-	if ((value = zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_GET]), name, strlen(name))) != NULL) {
+	if ((value = xdebug_lib_find_in_track_vars(TRACK_VARS_GET, name, strlen(name))) != NULL) {
 		return value;
 	}
-	if ((value = zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_POST]), name, strlen(name))) != NULL) {
+	if ((value = xdebug_lib_find_in_track_vars(TRACK_VARS_POST, name, strlen(name))) != NULL) {
 		return value;
 	}
 
@@ -894,13 +894,13 @@ static void xdebug_handle_stop_session(void)
 	/* Remove session cookie if requested */
 	if (
 		((
-			zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_GET]), "XDEBUG_SESSION_STOP", sizeof("XDEBUG_SESSION_STOP") - 1) != NULL
+			xdebug_lib_find_in_track_vars(TRACK_VARS_GET, "XDEBUG_SESSION_STOP", sizeof("XDEBUG_SESSION_STOP") - 1) != NULL
 		) || (
-			zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_POST]), "XDEBUG_SESSION_STOP", sizeof("XDEBUG_SESSION_STOP") - 1) != NULL
+			xdebug_lib_find_in_track_vars(TRACK_VARS_POST, "XDEBUG_SESSION_STOP", sizeof("XDEBUG_SESSION_STOP") - 1) != NULL
 		) || (
-			zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_GET]), "PHP_DEBUGGER_SESSION_STOP", sizeof("PHP_DEBUGGER_SESSION_STOP") - 1) != NULL
+			xdebug_lib_find_in_track_vars(TRACK_VARS_GET, "PHP_DEBUGGER_SESSION_STOP", sizeof("PHP_DEBUGGER_SESSION_STOP") - 1) != NULL
 		) || (
-			zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_POST]), "PHP_DEBUGGER_SESSION_STOP", sizeof("PHP_DEBUGGER_SESSION_STOP") - 1) != NULL
+			xdebug_lib_find_in_track_vars(TRACK_VARS_POST, "PHP_DEBUGGER_SESSION_STOP", sizeof("PHP_DEBUGGER_SESSION_STOP") - 1) != NULL
 		))
 		&& !SG(headers_sent)
 	) {

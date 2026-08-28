@@ -1,5 +1,5 @@
 --TEST--
-PHP_DEBUGGER_MODE: Warning for invalid modes names PHP_DEBUGGER_MODE
+PHP_DEBUGGER_MODE: Invalid mode warning names PHP_DEBUGGER_MODE, not XDEBUG_MODE
 --INI--
 display_errors=0
 error_log=

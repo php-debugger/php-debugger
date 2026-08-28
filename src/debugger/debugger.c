@@ -869,8 +869,8 @@ void xdebug_debugger_minfo(void)
 static bool has_get_or_post_variable(const char *name, size_t name_len)
 {
 	return
-		zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_GET]), name, name_len) != NULL ||
-		zend_hash_str_find(Z_ARR(PG(http_globals)[TRACK_VARS_POST]), name, name_len) != NULL;
+		xdebug_lib_find_in_track_vars(TRACK_VARS_GET, name, name_len) != NULL ||
+		xdebug_lib_find_in_track_vars(TRACK_VARS_POST, name, name_len) != NULL;
 }
 
 void xdebug_debugger_rinit(void)
