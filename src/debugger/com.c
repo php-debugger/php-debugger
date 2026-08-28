@@ -792,8 +792,14 @@ static char *find_session_start_env(const char *xdebug_name, const char *php_deb
 }
 
 /* The session cookie is named after the spelling the trigger used, so that a
- * 'PHP_DEBUGGER_*' request gets a 'PHP_DEBUGGER_SESSION' cookie. Both names are
- * accepted on the way back in, see trigger_enabled() in src/lib/lib.c. */
+ * 'PHP_DEBUGGER_*' request gets a 'PHP_DEBUGGER_SESSION' cookie. Both cookie
+ * names are accepted on the way back in, see trigger_enabled() in
+ * src/lib/lib.c.
+ *
+ * This matches on the namespace prefix rather than on the individual trigger
+ * names, so it maps the whole 'PHP_DEBUGGER_*' family and not just the
+ * SESSION_START / CONFIG names the callers below happen to pass. Anything
+ * without that prefix gets the 'xdebug' cookie. */
 static const char *session_cookie_name_for(const char *trigger_name)
 {
 	if (strncmp(trigger_name, "PHP_DEBUGGER_", strlen("PHP_DEBUGGER_")) == 0) {
@@ -810,7 +816,6 @@ int xdebug_handle_start_session(void)
 	zval       *dummy = NULL;
 	char       *dummy_env = NULL;
 	const char *trigger_name = "XDEBUG_SESSION_START";
-	const char *cookie_name = "XDEBUG_SESSION";
 
 	/* Return cached result if already checked this request to avoid duplicate side effects */
 	if (XG_DBG(start_session_result) != -1) {
@@ -825,8 +830,9 @@ int xdebug_handle_start_session(void)
 	}
 
 	if (dummy != NULL && !SG(headers_sent)) {
+		const char *cookie_name = session_cookie_name_for(trigger_name);
+
 		session_start_found = 1;
-		cookie_name = session_cookie_name_for(trigger_name);
 
 		if (!xdebug_lib_has_shared_secret()) {
 			xdebug_log(XLOG_CHAN_DEBUG, XLOG_DEBUG, "Found '%s' HTTP variable, with value '%s'", trigger_name, Z_STRVAL_P(dummy));
@@ -840,8 +846,9 @@ int xdebug_handle_start_session(void)
 	} else if (
 		(dummy_env = find_session_start_env("XDEBUG_SESSION_START", "PHP_DEBUGGER_SESSION_START", &trigger_name)) != NULL
 	) {
+		const char *cookie_name = session_cookie_name_for(trigger_name);
+
 		session_start_found = 1;
-		cookie_name = session_cookie_name_for(trigger_name);
 
 		if (!xdebug_lib_has_shared_secret()) {
 			xdebug_log(XLOG_CHAN_DEBUG, XLOG_DEBUG, "Found '%s' ENV variable, with value '%s'", trigger_name, dummy_env);
@@ -857,8 +864,9 @@ int xdebug_handle_start_session(void)
 	} else if (
 		find_session_start_env("XDEBUG_CONFIG", "PHP_DEBUGGER_CONFIG", &trigger_name) != NULL
 	) {
+		const char *cookie_name = session_cookie_name_for(trigger_name);
+
 		session_start_found = 1;
-		cookie_name = session_cookie_name_for(trigger_name);
 
 		if (!xdebug_lib_has_shared_secret()) {
 			xdebug_log(XLOG_CHAN_DEBUG, XLOG_DEBUG, "Found '%s' ENV variable", trigger_name);
