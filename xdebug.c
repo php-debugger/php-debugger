@@ -137,16 +137,6 @@ static PHP_INI_MH(OnUpdateCtrlSocket)
 }
 #endif
 
-#ifdef P_tmpdir
-# define XDEBUG_TEMP_DIR P_tmpdir
-#else
-# ifdef PHP_WIN32
-#  define XDEBUG_TEMP_DIR "C:\\Windows\\Temp"
-# else
-#  define XDEBUG_TEMP_DIR "/tmp"
-# endif
-#endif
-
 ZEND_INI_DISP(display_removed_setting)
 {
 	ZEND_PUTS("(setting removed in Xdebug 3)");
@@ -215,13 +205,6 @@ ZEND_INI_DISP(display_start_upon_error)
 	}
 }
 
-#if HAVE_XDEBUG_ZLIB
-# define USE_COMPRESSION_DEFAULT "1"
-#else
-# define USE_COMPRESSION_DEFAULT "0"
-#endif
-
-
 /*
  * php_debugger.* INI alias wrappers.
  * Only apply when the user explicitly set the directive; skip defaults
@@ -279,11 +262,7 @@ PHP_INI_BEGIN()
 	STD_PHP_INI_ENTRY("xdebug.mode",               "debug",                 PHP_INI_SYSTEM,                OnUpdateString, settings.library.requested_mode,   zend_xdebug_globals, xdebug_globals)
 	PHP_INI_ENTRY_EX( "xdebug.start_with_request", "yes",                   PHP_INI_SYSTEM|PHP_INI_PERDIR, OnUpdateStartWithRequest, display_start_with_request)
 	PHP_INI_ENTRY_EX( "xdebug.start_upon_error",   "default",               PHP_INI_SYSTEM|PHP_INI_PERDIR, OnUpdateStartUponError,   display_start_upon_error)
-	STD_PHP_INI_ENTRY("xdebug.output_dir",         XDEBUG_TEMP_DIR,         PHP_INI_ALL,                   OnUpdateString, settings.library.output_dir,       zend_xdebug_globals, xdebug_globals)
-	STD_PHP_INI_ENTRY("xdebug.use_compression",    USE_COMPRESSION_DEFAULT, PHP_INI_ALL,                   OnUpdateBool,   settings.library.use_compression,  zend_xdebug_globals, xdebug_globals)
 	STD_PHP_INI_ENTRY("xdebug.trigger_value",      "",                      PHP_INI_SYSTEM|PHP_INI_PERDIR, OnUpdateString, settings.library.trigger_value,    zend_xdebug_globals, xdebug_globals)
-	STD_PHP_INI_ENTRY("xdebug.file_link_format",   "",                      PHP_INI_ALL,                   OnUpdateString, settings.library.file_link_format, zend_xdebug_globals, xdebug_globals)
-	STD_PHP_INI_ENTRY("xdebug.filename_format",    "",                      PHP_INI_ALL,                   OnUpdateString, settings.library.filename_format,  zend_xdebug_globals, xdebug_globals)
 #if HAVE_XDEBUG_CONTROL_SOCKET_SUPPORT
 	PHP_INI_ENTRY_EX("xdebug.control_socket",      "default",               PHP_INI_ALL,                   OnUpdateCtrlSocket, display_control_socket)
 #endif
@@ -320,11 +299,7 @@ static const zend_ini_entry_def php_debugger_ini_entries[] = {
 	STD_PHP_INI_ENTRY("php_debugger.mode",               "debug",                 PHP_INI_SYSTEM,                OnUpdatePhpDebuggerString, settings.library.requested_mode,   zend_xdebug_globals, xdebug_globals)
 	PHP_INI_ENTRY_EX( "php_debugger.start_with_request", "yes",                   PHP_INI_SYSTEM|PHP_INI_PERDIR, OnUpdatePhpDebuggerStartWithRequest, display_start_with_request)
 	PHP_INI_ENTRY_EX( "php_debugger.start_upon_error",   "default",               PHP_INI_SYSTEM|PHP_INI_PERDIR, OnUpdatePhpDebuggerStartUponError,   display_start_upon_error)
-	STD_PHP_INI_ENTRY("php_debugger.output_dir",         XDEBUG_TEMP_DIR,         PHP_INI_ALL,                   OnUpdatePhpDebuggerString, settings.library.output_dir,       zend_xdebug_globals, xdebug_globals)
-	STD_PHP_INI_ENTRY("php_debugger.use_compression",    USE_COMPRESSION_DEFAULT, PHP_INI_ALL,                   OnUpdatePhpDebuggerBool,   settings.library.use_compression,  zend_xdebug_globals, xdebug_globals)
 	STD_PHP_INI_ENTRY("php_debugger.trigger_value",      "",                      PHP_INI_SYSTEM|PHP_INI_PERDIR, OnUpdatePhpDebuggerString, settings.library.trigger_value,    zend_xdebug_globals, xdebug_globals)
-	STD_PHP_INI_ENTRY("php_debugger.file_link_format",   "",                      PHP_INI_ALL,                   OnUpdatePhpDebuggerString, settings.library.file_link_format, zend_xdebug_globals, xdebug_globals)
-	STD_PHP_INI_ENTRY("php_debugger.filename_format",    "",                      PHP_INI_ALL,                   OnUpdatePhpDebuggerString, settings.library.filename_format,  zend_xdebug_globals, xdebug_globals)
 #if HAVE_XDEBUG_CONTROL_SOCKET_SUPPORT
 	PHP_INI_ENTRY_EX("php_debugger.control_socket",      "default",               PHP_INI_ALL,                   OnUpdatePhpDebuggerCtrlSocket, display_control_socket)
 #endif
@@ -433,9 +408,6 @@ static void xdebug_env_config(void)
 		} else
 		if (strcasecmp(envvar, "idekey") == 0) {
 			name = "xdebug.idekey";
-		} else
-		if (strcasecmp(envvar, "output_dir") == 0) {
-			name = "xdebug.output_dir";
 		} else
 		if (strcasecmp(envvar, "log") == 0) {
 			name = "xdebug.log";

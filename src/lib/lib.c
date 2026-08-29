@@ -759,19 +759,6 @@ int xdebug_call_original_opcode_handler_if_set(int opcode, XDEBUG_OPCODE_HANDLER
 	return ZEND_USER_OPCODE_DISPATCH;
 }
 
-/* Does not duplicate the return value, don't free. Return NULL if it's
- * not-set, or an empty string */
-char *xdebug_lib_get_output_dir(void)
-{
-	char *output_dir = XINI_LIB(output_dir);
-
-	if (output_dir == NULL || output_dir[0] == '\0') {
-		return NULL;
-	}
-
-	return output_dir;
-}
-
 void xdebug_llist_string_dtor(void *dummy, void *elem)
 {
 	char *s = elem;
