@@ -457,7 +457,7 @@ static void xdebug_print_settings(void)
 	zend_module_entry *module;
 	zend_ini_entry *ini_entry;
 	int module_number;
-	zend_string *name = zend_string_init("xdebug", 6, 0);
+	zend_string *name = zend_string_init("php_debugger", sizeof("php_debugger") - 1, 0);
 
 	module = zend_hash_find_ptr(&module_registry, name);
 	zend_string_release(name);
