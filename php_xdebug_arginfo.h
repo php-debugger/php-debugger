@@ -1,20 +1,30 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: 96ed175dbdffd06a1b013b2d776c58b5543a8118 */
+ * Stub hash: f1a355d64e848923f32b7fd8058c333bc3214361 */
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_xdebug_break, 0, 0, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()
 
+#define arginfo_php_debugger_break arginfo_xdebug_break
+
 #define arginfo_xdebug_connect_to_client arginfo_xdebug_break
+
+#define arginfo_php_debugger_connect_to_client arginfo_xdebug_break
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_xdebug_info, 0, 0, 0)
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, category, IS_STRING, 1, "null")
 ZEND_END_ARG_INFO()
 
+#define arginfo_php_debugger_info arginfo_xdebug_info
+
 #define arginfo_xdebug_is_debugger_active arginfo_xdebug_break
+
+#define arginfo_php_debugger_is_debugger_active arginfo_xdebug_break
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_xdebug_notify, 0, 1, _IS_BOOL, 0)
 	ZEND_ARG_TYPE_INFO(0, data, IS_MIXED, 0)
 ZEND_END_ARG_INFO()
+
+#define arginfo_php_debugger_notify arginfo_xdebug_notify
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_MASK_EX(arginfo_xdebug_get_profiler_filename, 0, 0, MAY_BE_STRING|MAY_BE_FALSE)
 ZEND_END_ARG_INFO()
@@ -119,6 +129,7 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_xdebug_set_filter, 0, 3, IS_VOID
 	ZEND_ARG_TYPE_INFO(0, configuration, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
+
 ZEND_FUNCTION(xdebug_break);
 ZEND_FUNCTION(xdebug_connect_to_client);
 ZEND_FUNCTION(xdebug_info);
@@ -160,13 +171,18 @@ ZEND_FUNCTION(xdebug_time_index);
 ZEND_FUNCTION(xdebug_var_dump);
 ZEND_FUNCTION(xdebug_set_filter);
 
+
 static const zend_function_entry ext_functions[] = {
 	ZEND_FE(xdebug_break, arginfo_xdebug_break)
+	ZEND_FALIAS(php_debugger_break, xdebug_break, arginfo_php_debugger_break)
 	ZEND_FE(xdebug_connect_to_client, arginfo_xdebug_connect_to_client)
+	ZEND_FALIAS(php_debugger_connect_to_client, xdebug_connect_to_client, arginfo_php_debugger_connect_to_client)
 	ZEND_FE(xdebug_info, arginfo_xdebug_info)
-	ZEND_FALIAS(php_debugger_info, xdebug_info, arginfo_xdebug_info)
+	ZEND_FALIAS(php_debugger_info, xdebug_info, arginfo_php_debugger_info)
 	ZEND_FE(xdebug_is_debugger_active, arginfo_xdebug_is_debugger_active)
+	ZEND_FALIAS(php_debugger_is_debugger_active, xdebug_is_debugger_active, arginfo_php_debugger_is_debugger_active)
 	ZEND_FE(xdebug_notify, arginfo_xdebug_notify)
+	ZEND_FALIAS(php_debugger_notify, xdebug_notify, arginfo_php_debugger_notify)
 	ZEND_FE(xdebug_get_profiler_filename, arginfo_xdebug_get_profiler_filename)
 	ZEND_FE(xdebug_code_coverage_started, arginfo_xdebug_code_coverage_started)
 	ZEND_FE(xdebug_get_code_coverage, arginfo_xdebug_get_code_coverage)
