@@ -184,7 +184,11 @@ You can also use the new names — they work alongside the Xdebug ones:
 
 - **INI:** `php_debugger.mode`, `php_debugger.client_host`, etc.
 - **Functions:** `php_debugger_break()`, `php_debugger_info()`, `php_debugger_connect_to_client()`, `php_debugger_is_debugger_active()`, `php_debugger_notify()`
-- **Triggers:** `PHP_DEBUGGER_SESSION`, `PHP_DEBUGGER_SESSION_START`, `PHP_DEBUGGER_TRIGGER`
+- **Triggers:** `PHP_DEBUGGER_SESSION`, `PHP_DEBUGGER_SESSION_START`, `PHP_DEBUGGER_SESSION_STOP`, `PHP_DEBUGGER_SESSION_STOP_NO_EXEC`, `PHP_DEBUGGER_TRIGGER`, `PHP_DEBUGGER_IGNORE`
+- **Environment:** `PHP_DEBUGGER_MODE`, `PHP_DEBUGGER_CONFIG`
+- **Pseudo-hosts:** `php_debugger://gateway` and `php_debugger://nameserver` for `client_host` (Linux only)
+
+The session cookie is named after the trigger you used: `PHP_DEBUGGER_SESSION_START` and `PHP_DEBUGGER_CONFIG` set a `PHP_DEBUGGER_SESSION` cookie, while `XDEBUG_SESSION_START` and `XDEBUG_CONFIG` keep setting `XDEBUG_SESSION`. Both cookie names are accepted as a trigger, and either stop trigger clears both.
 
 ## Requirements
 

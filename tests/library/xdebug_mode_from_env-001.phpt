@@ -11,7 +11,7 @@ XDEBUG_MODE=debug,nonexisting
 echo join( ',', xdebug_info( 'mode' ) );
 ?>
 --EXPECTF--
-Xdebug: [Config] Invalid mode 'debug,nonexisting' set for 'XDEBUG_MODE' environment variable, fall back to 'xdebug.mode' configuration setting (See: http%sdocs/errors#CFG-C-ENVMODE)
-Xdebug: [Config] Invalid mode 'wrongmode' set for 'xdebug.mode' configuration setting (See: http%sdocs/errors#CFG-C-MODE)
-Xdebug: [Config] Invalid mode 'debug,nonexisting' set for 'XDEBUG_MODE' environment variable, fall back to 'xdebug.mode' configuration setting (See: http%sdocs/errors#CFG-C-ENVMODE)
+Xdebug: [Config] Invalid mode 'debug,nonexisting' set for 'XDEBUG_MODE' environment variable, fall back to the 'xdebug.mode' / 'php_debugger.mode' configuration setting (See: http%sdocs/errors#CFG-C-ENVMODE)
+Xdebug: [Config] Invalid mode 'wrongmode' set for the 'xdebug.mode' / 'php_debugger.mode' configuration setting (See: http%sdocs/errors#CFG-C-MODE)
+Xdebug: [Config] Invalid mode 'debug,nonexisting' set for 'XDEBUG_MODE' environment variable, fall back to the 'xdebug.mode' / 'php_debugger.mode' configuration setting (See: http%sdocs/errors#CFG-C-ENVMODE)
 debug

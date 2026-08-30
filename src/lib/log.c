@@ -19,6 +19,7 @@
 #include "php_xdebug.h"
 #include "ext/standard/info.h"
 
+#include "debugger/ip_info.h"
 #include "headers.h"
 
 #include "lib_private.h"
@@ -337,16 +338,8 @@ void xdebug_print_info(void)
 # endif
 #endif
 
-#if HAVE_LINUX_RTNETLINK_H
-	php_info_print_table_row(2, "'xdebug://gateway' pseudo-host support", "yes");
-#else
-	php_info_print_table_row(2, "'xdebug://gateway' pseudo-host support", "no");
-#endif
-#if HAVE_RES_NINIT
-	php_info_print_table_row(2, "'xdebug://nameserver' pseudo-host support", "yes");
-#else
-	php_info_print_table_row(2, "'xdebug://nameserver' pseudo-host support", "no");
-#endif
+	php_info_print_table_row(2, "'xdebug://gateway' / 'php_debugger://gateway' pseudo-host support", XDEBUG_GATEWAY_SUPPORT ? "yes" : "no");
+	php_info_print_table_row(2, "'xdebug://nameserver' / 'php_debugger://nameserver' pseudo-host support", XDEBUG_NAMESERVER_SUPPORT ? "yes" : "no");
 
 	if (XG_BASE(private_tmp)) {
 		php_info_print_table_row(2, "Systemd Private Temp Directory", XG_BASE(private_tmp));
@@ -437,11 +430,30 @@ static ZEND_COLD void php_ini_displayer_cb(zend_ini_entry *ini_entry, int type)
 
 static int if_overridden_xdebug_mode(char *name)
 {
-	if ((strcmp("xdebug.mode", name) == 0) && XG_LIB(mode_from_environment)) {
+	if (
+		((strcmp("xdebug.mode", name) == 0) || (strcmp("php_debugger.mode", name) == 0)) &&
+		XG_LIB(mode_from_environment)
+	) {
 		return 1;
 	}
 
 	return 0;
+}
+
+/* The environment variable that set the mode. Only called when
+ * if_overridden_xdebug_mode() said so, but both helpers stay defensive: the
+ * name falls back to the canonical spelling, and getenv() can come back NULL
+ * even then. */
+static const char *overridden_xdebug_mode_name(void)
+{
+	return XG_LIB(mode_environment_name) ? XG_LIB(mode_environment_name) : "XDEBUG_MODE";
+}
+
+static const char *overridden_xdebug_mode_value(void)
+{
+	const char *value = getenv(overridden_xdebug_mode_name());
+
+	return value ? value : "";
 }
 
 static int is_using_private_tmp_directory(char *file_name)
@@ -490,11 +502,13 @@ static void xdebug_print_settings(void)
 			PUTS("<td class=\"e\">");
 			PHPWRITE(ZSTR_VAL(ini_entry->name), ZSTR_LEN(ini_entry->name));
 			if (if_overridden_xdebug_mode(ZSTR_VAL(ini_entry->name))) {
-				PUTS(" <small>(through XDEBUG_MODE)</small>");
+				PUTS(" <small>(through ");
+				PUTS(overridden_xdebug_mode_name());
+				PUTS(")</small>");
 			}
 			PUTS("</td><td class=\"v\">");
 			if (if_overridden_xdebug_mode(ZSTR_VAL(ini_entry->name))) {
-				PUTS(getenv("XDEBUG_MODE"));
+				PUTS(overridden_xdebug_mode_value());
 			} else {
 				/* Hack for Systemd PrivateTmp */
 				if (
@@ -518,11 +532,13 @@ static void xdebug_print_settings(void)
 		} else {
 			PHPWRITE(ZSTR_VAL(ini_entry->name), ZSTR_LEN(ini_entry->name));
 			if (if_overridden_xdebug_mode(ZSTR_VAL(ini_entry->name))) {
-				PUTS(" (through XDEBUG_MODE)");
+				PUTS(" (through ");
+				PUTS(overridden_xdebug_mode_name());
+				PUTS(")");
 			}
 			PUTS(" => ");
 			if (if_overridden_xdebug_mode(ZSTR_VAL(ini_entry->name))) {
-				PUTS(getenv("XDEBUG_MODE"));
+				PUTS(overridden_xdebug_mode_value());
 			} else {
 				php_ini_displayer_cb(ini_entry, ZEND_INI_DISPLAY_ACTIVE);
 			}

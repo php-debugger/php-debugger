@@ -157,7 +157,8 @@ struct _xdebug_multi_opcode_handler_t
 typedef struct _xdebug_library_globals_t {
 	int                    start_with_request; /* One of the XDEBUG_START_WITH_REQUEST_* constants */
 	int                    start_upon_error;   /* One of the XDEBUG_START_UPON_ERROR_* constants */
-	int                    mode_from_environment; /* Keeps track whether the mode was set with XDEBUG_MODE for diagnostics purposes */
+	int                    mode_from_environment; /* Keeps track whether the mode was set through the environment for diagnostics purposes */
+	const char            *mode_environment_name; /* Which of XDEBUG_MODE / PHP_DEBUGGER_MODE did so; a literal, only meaningful when mode_from_environment is set */
 
 	zend_execute_data     *active_execute_data;
 	function_stack_entry  *active_stack_entry;
@@ -241,6 +242,8 @@ int xdebug_lib_get_start_with_request(void);
 int xdebug_lib_has_shared_secret(void);
 
 const char *xdebug_lib_find_in_globals(const char *element, const char **found_in_global);
+zval *xdebug_lib_find_in_track_vars(int kind, const char *name, size_t name_len);
+zval *xdebug_lib_find_in_track_vars_deref(int kind, const char *name, size_t name_len);
 
 #define XDEBUG_START_UPON_ERROR_DEFAULT     1
 #define XDEBUG_START_UPON_ERROR_YES         2
