@@ -414,9 +414,6 @@ static void xdebug_env_config(void)
 		} else
 		if (strcasecmp(envvar, "log_level") == 0) {
 			name = "xdebug.log_level";
-		} else
-		if (strcasecmp(envvar, "cli_color") == 0) {
-			name = "xdebug.cli_color";
 		}
 
 		if (name) {

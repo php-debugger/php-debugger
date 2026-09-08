@@ -29,6 +29,7 @@ void xdebug_init_library_globals(xdebug_library_globals_t *xg)
 {
 	xg->headers               = NULL;
 	xg->mode_from_environment = 0;
+	xg->mode_environment_name = NULL;
 
 	xg->log_file             = 0;
 
@@ -222,20 +223,23 @@ static int xdebug_lib_set_mode_from_setting(const char *mode)
 
 int xdebug_lib_set_mode(const char *mode)
 {
-	char *config = getenv("XDEBUG_MODE");
-	int   result = 0;
+	const char *config_name = "XDEBUG_MODE";
+	char       *config = getenv("XDEBUG_MODE");
+	int         result = 0;
 
 	/* XDEBUG_MODE / PHP_DEBUGGER_MODE environment variable */
 	if (!config || !strlen(config)) {
+		config_name = "PHP_DEBUGGER_MODE";
 		config = getenv("PHP_DEBUGGER_MODE");
 	}
 	if (config && strlen(config)) {
 		result = xdebug_lib_set_mode_from_setting(config);
 
 		if (!result) {
-			xdebug_log_ex(XLOG_CHAN_CONFIG, XLOG_CRIT, "ENVMODE", "Invalid mode '%s' set for 'XDEBUG_MODE' environment variable, fall back to 'xdebug.mode' configuration setting", config);
+			xdebug_log_ex(XLOG_CHAN_CONFIG, XLOG_CRIT, "ENVMODE", "Invalid mode '%s' set for '%s' environment variable, fall back to the 'xdebug.mode' / 'php_debugger.mode' configuration setting", config, config_name);
 		} else {
 			XG_LIB(mode_from_environment) = 1;
+			XG_LIB(mode_environment_name) = config_name;
 			return result;
 		}
 	}
@@ -244,7 +248,7 @@ int xdebug_lib_set_mode(const char *mode)
 	result = xdebug_lib_set_mode_from_setting(mode);
 
 	if (!result) {
-		xdebug_log_ex(XLOG_CHAN_CONFIG, XLOG_CRIT, "MODE", "Invalid mode '%s' set for 'xdebug.mode' configuration setting", mode);
+		xdebug_log_ex(XLOG_CHAN_CONFIG, XLOG_CRIT, "MODE", "Invalid mode '%s' set for the 'xdebug.mode' / 'php_debugger.mode' configuration setting", mode);
 	}
 
 	return result;
@@ -357,6 +361,34 @@ const char *xdebug_lib_mode_from_value(int mode)
 	}
 }
 
+/* Looks 'name' up in one of PHP's tracked variable arrays (TRACK_VARS_GET and
+ * friends), guarding against the slot not holding an array.
+ *
+ * php_request_startup() fills PG(http_globals) in before any module RINIT runs,
+ * so in practice these are always arrays — empty ones when the request has no
+ * such variables. The guard matters because some of these lookups happen very
+ * early (the stop-no-exec check in xdebug_debugger_rinit() runs before
+ * xdebug_init_auto_globals()), and Z_ARR() on an UNDEF zval would hand a
+ * garbage pointer straight to the hash lookup. */
+zval *xdebug_lib_find_in_track_vars(int kind, const char *name, size_t name_len)
+{
+	if (Z_TYPE(PG(http_globals)[kind]) != IS_ARRAY) {
+		return NULL;
+	}
+
+	return zend_hash_str_find(Z_ARR(PG(http_globals)[kind]), name, name_len);
+}
+
+/* As xdebug_lib_find_in_track_vars(), but dereferences a reference result. */
+zval *xdebug_lib_find_in_track_vars_deref(int kind, const char *name, size_t name_len)
+{
+	if (Z_TYPE(PG(http_globals)[kind]) != IS_ARRAY) {
+		return NULL;
+	}
+
+	return zend_hash_str_find_deref(Z_ARR(PG(http_globals)[kind]), name, name_len);
+}
+
 const char *xdebug_lib_find_in_globals(const char *element, const char **found_in_global)
 {
 	zval *trigger_val = NULL;
@@ -383,17 +415,17 @@ const char *xdebug_lib_find_in_globals(const char *element, const char **found_i
 	}
 
 	/* Actual Superglobals */
-	if ((trigger_val = zend_hash_str_find_deref(Z_ARR(PG(http_globals)[TRACK_VARS_GET]), element, strlen(element))) != NULL) {
+	if ((trigger_val = xdebug_lib_find_in_track_vars_deref(TRACK_VARS_GET, element, strlen(element))) != NULL) {
 		*found_in_global = "GET";
 		return Z_STRVAL_P(trigger_val);
 	}
 
-	if ((trigger_val = zend_hash_str_find_deref(Z_ARR(PG(http_globals)[TRACK_VARS_POST]), element, strlen(element))) != NULL) {
+	if ((trigger_val = xdebug_lib_find_in_track_vars_deref(TRACK_VARS_POST, element, strlen(element))) != NULL) {
 		*found_in_global = "POST";
 		return Z_STRVAL_P(trigger_val);
 	}
 
-	if ((trigger_val = zend_hash_str_find_deref(Z_ARR(PG(http_globals)[TRACK_VARS_COOKIE]), element, strlen(element))) != NULL) {
+	if ((trigger_val = xdebug_lib_find_in_track_vars_deref(TRACK_VARS_COOKIE, element, strlen(element))) != NULL) {
 		*found_in_global = "COOKIE";
 		return Z_STRVAL_P(trigger_val);
 	}
@@ -410,7 +442,7 @@ const char *xdebug_lib_find_in_globals(const char *element, const char **found_i
 		return Z_STRVAL_P(trigger_val);
 	}
 
-	if ((trigger_val = zend_hash_str_find_deref(Z_ARR(PG(http_globals)[TRACK_VARS_ENV]), element, strlen(element))) != NULL) {
+	if ((trigger_val = xdebug_lib_find_in_track_vars_deref(TRACK_VARS_ENV, element, strlen(element))) != NULL) {
 		*found_in_global = "ENV";
 		return Z_STRVAL_P(trigger_val);
 	}

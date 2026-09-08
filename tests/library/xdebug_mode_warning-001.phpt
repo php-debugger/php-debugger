@@ -8,4 +8,4 @@ xdebug.mode=develop,nonexisting
 <?php
 ?>
 --EXPECTF--
-Xdebug: [Config] Invalid mode 'develop,nonexisting' set for 'xdebug.mode' configuration setting (See: http%sdocs/errors#CFG-C-MODE)
+Xdebug: [Config] Invalid mode 'develop,nonexisting' set for the 'xdebug.mode' / 'php_debugger.mode' configuration setting (See: http%sdocs/errors#CFG-C-MODE)
