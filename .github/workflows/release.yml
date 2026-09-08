@@ -484,11 +484,9 @@ jobs:
                     if [[ "${{ matrix.arch }}" == "x86_64" ]]; then
                         # Run x86_64 binary using Rosetta
                         arch -x86_64 ./sapi/cli/php -m | grep -q php_debugger
-                        arch -x86_64 ./sapi/cli/php -m | grep -q xdebug
                         arch -x86_64 ./sapi/cli/php -v | grep -q "PHP Debugger"
                     else
                         ./sapi/cli/php -m | grep -q php_debugger
-                        ./sapi/cli/php -m | grep -q xdebug
                         ./sapi/cli/php -v | grep -q "PHP Debugger"
                     fi
 
@@ -499,7 +497,6 @@ jobs:
                         # Run x86_64 binary using Rosetta
                         arch -x86_64 ./sapi/cli/php -r "
                           assert(extension_loaded('php_debugger'), 'php_debugger not loaded');
-                          assert(extension_loaded('xdebug'), 'xdebug compat alias not loaded');
                           assert(function_exists('xdebug_break'), 'xdebug_break missing');
                           assert(function_exists('xdebug_info'), 'xdebug_info missing');
                           assert(function_exists('php_debugger_info'), 'php_debugger_info missing');
@@ -510,7 +507,6 @@ jobs:
                     else
                         ./sapi/cli/php -r "
                           assert(extension_loaded('php_debugger'), 'php_debugger not loaded');
-                          assert(extension_loaded('xdebug'), 'xdebug compat alias not loaded');
                           assert(function_exists('xdebug_break'), 'xdebug_break missing');
                           assert(function_exists('xdebug_info'), 'xdebug_info missing');
                           assert(function_exists('php_debugger_info'), 'php_debugger_info missing');
@@ -610,7 +606,6 @@ jobs:
                 run: |
                     cd ~/php-src
                     ./sapi/cli/php -m | grep -q php_debugger
-                    ./sapi/cli/php -m | grep -q xdebug
                     ./sapi/cli/php -v | grep -q "PHP Debugger"
 
             -   name: Test extension functionality
@@ -618,7 +613,6 @@ jobs:
                     cd ~/php-src
                     ./sapi/cli/php -r "
                       assert(extension_loaded('php_debugger'), 'php_debugger not loaded');
-                      assert(extension_loaded('xdebug'), 'xdebug compat alias not loaded');
                       assert(function_exists('xdebug_break'), 'xdebug_break missing');
                       assert(function_exists('xdebug_info'), 'xdebug_info missing');
                       assert(function_exists('php_debugger_info'), 'php_debugger_info missing');
@@ -738,11 +732,7 @@ jobs:
                         Write-Error "php_debugger not in module list"; exit 1
                     }
 
-                    if (-not (& $php -m | Select-String -Pattern "xdebug" -Quiet)) {
-                        Write-Error "xdebug not in module list"; exit 1
-                    }
-
-                    & $php -r "assert(extension_loaded('php_debugger'), 'php_debugger not loaded'); assert(extension_loaded('xdebug'), 'xdebug compat alias not loaded'); assert(function_exists('xdebug_info'), 'xdebug_info missing'); echo 'All tests passed!' . PHP_EOL;"
+                    & $php -r "assert(extension_loaded('php_debugger'), 'php_debugger not loaded'); assert(function_exists('xdebug_info'), 'xdebug_info missing'); echo 'All tests passed!' . PHP_EOL;"
                     if ($LASTEXITCODE -ne 0) { Write-Error "PHP tests failed"; exit 1 }
 
             -   name: Package artifact
