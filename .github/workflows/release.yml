@@ -139,11 +139,8 @@ jobs:
                 ts:
                     - nts
                     - ts
-                arch:
-                    - arm64
-                    - x86_64
         runs-on: macos-latest
-        name: "MacOS — PHP ${{ matrix.php-version }} — ${{ matrix.arch }} — ${{ matrix.ts == 'ts' && 'TS' || 'NTS' }}"
+        name: "MacOS — PHP ${{ matrix.php-version }} — arm64 — ${{ matrix.ts == 'ts' && 'TS' || 'NTS' }}"
         steps:
             -   uses: actions/checkout@v7
                 with:
@@ -161,25 +158,15 @@ jobs:
             -   name: Build extension
                 run: |
                     phpize
-                    if [[ "${{ matrix.arch }}" == "arm64" ]]; then
-                        CFLAGS="-arch arm64" LDFLAGS="-arch arm64" ./configure --enable-php-debugger
-                    else
-                        CFLAGS="-arch x86_64" LDFLAGS="-arch x86_64" ./configure --enable-php-debugger
-                    fi
+                    ./configure --enable-php-debugger
                     make -j$(sysctl -n hw.logicalcpu 2>/dev/null || nproc)
 
             -   name: Verify extension loads
                 run: |
-                    # Skip verification for cross-compiled binaries
-                    if [[ "${{ matrix.arch }}" == "x86_64" ]]; then
-                        arch -x86_64 php -dzend_extension=$PWD/modules/php_debugger.so -v || echo "Cross-compiled x86_64 binary, skipping test"
-                    else
-                        php -dzend_extension=$PWD/modules/php_debugger.so -v
-                        php -dzend_extension=$PWD/modules/php_debugger.so -r "echo 'xdebug_info() works: ' . (function_exists('xdebug_info') ? 'yes' : 'no') . PHP_EOL;"
-                    fi
+                    php -dzend_extension=$PWD/modules/php_debugger.so -v
+                    php -dzend_extension=$PWD/modules/php_debugger.so -r "echo 'xdebug_info() works: ' . (function_exists('xdebug_info') ? 'yes' : 'no') . PHP_EOL;"
 
             -   name: Smoke test (DBGp)
-                if: matrix.arch == 'arm64'
                 run: |
                     TEST_PHP_ARGS="-n -dzend_extension=$PWD/modules/php_debugger.so"
                     echo "TEST_PHP_ARGS=$TEST_PHP_ARGS" >> $GITHUB_ENV
@@ -191,7 +178,7 @@ jobs:
                 run: |
                     PHP_VER=$(php -r "echo PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION;")
                     OS_TAG="macos"
-                    ARCH_TAG="${{ matrix.arch }}"
+                    ARCH_TAG="arm64"
                     TS_TAG="${{ matrix.ts }}"
                     ASSET_NAME="php-debugger-php${PHP_VER}-${TS_TAG}-${OS_TAG}-${ARCH_TAG}.so"
                     cp modules/php_debugger.so "${ASSET_NAME}"
@@ -359,11 +346,8 @@ jobs:
                 ts:
                     - nts
                     - ts
-                arch:
-                    - arm64
-                    - x86_64
         runs-on: macos-latest
-        name: "PHP Binary MacOS — PHP ${{ matrix.php-version }} — ${{ matrix.arch }} — ${{ matrix.ts == 'ts' && 'TS' || 'NTS' }}"
+        name: "PHP Binary MacOS — PHP ${{ matrix.php-version }} — arm64 — ${{ matrix.ts == 'ts' && 'TS' || 'NTS' }}"
         steps:
             -   name: Checkout extension
                 uses: actions/checkout@v7
@@ -373,16 +357,8 @@ jobs:
 
             -   name: Install build dependencies
                 run: |
-                    if [[ "${{ matrix.arch }}" == "x86_64" ]]; then
-                        # x86_64 cross-compilation needs x86_64 versions of libraries
-                        arch -x86_64 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-                        arch -x86_64 /usr/local/bin/brew install autoconf automake libtool bison re2c pkg-config \
-                          openssl@3 argon2 oniguruma libsodium
-                    else
-                        # arm64 native build - explicitly install dependencies for reliability
-                        brew install autoconf automake libtool bison re2c pkg-config \
-                          openssl@3 argon2 oniguruma libsodium
-                    fi
+                    brew install autoconf automake libtool bison re2c pkg-config \
+                      openssl@3 argon2 oniguruma libsodium
 
             -   name: Clone PHP source
                 run: |
@@ -416,105 +392,52 @@ jobs:
                     PHP_FULL_VERSION=$(grep 'PHP_VERSION ' main/php_version.h | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
                     PHP_MINOR_VERSION="${{ matrix.php-version }}"
 
-                    if [[ "${{ matrix.arch }}" == "arm64" ]]; then
-                        export PATH="/opt/homebrew/opt/bison/bin:/opt/homebrew/bin:$PATH"
+                    export PATH="/opt/homebrew/opt/bison/bin:/opt/homebrew/bin:$PATH"
 
-                        PREFIX="/opt/homebrew/Cellar/php@${PHP_MINOR_VERSION}/${PHP_FULL_VERSION}"
-                        LOCALSTATEDIR="/opt/homebrew/var"
-                        SYSCONFDIR="/opt/homebrew/etc/php/${PHP_MINOR_VERSION}"
-                        CONFIG_FILE_PATH="/opt/homebrew/etc/php/${PHP_MINOR_VERSION}"
-                        CONFIG_FILE_SCAN_DIR="/opt/homebrew/etc/php/${PHP_MINOR_VERSION}/conf.d"
+                    PREFIX="/opt/homebrew/Cellar/php@${PHP_MINOR_VERSION}/${PHP_FULL_VERSION}"
+                    LOCALSTATEDIR="/opt/homebrew/var"
+                    SYSCONFDIR="/opt/homebrew/etc/php/${PHP_MINOR_VERSION}"
+                    CONFIG_FILE_PATH="/opt/homebrew/etc/php/${PHP_MINOR_VERSION}"
+                    CONFIG_FILE_SCAN_DIR="/opt/homebrew/etc/php/${PHP_MINOR_VERSION}/conf.d"
 
-                        # Create directories if they don't exist
-                        sudo mkdir -p "${PREFIX}"
-                        sudo mkdir -p "${LOCALSTATEDIR}"
-                        sudo mkdir -p "${CONFIG_FILE_SCAN_DIR}"
+                    # Create directories if they don't exist
+                    sudo mkdir -p "${PREFIX}"
+                    sudo mkdir -p "${LOCALSTATEDIR}"
+                    sudo mkdir -p "${CONFIG_FILE_SCAN_DIR}"
 
-                        ./buildconf --force
+                    ./buildconf --force
 
-                        CFLAGS="-arch arm64" \
-                        LDFLAGS="-arch arm64" \
-                        ./configure \
-                          --prefix="${PREFIX}" \
-                          --localstatedir="${LOCALSTATEDIR}" \
-                          --sysconfdir="${SYSCONFDIR}" \
-                          --with-config-file-path="${CONFIG_FILE_PATH}" \
-                          --with-config-file-scan-dir="${CONFIG_FILE_SCAN_DIR}" \
-                          $CONFIGURE_FLAGS \
-                          $MACOS_FLAGS \
-                          --with-iconv="${ICONV_PATH}" \
-                          ${{ matrix.ts == 'ts' && '--enable-zts' || '' }}
-                    else
-                        # x86_64 needs explicit library paths for cross-compilation
-                        export PATH="/usr/local/opt/bison/bin:/usr/local/bin:$PATH"
-                        export PKG_CONFIG_PATH="/usr/local/opt/openssl@3/lib/pkgconfig:/usr/local/opt/oniguruma/lib/pkgconfig"
-
-                        PREFIX="/usr/local/Cellar/php@${PHP_MINOR_VERSION}/${PHP_FULL_VERSION}"
-                        LOCALSTATEDIR="/usr/local/var"
-                        SYSCONFDIR="/usr/local/etc/php/${PHP_MINOR_VERSION}"
-                        CONFIG_FILE_PATH="/usr/local/etc/php/${PHP_MINOR_VERSION}"
-                        CONFIG_FILE_SCAN_DIR="/usr/local/etc/php/${PHP_MINOR_VERSION}/conf.d"
-
-                        # Create directories if they don't exist
-                        sudo mkdir -p "${PREFIX}"
-                        sudo mkdir -p "${LOCALSTATEDIR}"
-                        sudo mkdir -p "${CONFIG_FILE_SCAN_DIR}"
-
-                        ./buildconf --force
-
-                        CFLAGS="-arch x86_64" \
-                        LDFLAGS="-arch x86_64 -L/usr/local/opt/openssl@3/lib" \
-                        ./configure \
-                          --prefix="${PREFIX}" \
-                          --localstatedir="${LOCALSTATEDIR}" \
-                          --sysconfdir="${SYSCONFDIR}" \
-                          --with-config-file-path="${CONFIG_FILE_PATH}" \
-                          --with-config-file-scan-dir="${CONFIG_FILE_SCAN_DIR}" \
-                          $CONFIGURE_FLAGS \
-                          $MACOS_FLAGS \
-                          --with-iconv="${ICONV_PATH}" \
-                          ${{ matrix.ts == 'ts' && '--enable-zts' || '' }}
-                    fi
+                    ./configure \
+                      --prefix="${PREFIX}" \
+                      --localstatedir="${LOCALSTATEDIR}" \
+                      --sysconfdir="${SYSCONFDIR}" \
+                      --with-config-file-path="${CONFIG_FILE_PATH}" \
+                      --with-config-file-scan-dir="${CONFIG_FILE_SCAN_DIR}" \
+                      $CONFIGURE_FLAGS \
+                      $MACOS_FLAGS \
+                      --with-iconv="${ICONV_PATH}" \
+                      ${{ matrix.ts == 'ts' && '--enable-zts' || '' }}
 
                     make -j$(sysctl -n hw.logicalcpu)
 
             -   name: Verify extension is statically linked
                 run: |
                     cd ~/php-src
-                    if [[ "${{ matrix.arch }}" == "x86_64" ]]; then
-                        # Run x86_64 binary using Rosetta
-                        arch -x86_64 ./sapi/cli/php -m | grep -q php_debugger
-                        arch -x86_64 ./sapi/cli/php -v | grep -q "PHP Debugger"
-                    else
-                        ./sapi/cli/php -m | grep -q php_debugger
-                        ./sapi/cli/php -v | grep -q "PHP Debugger"
-                    fi
+                    ./sapi/cli/php -m | grep -q php_debugger
+                    ./sapi/cli/php -v | grep -q "PHP Debugger"
 
             -   name: Test extension functionality
                 run: |
                     cd ~/php-src
-                    if [[ "${{ matrix.arch }}" == "x86_64" ]]; then
-                        # Run x86_64 binary using Rosetta
-                        arch -x86_64 ./sapi/cli/php -r "
-                          assert(extension_loaded('php_debugger'), 'php_debugger not loaded');
-                          assert(function_exists('xdebug_break'), 'xdebug_break missing');
-                          assert(function_exists('xdebug_info'), 'xdebug_info missing');
-                          assert(function_exists('php_debugger_info'), 'php_debugger_info missing');
-                          assert(ini_get('xdebug.client_port') !== false, 'xdebug.* INI missing');
-                          assert(ini_get('php_debugger.client_port') !== false, 'php_debugger.* INI missing');
-                          echo 'All tests passed!' . PHP_EOL;
-                        "
-                    else
-                        ./sapi/cli/php -r "
-                          assert(extension_loaded('php_debugger'), 'php_debugger not loaded');
-                          assert(function_exists('xdebug_break'), 'xdebug_break missing');
-                          assert(function_exists('xdebug_info'), 'xdebug_info missing');
-                          assert(function_exists('php_debugger_info'), 'php_debugger_info missing');
-                          assert(ini_get('xdebug.client_port') !== false, 'xdebug.* INI missing');
-                          assert(ini_get('php_debugger.client_port') !== false, 'php_debugger.* INI missing');
-                          echo 'All tests passed!' . PHP_EOL;
-                        "
-                    fi
+                    ./sapi/cli/php -r "
+                      assert(extension_loaded('php_debugger'), 'php_debugger not loaded');
+                      assert(function_exists('xdebug_break'), 'xdebug_break missing');
+                      assert(function_exists('xdebug_info'), 'xdebug_info missing');
+                      assert(function_exists('php_debugger_info'), 'php_debugger_info missing');
+                      assert(ini_get('xdebug.client_port') !== false, 'xdebug.* INI missing');
+                      assert(ini_get('php_debugger.client_port') !== false, 'php_debugger.* INI missing');
+                      echo 'All tests passed!' . PHP_EOL;
+                    "
 
             -   name: Package artifact
                 id: package
@@ -522,7 +445,7 @@ jobs:
                     cd ~/php-src
                     PHP_VER="${{ matrix.php-version }}"
                     OS_TAG="macos"
-                    ARCH_TAG="${{ matrix.arch }}"
+                    ARCH_TAG="arm64"
                     TS_TAG="${{ matrix.ts }}"
                     ASSET_NAME="php-php${PHP_VER}-${TS_TAG}-${OS_TAG}-${ARCH_TAG}"
                     cp sapi/cli/php "${ASSET_NAME}"
