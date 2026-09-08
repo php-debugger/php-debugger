@@ -7,10 +7,18 @@
 /* Emits a breakpoint to the debug client */
 function xdebug_break(): bool {}
 
+/* Alias of xdebug_break() under the php_debugger_ prefix */
+/** @alias xdebug_break */
+function php_debugger_break(): bool {}
+
 /* -----------------------------------------------------------------------*/
 
 /* Instructs Xdebug to establish a debugging session */
 function xdebug_connect_to_client(): bool {}
+
+/* Alias of xdebug_connect_to_client() under the php_debugger_ prefix */
+/** @alias xdebug_connect_to_client */
+function php_debugger_connect_to_client(): bool {}
 
 /* -----------------------------------------------------------------------*/
 
@@ -18,7 +26,7 @@ function xdebug_connect_to_client(): bool {}
 /** @return mixed */
 function xdebug_info(?string $category = null) {}
 
-/* Alias of xdebug_info() in the php_debugger namespace */
+/* Alias of xdebug_info() under the php_debugger_ prefix */
 /**
  * @alias xdebug_info
  * @return mixed
@@ -30,10 +38,18 @@ function php_debugger_info(?string $category = null) {}
 /* Returns whether a debugging session is active */
 function xdebug_is_debugger_active(): bool {}
 
+/* Alias of xdebug_is_debugger_active() under the php_debugger_ prefix */
+/** @alias xdebug_is_debugger_active */
+function php_debugger_is_debugger_active(): bool {}
+
 /* -----------------------------------------------------------------------*/
 
 /* Sends data to a debugging client */
 function xdebug_notify(mixed $data): bool {}
+
+/* Alias of xdebug_notify() under the php_debugger_ prefix */
+/** @alias xdebug_notify */
+function php_debugger_notify(mixed $data): bool {}
 
 /* -----------------------------------------------------------------------*/
 /* Compatibility stubs — profiler                                         */
