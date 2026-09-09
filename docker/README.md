@@ -57,7 +57,7 @@ The only difference from the official image: PHP Debugger is compiled in (as a s
 
 ### Debugging
 
-The debugger speaks the DBGp protocol, so PhpStorm, VS Code and any Xdebug-compatible client work as-is (the extension identifies itself as `xdebug` for compatibility). Typical development setup in `docker-compose.yml`:
+The debugger speaks the DBGp protocol, so PhpStorm, VS Code and any Xdebug-compatible client work as-is (set `php_debugger.report_xdebug_module=1` if a tool needs `extension_loaded("xdebug")` to return true). Typical development setup in `docker-compose.yml`:
 
 ```yaml
 services:
