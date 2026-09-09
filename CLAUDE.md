@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 PHP Debugger — a Zend extension forked from Xdebug, stripped to step-debugging only (DBGp). Profiling, coverage, tracing, and gcstats were removed. Goal: near-zero overhead when no debug client is attached, while remaining drop-in compatible with Xdebug INI/functions/triggers.
 
-Supports PHP 8.2–8.5. The shared library is `modules/php_debugger.so` (`php_debugger.dll` on Windows). The Zend module name internally is still `xdebug` for compatibility (`extension_loaded("xdebug")` returns true).
+Supports PHP 8.2–8.5. The shared library is `modules/php_debugger.so` (`php_debugger.dll` on Windows). The Zend module registers as `php_debugger`; `extension_loaded("xdebug")` returns false unless `php_debugger.report_xdebug_module=1` is set, which registers an additional `xdebug` module alias. The `xdebug_` C symbol prefix is unchanged throughout the source.
 
 ## Build
 

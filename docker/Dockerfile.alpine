@@ -73,4 +73,4 @@ COPY --from=builder /usr/local /usr/local
 
 RUN set -eux; \
 	php -v; \
-	php -m | grep -ix xdebug
+	php -m | grep -ix php_debugger

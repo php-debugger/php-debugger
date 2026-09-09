@@ -94,4 +94,4 @@ RUN set -eux; \
 	fi; \
 	rm -rf /opt/php-debugger; \
 	php -v; \
-	php -m | grep -ix xdebug
+	php -m | grep -ix php_debugger
