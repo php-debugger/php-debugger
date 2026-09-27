@@ -149,7 +149,8 @@ char *xdebug_path_from_url(zend_string *fileurl)
 	int l = 0;
 	int i;
 #endif
-	char *tmp = NULL, *ret = NULL;
+	const char *tmp = NULL;
+	char *ret = NULL;
 
 	dfp = xdstrdup(efp);
 	fp = dfp;
