@@ -170,7 +170,10 @@ static void handle_command(HANDLE h, const char *line)
 send_result:
 	message = make_message(retval);
 #if __linux__
-	write(fd, message->d, message->l);
+	/* MSG_NOSIGNAL, not write(): the client may already have closed the
+	 * socket (it does exactly that after sending an empty command), and a
+	 * SIGPIPE here would take the whole PHP process down with it. */
+	send(fd, message->d, message->l, MSG_NOSIGNAL);
 #elif WIN32
 	if (WriteFile(h, message->d, message->l, NULL, &XG_BASE(control_socket_ov))) {
 		SetEvent(XG_BASE(control_socket_ov).hEvent);
