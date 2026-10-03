@@ -2,10 +2,12 @@
 Test for bug #2424: Ctrl Socket: Aliveness after empty command
 --INI--
 xdebug.mode=debug
+xdebug.start_with_request=no
+xdebug.control_socket=time
 --SKIPIF--
 <?php
 require __DIR__ . '/../utils.inc';
-check_reqs('linux');
+check_reqs('linux; ext-flag control-socket');
 ?>
 --FILE--
 <?php

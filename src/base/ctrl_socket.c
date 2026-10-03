@@ -180,6 +180,11 @@ send_result:
 	}
 #endif
 
+	/* The response tree owns every child node, attribute and text buffer
+	 * added to it above, so one dtor on the root reclaims the lot. */
+	xdebug_xml_node_dtor(retval);
+	xdebug_str_free(message);
+
 	xdfree(cmd);
 	xdebug_cmd_arg_dtor(args);
 }
@@ -424,6 +429,11 @@ static bool is_control_socket_active(void)
 	return true;
 }
 #endif
+
+bool xdebug_control_socket_is_active(void)
+{
+	return is_control_socket_active();
+}
 
 void xdebug_control_socket_dispatch(void)
 {

@@ -611,18 +611,39 @@ PHP_RINIT_FUNCTION(xdebug)
 		XG_BASE(early_connection) = 1;
 	}
 	if (!connected) {
-		if (!XINI_DBG(on_demand_debugging_enabled)) {
+		bool control_socket_active = false;
+
+#if HAVE_XDEBUG_CONTROL_SOCKET_SUPPORT
+		/* The control socket is only ever read from instrumented code: the
+		 * statement handler, and the observer's
+		 * xdebug_execute_user_code_begin(). It therefore needs the same
+		 * instrumentation that debugging does. Without this the socket would
+		 * be created and bound but never answered, which leaves 'pause' — the
+		 * one command whose job is to attach an IDE to a process that is not
+		 * being debugged — permanently unreachable. */
+		control_socket_active = xdebug_control_socket_is_active();
+#endif
+
+		if (!XINI_DBG(on_demand_debugging_enabled) && !control_socket_active) {
 			XG_BASE(observer_active) = false;
 			return SUCCESS;
 		}
-		/* On-demand debugging compiles with instrumentation even without a
-		 * client, which means OPcache is bypassed for every request in this
-		 * process, not just the debugged ones. Say so: on a busy server this
-		 * is a throughput cliff that is otherwise hard to attribute. */
-		xdebug_log_ex(
-			XLOG_CHAN_CONFIG, XLOG_INFO, "OPCACHE-OD",
-			"OPcache is bypassed for every request because xdebug.on_demand_debugging_enabled=1 needs each request compiled with debugging instrumentation. Set it to 0 to keep OPcache active when no debugging client is connected."
-		);
+
+		/* Instrumenting without a client means OPcache is bypassed for every
+		 * request in this process, not just the debugged ones. Say so: on a
+		 * busy server this is a throughput cliff that is otherwise hard to
+		 * attribute. */
+		if (XINI_DBG(on_demand_debugging_enabled)) {
+			xdebug_log_ex(
+				XLOG_CHAN_CONFIG, XLOG_INFO, "OPCACHE-OD",
+				"OPcache is bypassed for every request because xdebug.on_demand_debugging_enabled=1 needs each request compiled with debugging instrumentation. Set it to 0 to keep OPcache active when no debugging client is connected."
+			);
+		} else {
+			xdebug_log_ex(
+				XLOG_CHAN_CONFIG, XLOG_INFO, "OPCACHE-CS",
+				"OPcache is bypassed for every request because the control socket is polled from the statement handler, which needs each request compiled with debugging instrumentation. Set xdebug.control_socket=no to keep OPcache active when no debugging client is connected."
+			);
+		}
 		XG_BASE(statement_handler_enabled) = false;
 	}
 	xdebug_base_rinit_if_enabled();
