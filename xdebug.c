@@ -265,7 +265,7 @@ PHP_INI_BEGIN()
 	PHP_INI_ENTRY_EX( "xdebug.start_upon_error",   "default",               PHP_INI_SYSTEM|PHP_INI_PERDIR, OnUpdateStartUponError,   display_start_upon_error)
 	STD_PHP_INI_ENTRY("xdebug.trigger_value",      "",                      PHP_INI_SYSTEM|PHP_INI_PERDIR, OnUpdateString, settings.library.trigger_value,    zend_xdebug_globals, xdebug_globals)
 #if HAVE_XDEBUG_CONTROL_SOCKET_SUPPORT
-	PHP_INI_ENTRY_EX("xdebug.control_socket",      "default",               PHP_INI_ALL,                   OnUpdateCtrlSocket, display_control_socket)
+	PHP_INI_ENTRY_EX("xdebug.control_socket",      "no",                    PHP_INI_ALL,                   OnUpdateCtrlSocket, display_control_socket)
 #endif
 	STD_PHP_INI_ENTRY("xdebug.path_mapping",       "0",                     PHP_INI_ALL,                   OnUpdateBool,   settings.library.path_mapping,     zend_xdebug_globals, xdebug_globals)
 
@@ -304,7 +304,7 @@ static const zend_ini_entry_def php_debugger_ini_entries[] = {
 	PHP_INI_ENTRY_EX( "php_debugger.start_upon_error",   "default",               PHP_INI_SYSTEM|PHP_INI_PERDIR, OnUpdatePhpDebuggerStartUponError,   display_start_upon_error)
 	STD_PHP_INI_ENTRY("php_debugger.trigger_value",      "",                      PHP_INI_SYSTEM|PHP_INI_PERDIR, OnUpdatePhpDebuggerString, settings.library.trigger_value,    zend_xdebug_globals, xdebug_globals)
 #if HAVE_XDEBUG_CONTROL_SOCKET_SUPPORT
-	PHP_INI_ENTRY_EX("php_debugger.control_socket",      "default",               PHP_INI_ALL,                   OnUpdatePhpDebuggerCtrlSocket, display_control_socket)
+	PHP_INI_ENTRY_EX("php_debugger.control_socket",      "no",                    PHP_INI_ALL,                   OnUpdatePhpDebuggerCtrlSocket, display_control_socket)
 #endif
 	STD_PHP_INI_ENTRY("php_debugger.path_mapping",       "0",                     PHP_INI_ALL,                   OnUpdatePhpDebuggerBool,   settings.library.path_mapping,     zend_xdebug_globals, xdebug_globals)
 

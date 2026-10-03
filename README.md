@@ -170,6 +170,7 @@ PHP Debugger maintains compatibility with Xdebug's debug mode:
 | `extension_loaded("xdebug")`       | ❌ false by default, ✅ true with<br/>`php_debugger.report_xdebug_module=1`   | ✅ true |
 | `extension_loaded("php_debugger")` | ✅ true                                                                       | ❌ false |
 | `xdebug.*` INI settings            | ✅ works                                                                      | ✅ works |
+| `xdebug.control_socket`            | ⚠️ defaults to `no` — set `default` or `time`<br/>to enable                   | ✅ defaults to `default` |
 | `xdebug_break()`                   | ✅ works                                                                      | ✅ works |
 | `XDEBUG_SESSION` trigger           | ✅ works                                                                      | ✅ works |
 | Step debugging (DBGp)              | ✅                                                                            | ✅      |
