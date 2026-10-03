@@ -185,8 +185,15 @@ CTRL_FUNC(ps)
 {
 	xdebug_xml_node *response, *engine, *file, *pid, *time, *memory;
 	char *pid_str, *time_str, *memory_str;
-	function_stack_entry *fse = XDEBUG_VECTOR_HEAD(XG_BASE(stack));
+	function_stack_entry *fse = NULL;
 	double time_elapsed = XDEBUG_SECONDS_SINCE_START(xdebug_get_nanotime());
+
+	/* There is no stack frame to report when the observer is not collecting
+	 * them, which is the normal state for a request without a debugging
+	 * client — and the state 'ps' is most often asked about. */
+	if (XG_BASE(stack) && XDEBUG_VECTOR_COUNT(XG_BASE(stack)) > 0) {
+		fse = XDEBUG_VECTOR_HEAD(XG_BASE(stack));
+	}
 
 	response = xdebug_xml_node_init("ps");
 	xdebug_xml_add_attribute(response, "success", "1");
@@ -197,7 +204,11 @@ CTRL_FUNC(ps)
 	xdebug_xml_add_child(response, engine);
 
 	file = xdebug_xml_node_init("fileuri");
-	xdebug_xml_add_text(file, ZSTR_VAL(fse->filename));
+	if (fse && fse->filename) {
+		/* xdstrdup, because the node owns its text and frees it: ZSTR_VAL is an
+		 * interior pointer into the zend_string, not its allocation. */
+		xdebug_xml_add_text(file, xdstrdup(ZSTR_VAL(fse->filename)));
+	}
 	xdebug_xml_add_child(response, file);
 
 	pid = xdebug_xml_node_init("pid");
