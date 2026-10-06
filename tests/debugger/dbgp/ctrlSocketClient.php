@@ -15,7 +15,9 @@ class CtrlSocketClient
 		@unlink( $this->tempFileName );
 	}
 
-	function runCommand( string $command )
+	/* $blankFileUri=false keeps the reported file name, so a test can assert
+	 * that 'ps' found a stack frame at all. */
+	function runCommand( string $command, bool $blankFileUri = true )
 	{
 		$myPid = getmypid();
 
@@ -56,7 +58,9 @@ PHP);
 
 		$cmdOutput = stream_get_contents( $pipes[1] );
 		$cmdOutput = preg_replace( '@(engine\sversion)="[^"]+?"@', '\\1=""', $cmdOutput );
-		$cmdOutput = preg_replace( '@(<fileuri>)(.*)(</fileuri>)@', '\\1\\3', $cmdOutput );
+		if ( $blankFileUri ) {
+			$cmdOutput = preg_replace( '@(<fileuri>)(.*)(</fileuri>)@', '\\1\\3', $cmdOutput );
+		}
 		$cmdOutput = preg_replace( '@(<pid>)(.*)(</pid>)@', '\\1\\3', $cmdOutput );
 		$cmdOutput = preg_replace( '@(<time>)(.*)(</time>)@', '\\1\\3', $cmdOutput );
 		$cmdOutput = preg_replace( '@(<memory>)(.*)(</memory>)@', '\\1\\3', $cmdOutput );

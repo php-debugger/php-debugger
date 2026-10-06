@@ -194,13 +194,22 @@ CTRL_FUNC(ps)
 	xdebug_xml_node *response, *engine, *file, *pid, *time, *memory;
 	char *pid_str, *time_str, *memory_str;
 	function_stack_entry *fse = NULL;
+	bool stack_was_rebuilt = false;
 	double time_elapsed = XDEBUG_SECONDS_SINCE_START(xdebug_get_nanotime());
 
-	/* There is no stack frame to report when the observer is not collecting
-	 * them, which is the normal state for a request without a debugging
-	 * client — and the state 'ps' is most often asked about. */
-	if (XG_BASE(stack) && XDEBUG_VECTOR_COUNT(XG_BASE(stack)) > 0) {
-		fse = XDEBUG_VECTOR_HEAD(XG_BASE(stack));
+	/* Without a debugging client the observer stops collecting frames, which is
+	 * exactly the state 'ps' is most often asked about — so build the stack on
+	 * the spot, the way 'pause' does. The cost is only paid when a command
+	 * actually arrives. */
+	if (XG_BASE(stack)) {
+		if (XDEBUG_VECTOR_COUNT(XG_BASE(stack)) == 0 && EG(current_execute_data)) {
+			xdebug_rebuild_stack();
+			stack_was_rebuilt = true;
+		}
+
+		if (XDEBUG_VECTOR_COUNT(XG_BASE(stack)) > 0) {
+			fse = XDEBUG_VECTOR_HEAD(XG_BASE(stack));
+		}
 	}
 
 	response = xdebug_xml_node_init("ps");
@@ -235,6 +244,13 @@ CTRL_FUNC(ps)
 	xdebug_xml_add_child(response, memory);
 
 	xdebug_xml_add_child(*retval, response);
+
+	/* 'ps' only reports. Nothing pops frames off a stack the observer is not
+	 * collecting into, so a stack built here would go stale as soon as the
+	 * current call returns — drop it again rather than leave that behind. */
+	if (stack_was_rebuilt) {
+		xdebug_vector_empty(XG_BASE(stack));
+	}
 }
 
 CTRL_FUNC(pause)
