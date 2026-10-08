@@ -1,219 +1,126 @@
-# PHP Debugger
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/php-debugger-lockup-white.png">
+    <img src="assets/php-debugger-lockup.png" alt="PHP Debugger — zero-overhead debugging" width="420">
+  </picture>
+</p>
 
-A PHP debugger extension focused on step debugging with near-zero overhead. Forked from [Xdebug](https://xdebug.org/), with profiling, coverage, and tracing removed.
+PHP Debugger is a step debugger for PHP, and nothing else. Every other feature that
+normally ships alongside one — the profiler, the coverage collector, the tracer — has
+been left out. What remains is a debugger you can leave switched on permanently,
+because when you are not using it you can barely tell it is there. It speaks the DBGp
+protocol, so PhpStorm, VS Code and anything else that already debugs PHP works with it,
+and it accepts Xdebug's INI settings, triggers and functions, so in most projects there
+is nothing to migrate beyond the line that loads the extension.
 
-> [!NOTE]
-> **🧪 This project is an experiment** exploring minimal-overhead PHP debugging.
+📖 **Full documentation: [php-debugger.dev](https://php-debugger.dev)**
 
 ## Why PHP Debugger?
 
-- **Near-zero overhead** when loaded but no debug client is connected
-- **Xdebug-compatible** — existing configs, IDE setups, and workflows work unchanged
-- **Debug-only** — focused exclusively on step debugging
-- **Full DBGp protocol support** — works with PhpStorm, VS Code, and any DBGp-compatible IDE
+- **Near-zero overhead** when loaded with no debug client connected
+- **Drop-in compatible** — existing INI settings, IDE configurations and helper functions keep working
+- **Always on** — debugging starts with every request, so there is no trigger to remember
+- **Compiled in, or not** — a PHP interpreter with the debugger built in, or a plain extension
+- **Debug-only** — one job, done well, which is exactly why the rest of the time it costs so little
 
-### Benchmarks
+### Overhead
 
-The following benchmarks were run in GitHub's CI (GitHub Actions) environment using a standard Ubuntu runner. 
-The performance was measured using Valgrind to count the number of executed instructions.
-This is much more precise and reproducible than timing execution runs. All measuremments were done
-using all supported PHP versions (the number shown is the average), with the extension loaded and
-no IDE connected.
+Measured in GitHub Actions with Valgrind instruction counts rather than wall-clock
+timing, averaged across every supported PHP version, with the extension loaded and no
+IDE connected — the state your machine is in almost all of the time.
 
-We measured three different scenarios which we believe represent a good mix of typical PHP operations:
+| Benchmark                                     |      Xdebug | PHP Debugger |
+|-----------------------------------------------|------------:|-------------:|
+| `bench.php` — synthetic, computationally heavy | **+661.6%** |   **+12.9%** |
+| Rector — a RectorPHP rule over a PHP file      | **+124.5%** |    **+3.6%** |
+| Symfony — a basic request on a demo project    |  **+35.3%** |    **+1.3%** |
 
-- `bench.php`: a syntetic benchmark that runs a number of computationally heavy functions
-
-| Configuration |    Overhead |
-|---------------|------------:|
-| No debugger   |           — |
-| Xdebug        | **+661.6%** |
-| PHP Debugger  |  **+12.9%** |
-
-- `Rector`: running a RectorPHP rule on a PHP file
-
-| Configuration |    Overhead |
-|---------------|------------:|
-| No debugger   |           — |
-| Xdebug        | **+124.5%** |
-| PHP Debugger  |   **+3.6%** |
-
-- `Symfony`: running a basic request on a Symfony demo project
-
-| Configuration |   Overhead |
-|---------------|-----------:|
-| No debugger   |          — |
-| Xdebug        | **+35.3%** |
-| PHP Debugger  |  **+1.3%** |
-
-### On-Demand Debugging
-
-To improve the performance of code running with the PHP Debugger enabled, several features required for on-demand
-debugging are disabled if the debugger does not connect to a client at startup.
-
-On-demand debugging allows the debugger to connect later during execution—for example, via `xdebug_connect_to_client()`,
-`xdebug_break()`, or when an error or exception occurs.
-
-We consider on-demand debugging to be a relatively uncommon use case, and we want to avoid degrading performance for
-the majority of users. However, since some users rely on this functionality, we provide an INI setting to enable
-it when needed.
-
-INI setting: `php_debugger.on_demand_debugging_enabled` (default: false)
-
-When this setting is enabled, on-demand debugging features remain active even if no client is connected at startup. 
-Note that this has a significant performance impact: instead of achieving up to a 97% performance improvement, the average improvement drops to around 60%.
-
-On top of that, every request must be compiled with debugging instrumentation, so OPcache is bypassed for *all* requests in the
-process — not just the ones that end up being debugged. On a busy server (PHP-FPM in particular) that recompilation is a
-substantial throughput cost. The debugger logs a `[Config] INFO` line about this at request start, and `xdebug_info()` reports the
-bypass in its Step Debugging section.
-
-For this reason, we recommend enabling this setting only if you specifically require on-demand debugging.
+The synthetic benchmark is the worst case: tight loops of function calls and little
+else, so the per-call cost has nowhere to hide. The closer you get to a real
+application, the smaller the share of the work the debugger touches.
 
 ## Installation
 
+**Requirements:** PHP 8.2, 8.3, 8.4, or 8.5.
+
+### Installer
+
+Get the installer — macOS and Linux:
+
+```bash
+curl -fsSL https://github.com/php-debugger/installer/releases/latest/download/install.sh | sh
+```
+
+Windows:
+
+```powershell
+powershell -c "irm https://github.com/php-debugger/installer/releases/latest/download/install.ps1 | iex"
+```
+
+Then install the debugger:
+
+```bash
+php-debugger install
+```
+
+That installs a self-contained PHP interpreter with the debugger compiled in and makes
+it the active `php` on your PATH. To keep the PHP you already have and install only the
+extension into it, use `php-debugger install --extension-only`. Either way, whatever it
+replaced is backed up and `php-debugger uninstall` puts it back.
+
+See [Installation](https://php-debugger.dev/getting-started/installation) for the full set of flags.
+
 ### Docker
 
-Drop-in replacements for the [official PHP images](https://hub.docker.com/_/php) with PHP Debugger statically compiled in — just add the `phpdebugger/` prefix to your base image:
+The images on Docker Hub are drop-in replacements for the [official PHP images](https://hub.docker.com/_/php) — change one line:
 
 ```dockerfile
 FROM phpdebugger/php:8.4-fpm
 ```
 
-All official variants are available (`cli`, `fpm`, `apache`, `zts`, and their Alpine equivalents) for PHP 8.2–8.5, on amd64 and arm64. Tags exist per minor version only (no `8.4.23`); each always contains the latest patch release. Everything from the official images works unchanged, including `docker-php-ext-install`. See [docker/README.md](docker/README.md) for tags and debugging setup.
+All official variants (`cli`, `fpm`, `apache`, `zts`, and their Alpine equivalents) for
+PHP 8.2–8.5, on amd64 and arm64. Everything from the official images works unchanged,
+including `docker-php-ext-install`. See [Docker](https://php-debugger.dev/getting-started/docker).
 
-### Manual download
+### Other options
 
-Grab the right binary from [Releases](https://github.com/php-debugger/php-debugger/releases), copy it to your extension directory, and add to `php.ini`:
-
-```ini
-zend_extension=php_debugger.so
-```
-
-### 🚧 Coming soon 
-
-**Quick install script:**
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/php-debugger/php-debugger/main/install.php | php
-```
-
-**PIE (PHP Installer for Extensions):**
-
-```bash
-pie install php-debugger/php-debugger
-```
-
-## Configuration
-
-PHP Debugger accepts both `php_debugger.*` and `xdebug.*` INI prefixes. Existing Xdebug configurations work as-is.
-
-```ini
-; Both of these work:
-php_debugger.mode = debug
-php_debugger.client_host = 127.0.0.1
-php_debugger.client_port = 9003
-php_debugger.start_with_request = trigger
-
-; Xdebug-compatible (also works):
-xdebug.mode = debug
-xdebug.client_host = 127.0.0.1
-xdebug.client_port = 9003
-xdebug.start_with_request = trigger
-```
-
-### OPcache
-
-Debugging needs every file compiled with debugging information, and OPcache is shared between requests, so PHP Debugger switches
-OPcache off for the requests it instruments — those with a debugging client attached, and all requests when
-`php_debugger.on_demand_debugging_enabled` (aka `xdebug.on_demand_debugging_enabled`) is on. Other requests keep OPcache exactly as you configured it.
-
-Without this, a file first compiled by a non-debugged request stays cached without debugging information: breakpoints in it never
-fire and stepping walks straight past its functions. It also keeps instrumented code from being cached and slowing down requests
-that are not being debugged. As a side effect, JIT does not run for debugged requests either — it is part of OPcache, and it is
-incompatible with debugging anyway.
-
-`xdebug_info()` says `OPcache is bypassed for this request` when this applies, so you can tell this apart from OPcache being off
-for some other reason.
-
-### FrankenPHP worker mode
-
-The near-zero overhead described above relies on deciding per request whether to compile with debugging information. FrankenPHP
-worker mode cannot work that way: one worker serves many requests from code it compiled once, before it can know that a later
-request will ask to be debugged. PHP Debugger therefore compiles everything with debugging information for the whole worker
-process, and every request pays for the per-statement dispatch that comes with it — including requests with no debugging trigger.
-The dispatch bails out immediately when no client is connected, so the cost is small, but it is not the "you don't pay for what
-you don't use" behaviour you get on CLI and PHP-FPM.
-
-This applies as soon as the extension is loaded with `mode=debug`, whether or not you ever attach an IDE. Setting the mode off
-(`php_debugger.mode=off`, `xdebug.mode=off`, or the `XDEBUG_MODE=off` environment variable) skips the instrumentation entirely, so
-a worker you are not planning to debug runs at full speed.
+PIE, prebuilt binaries and building from source are covered in
+[More install options](https://php-debugger.dev/getting-started/install-options).
 
 ## IDE Setup
 
-### PhpStorm
+There is almost certainly nothing to change. PHP Debugger speaks the protocol your
+editor already knows, on the port it already listens on — no plugin, no adapter, no new
+configuration. Start listening on port `9003`, set a breakpoint, and run your code.
 
-Works with existing PhpStorm debug configurations. No IDE changes needed.
+What changes is a habit rather than a setting: debugging is always available, so the
+switch is your editor's listener, not the debugger's configuration. There is no
+`?XDEBUG_SESSION_START=1` to remember and no browser extension to click.
 
-[Configuring Debugger in PhpStorm](https://www.jetbrains.com/help/phpstorm/configuring-xdebug.html)
-
-### VS Code
-
-Works as-is. No changes needed.
+See [IDE Support](https://php-debugger.dev/integrations/ide-support), or the guides for
+[PhpStorm](https://php-debugger.dev/integrations/phpstorm) and
+[VS Code](https://php-debugger.dev/integrations/vs-code).
 
 ## Xdebug Compatibility
 
-PHP Debugger maintains compatibility with Xdebug's debug mode:
+| Feature                      | PHP Debugger    | Xdebug |
+|------------------------------|-----------------|--------|
+| Step debugging (DBGp)        | ✅               | ✅      |
+| `xdebug.*` INI settings      | ✅ works         | ✅ works |
+| `xdebug_break()`             | ✅ works         | ✅ works |
+| `XDEBUG_SESSION` trigger     | ✅ works         | ✅ works |
+| Code coverage                | ❌ use pcov      | ✅      |
+| Profiling                    | ❌ removed       | ✅      |
+| Tracing                      | ❌ removed       | ✅      |
 
-| Feature                            | PHP Debugger                                                                 | Xdebug |
-|------------------------------------|------------------------------------------------------------------------------|--------|
-| `extension_loaded("xdebug")`       | ❌ false by default, ✅ true with<br/>`php_debugger.report_xdebug_module=1`   | ✅ true |
-| `extension_loaded("php_debugger")` | ✅ true                                                                       | ❌ false |
-| `xdebug.*` INI settings            | ✅ works                                                                      | ✅ works |
-| `xdebug.control_socket`            | ⚠️ defaults to `no` — set `default` or `time`<br/>to enable                   | ✅ defaults to `default` |
-| `xdebug_break()`                   | ✅ works                                                                      | ✅ works |
-| `XDEBUG_SESSION` trigger           | ✅ works                                                                      | ✅ works |
-| Step debugging (DBGp)              | ✅                                                                            | ✅      |
-| On-demand debugging                | ✅ works if `on_demand_debugging_enabled`<br/>is set, does not work otherwise | ✅      |
-| Code coverage                      | ❌ use pcov                                                                   | ✅      |
-| Profiling                          | ❌ removed                                                                    | ✅      |
-| Tracing                            | ❌ removed                                                                    | ✅      |
+## Documentation
 
-### New names (optional)
+Everything else — configuration, troubleshooting and the full reference — is at
+**[php-debugger.dev](https://php-debugger.dev)**.
 
-You can also use the new names — they work alongside the Xdebug ones:
-
-- **INI:** `php_debugger.mode`, `php_debugger.client_host`, etc.
-- **Functions:** `php_debugger_break()`, `php_debugger_info()`, `php_debugger_connect_to_client()`, `php_debugger_is_debugger_active()`, `php_debugger_notify()`
-- **Triggers:** `PHP_DEBUGGER_SESSION`, `PHP_DEBUGGER_SESSION_START`, `PHP_DEBUGGER_SESSION_STOP`, `PHP_DEBUGGER_SESSION_STOP_NO_EXEC`, `PHP_DEBUGGER_TRIGGER`, `PHP_DEBUGGER_IGNORE`
-- **Environment:** `PHP_DEBUGGER_MODE`, `PHP_DEBUGGER_CONFIG`
-- **Pseudo-hosts:** `php_debugger://gateway` and `php_debugger://nameserver` for `client_host` (Linux only)
-
-The session cookie is named after the trigger you used: `PHP_DEBUGGER_SESSION_START` and `PHP_DEBUGGER_CONFIG` set a `PHP_DEBUGGER_SESSION` cookie, while `XDEBUG_SESSION_START` and `XDEBUG_CONFIG` keep setting `XDEBUG_SESSION`. Both cookie names are accepted as a trigger, and either stop trigger clears both.
-
-### Reporting the `xdebug` module
-
-By default PHP Debugger does **not** register itself under the module name
-`xdebug`, so `extension_loaded("xdebug")` returns `false`. Tools such as
-Composer and PHPUnit use that check to detect Xdebug and then restart PHP with
-the extension disabled — a restart that fails here, because there is no
-`xdebug` Zend extension for them to unload.
-
-Everything else keeps working regardless: `xdebug.*` INI settings, the
-`XDEBUG_*` environment variables and triggers, and the `xdebug_*()` functions.
-
-If you do need `extension_loaded("xdebug")` to report `true` (for a tool that
-gates a feature on it rather than trying to disable it), set:
-
-```ini
-php_debugger.report_xdebug_module = 1
-```
-
-The setting defaults to `0`.
-
-## Requirements
-
-- PHP 8.2, 8.3, 8.4, or 8.5
+- [Quick start](https://php-debugger.dev/getting-started/quick-start)
+- [User guide](https://php-debugger.dev/user-guide/starting-the-debugger) · [Troubleshooting](https://php-debugger.dev/user-guide/troubleshooting)
+- [Settings](https://php-debugger.dev/reference/settings) · [Functions](https://php-debugger.dev/reference/functions) · [Environment variables](https://php-debugger.dev/reference/environment-variables)
 
 ## License
 
