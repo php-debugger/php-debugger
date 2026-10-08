@@ -14,6 +14,11 @@ PHP_DEBUGGER_SESSION_STOP=testing
 <?php
 require_once __DIR__ . '/../utils.inc';
 
+/* The session cookies are only handed to the SAPI when the first output is
+ * flushed, so force that to happen before the log is read back. */
+echo "\n";
+flush();
+
 echo file_get_contents(getTmpFile('session_cookie_name-005.txt'));
 unlink(getTmpFile('session_cookie_name-005.txt'));
 ?>

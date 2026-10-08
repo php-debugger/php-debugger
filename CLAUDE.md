@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-PHP Debugger — a Zend extension forked from Xdebug, stripped to step-debugging only (DBGp). Profiling, coverage, tracing, and gcstats were removed. Goal: near-zero overhead when no debug client is attached, while remaining drop-in compatible with Xdebug INI/functions/triggers.
+PHP Debugger — a Zend extension forked from Xdebug, stripped to step-debugging only (DBGp). Profiling, coverage, tracing, and gcstats were removed. Goal: near-zero overhead when no debug client is attached, while remaining drop-in compatible with Xdebug INI/functions/triggers. Where the two goals conflict, overhead wins and the divergence is documented — see the note on `xdebug.control_socket` under [INI / function naming](#ini--function-naming), which is currently the only INI *default* that differs from Xdebug's.
 
 Supports PHP 8.2–8.5. The shared library is `modules/php_debugger.so` (`php_debugger.dll` on Windows). The Zend module registers as `php_debugger`; `extension_loaded("xdebug")` returns false unless `php_debugger.report_xdebug_module=1` is set, which registers an additional `xdebug` module alias. The `xdebug_` C symbol prefix is unchanged throughout the source.
 
@@ -104,6 +104,8 @@ Wire format is XML (see `src/lib/xml.c`); responses use `xdebug_xml_node` trees 
 User-visible names exist in two parallel namespaces — `xdebug.*` / `xdebug_*()` (canonical, kept for compatibility) and `php_debugger.*` / `php_debugger_*()` (new). The implementation always uses the `xdebug_` C symbol; the `php_debugger_*` PHP-visible functions are thin aliases registered alongside (see `php_xdebug.stub.php` and the arginfo file). When adding a new public function, register both names.
 
 INI source-of-truth is the `xdebug.*` entry; the alias only exists to let users write `php_debugger.foo` in their `php.ini`. `XDEBUG_CONFIG` and `PHP_DEBUGGER_CONFIG` env vars are both honored (`xdebug_env_config` in `xdebug.c`).
+
+INI *defaults* match Xdebug's, with one deliberate exception: `xdebug.control_socket` defaults to `no` here, where Xdebug ships `default`. The control socket is only answered from instrumented code (the statement handler, and the observer's `xdebug_execute_user_code_begin()`), so leaving it on would keep `ZEND_COMPILE_EXTENDED_STMT` and the observer enabled for every request even with no client attached — roughly a 4x slowdown on statement-heavy code, and exactly the cost the early-connection path exists to avoid. Setting it to `default` or `time` re-enables it and accepts that cost.
 
 ## Stub regeneration
 

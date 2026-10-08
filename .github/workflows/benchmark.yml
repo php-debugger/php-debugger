@@ -35,7 +35,7 @@ jobs:
                     coverage: none
                     # We need to use a specific version of Composer because we are using a specific version of the
                     # Symfony Demo which is not compatible with the latest versions of Composer
-                    tools: composer:v2.2.21
+                    tools: composer:v2.2.28
 
             -   name: Disable ASLR
                 # ASLR can cause a lot of noise due to missed sse opportunities for memcpy
@@ -156,7 +156,7 @@ jobs:
                     echo "${{ matrix.php }},${{ matrix.command }},${{ matrix.php_debugger_mode }}" > results/matrix-values-${{ matrix.php }}-${{ matrix.command }}-${{ matrix.php_debugger_mode }}.txt
 
             -   name: Upload result and matrix info
-                uses: actions/upload-artifact@v6
+                uses: actions/upload-artifact@v7
                 with:
                     name: results-${{ matrix.command }}-${{ matrix.php }}-${{ matrix.php_debugger_mode }}
                     path: results/
@@ -184,7 +184,7 @@ jobs:
             -   uses: actions/checkout@v7
 
             -   name: Download all artifacts
-                uses: actions/download-artifact@v7
+                uses: actions/download-artifact@v8
                 with:
                     path: results
 
@@ -201,7 +201,7 @@ jobs:
 
             -   name: Upload summary.csv as artifact
                 if: matrix.comparison.name == 'base-branch'
-                uses: actions/upload-artifact@v6
+                uses: actions/upload-artifact@v7
                 with:
                     name: summary.csv
                     path: summary.csv

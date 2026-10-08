@@ -34,6 +34,7 @@ echo file_get_contents( $xdebugLogFileName );
 [%d] [Config] WARN: Due to unavailable TSC clock, setting poll granularity to 100ms instead of 25ms
 [%d] [Config] INFO: Control socket set up successfully: '@xdebug-ctrl.%s'
 [%d] [Step Debug] INFO: Connecting to configured address/port: %s
+[%d] [Step Debug] INFO: Connecting to localhost: yes
 [%d] [Step Debug] INFO: Connected to debugging client: %s
 [%d] [Step Debug] -> <init xmlns="urn:debugger_protocol_v1" xmlns:xdebug="https://xdebug.org/dbgp/xdebug" %s></init>
 

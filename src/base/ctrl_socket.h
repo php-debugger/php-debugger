@@ -22,4 +22,10 @@ void xdebug_control_socket_teardown(void);
 
 void xdebug_control_socket_dispatch(void);
 
+/* Whether a control socket is listening for this request. It is only ever read
+ * from instrumented code — the statement handler, and the observer's
+ * xdebug_execute_user_code_begin() — so RINIT uses this to decide whether a
+ * request needs instrumenting even when no debugging client is attached. */
+bool xdebug_control_socket_is_active(void);
+
 #endif // __XDEBUG_CTRL_SOCKET__

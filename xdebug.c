@@ -2,7 +2,7 @@
    +----------------------------------------------------------------------+
    | Xdebug                                                               |
    +----------------------------------------------------------------------+
-   | Copyright (c) 2002-2024 Derick Rethans                               |
+   | Copyright (c) 2002-2026 Derick Rethans                               |
    +----------------------------------------------------------------------+
    | This source file is subject to version 1.01 of the Xdebug license,   |
    | that is bundled with this package in the file LICENSE, and is        |
@@ -54,6 +54,7 @@
 #include "debugger/com.h"
 #include "debugger/frankenphp.h"
 #include "lib/usefulstuff.h"
+#include "lib/arg.h"
 #include "lib/lib.h"
 #include "lib/llist.h"
 #include "lib/log.h"
@@ -264,7 +265,7 @@ PHP_INI_BEGIN()
 	PHP_INI_ENTRY_EX( "xdebug.start_upon_error",   "default",               PHP_INI_SYSTEM|PHP_INI_PERDIR, OnUpdateStartUponError,   display_start_upon_error)
 	STD_PHP_INI_ENTRY("xdebug.trigger_value",      "",                      PHP_INI_SYSTEM|PHP_INI_PERDIR, OnUpdateString, settings.library.trigger_value,    zend_xdebug_globals, xdebug_globals)
 #if HAVE_XDEBUG_CONTROL_SOCKET_SUPPORT
-	PHP_INI_ENTRY_EX("xdebug.control_socket",      "default",               PHP_INI_ALL,                   OnUpdateCtrlSocket, display_control_socket)
+	PHP_INI_ENTRY_EX("xdebug.control_socket",      "no",                    PHP_INI_ALL,                   OnUpdateCtrlSocket, display_control_socket)
 #endif
 	STD_PHP_INI_ENTRY("xdebug.path_mapping",       "0",                     PHP_INI_ALL,                   OnUpdateBool,   settings.library.path_mapping,     zend_xdebug_globals, xdebug_globals)
 
@@ -303,7 +304,7 @@ static const zend_ini_entry_def php_debugger_ini_entries[] = {
 	PHP_INI_ENTRY_EX( "php_debugger.start_upon_error",   "default",               PHP_INI_SYSTEM|PHP_INI_PERDIR, OnUpdatePhpDebuggerStartUponError,   display_start_upon_error)
 	STD_PHP_INI_ENTRY("php_debugger.trigger_value",      "",                      PHP_INI_SYSTEM|PHP_INI_PERDIR, OnUpdatePhpDebuggerString, settings.library.trigger_value,    zend_xdebug_globals, xdebug_globals)
 #if HAVE_XDEBUG_CONTROL_SOCKET_SUPPORT
-	PHP_INI_ENTRY_EX("php_debugger.control_socket",      "default",               PHP_INI_ALL,                   OnUpdatePhpDebuggerCtrlSocket, display_control_socket)
+	PHP_INI_ENTRY_EX("php_debugger.control_socket",      "no",                    PHP_INI_ALL,                   OnUpdatePhpDebuggerCtrlSocket, display_control_socket)
 #endif
 	STD_PHP_INI_ENTRY("php_debugger.path_mapping",       "0",                     PHP_INI_ALL,                   OnUpdatePhpDebuggerBool,   settings.library.path_mapping,     zend_xdebug_globals, xdebug_globals)
 
@@ -610,18 +611,39 @@ PHP_RINIT_FUNCTION(xdebug)
 		XG_BASE(early_connection) = 1;
 	}
 	if (!connected) {
-		if (!XINI_DBG(on_demand_debugging_enabled)) {
+		bool control_socket_active = false;
+
+#if HAVE_XDEBUG_CONTROL_SOCKET_SUPPORT
+		/* The control socket is only ever read from instrumented code: the
+		 * statement handler, and the observer's
+		 * xdebug_execute_user_code_begin(). It therefore needs the same
+		 * instrumentation that debugging does. Without this the socket would
+		 * be created and bound but never answered, which leaves 'pause' — the
+		 * one command whose job is to attach an IDE to a process that is not
+		 * being debugged — permanently unreachable. */
+		control_socket_active = xdebug_control_socket_is_active();
+#endif
+
+		if (!XINI_DBG(on_demand_debugging_enabled) && !control_socket_active) {
 			XG_BASE(observer_active) = false;
 			return SUCCESS;
 		}
-		/* On-demand debugging compiles with instrumentation even without a
-		 * client, which means OPcache is bypassed for every request in this
-		 * process, not just the debugged ones. Say so: on a busy server this
-		 * is a throughput cliff that is otherwise hard to attribute. */
-		xdebug_log_ex(
-			XLOG_CHAN_CONFIG, XLOG_INFO, "OPCACHE-OD",
-			"OPcache is bypassed for every request because xdebug.on_demand_debugging_enabled=1 needs each request compiled with debugging instrumentation. Set it to 0 to keep OPcache active when no debugging client is connected."
-		);
+
+		/* Instrumenting without a client means OPcache is bypassed for every
+		 * request in this process, not just the debugged ones. Say so: on a
+		 * busy server this is a throughput cliff that is otherwise hard to
+		 * attribute. */
+		if (XINI_DBG(on_demand_debugging_enabled)) {
+			xdebug_log_ex(
+				XLOG_CHAN_CONFIG, XLOG_INFO, "OPCACHE-OD",
+				"OPcache is bypassed for every request because xdebug.on_demand_debugging_enabled=1 needs each request compiled with debugging instrumentation. Set it to 0 to keep OPcache active when no debugging client is connected."
+			);
+		} else {
+			xdebug_log_ex(
+				XLOG_CHAN_CONFIG, XLOG_INFO, "OPCACHE-CS",
+				"OPcache is bypassed for every request because the control socket is polled from the statement handler, which needs each request compiled with debugging instrumentation. Set xdebug.control_socket=no to keep OPcache active when no debugging client is connected."
+			);
+		}
 		XG_BASE(statement_handler_enabled) = false;
 	}
 	xdebug_base_rinit_if_enabled();

@@ -39,6 +39,7 @@
 
 #include "lib_private.h"
 #include "usefulstuff.h"
+#include "arg.h"
 #include "log.h"
 
 # include "ext/random/php_random.h"
@@ -56,83 +57,6 @@
 
 ZEND_EXTERN_MODULE_GLOBALS(xdebug)
 
-xdebug_arg *xdebug_arg_ctor(void)
-{
-	xdebug_arg *tmp = /*(xdebug_arg*)*/ xdmalloc(sizeof(xdebug_arg));
-
-	tmp->args = NULL;
-	tmp->c    = 0;
-
-	return tmp;
-}
-
-void xdebug_arg_dtor(xdebug_arg *arg)
-{
-	int i;
-
-	for (i = 0; i < arg->c; i++) {
-		xdfree(arg->args[i]);
-	}
-	if (arg->args) {
-		xdfree(arg->args);
-	}
-	xdfree(arg);
-}
-
-xdebug_str* xdebug_join(const char *delim, xdebug_arg *args, int begin, int end)
-{
-	int         i;
-	xdebug_str *ret = xdebug_str_new();
-
-	if (begin < 0) {
-		begin = 0;
-	}
-	if (end > args->c - 1) {
-		end = args->c - 1;
-	}
-	for (i = begin; i < end; i++) {
-		xdebug_str_add(ret, args->args[i], 0);
-		xdebug_str_add(ret, delim, 0);
-	}
-	xdebug_str_add(ret, args->args[end], 0);
-	return ret;
-}
-
-void xdebug_explode(const char *delim, const char *str, xdebug_arg *args, int limit)
-{
-	const char *p1, *p2, *endp;
-
-	endp = str + strlen(str);
-
-	p1 = str;
-	p2 = xdebug_memnstr(str, delim, strlen(delim), endp);
-
-	if (p2 == NULL) {
-		args->c++;
-		args->args = (char**) xdrealloc(args->args, sizeof(char*) * args->c);
-		args->args[args->c - 1] = (char*) xdmalloc(strlen(str) + 1);
-		memcpy(args->args[args->c - 1], p1, strlen(str));
-		args->args[args->c - 1][strlen(str)] = '\0';
-	} else {
-		do {
-			args->c++;
-			args->args = (char**) xdrealloc(args->args, sizeof(char*) * args->c);
-			args->args[args->c - 1] = (char*) xdmalloc(p2 - p1 + 1);
-			memcpy(args->args[args->c - 1], p1, p2 - p1);
-			args->args[args->c - 1][p2 - p1] = '\0';
-			p1 = p2 + strlen(delim);
-		} while ((p2 = xdebug_memnstr(p1, delim, strlen(delim), endp)) != NULL && (limit == -1 || --limit > 1));
-
-		if (p1 <= endp) {
-			args->c++;
-			args->args = (char**) xdrealloc(args->args, sizeof(char*) * args->c);
-			args->args[args->c - 1] = (char*) xdmalloc(endp - p1 + 1);
-			memcpy(args->args[args->c - 1], p1, endp - p1);
-			args->args[args->c - 1][endp - p1] = '\0';
-		}
-	}
-}
-
 bool xdebug_is_printable(const char *str, size_t len)
 {
 	size_t i;
@@ -144,25 +68,6 @@ bool xdebug_is_printable(const char *str, size_t len)
 	}
 
 	return true;
-}
-
-const char* xdebug_memnstr(const char *haystack, const char *needle, int needle_len, const char *end)
-{
-	const char *p = haystack;
-	char first = *needle;
-
-	/* let end point to the last character where needle may start */
-	end -= needle_len;
-
-	while (p <= end) {
-		while (*p != first)
-			if (++p > end)
-				return NULL;
-		if (memcmp(p, needle, needle_len) == 0)
-			return p;
-		p++;
-	}
-	return NULL;
 }
 
 /* not all versions of php export this */
@@ -244,7 +149,8 @@ char *xdebug_path_from_url(zend_string *fileurl)
 	int l = 0;
 	int i;
 #endif
-	char *tmp = NULL, *ret = NULL;
+	const char *tmp = NULL;
+	char *ret = NULL;
 
 	dfp = xdstrdup(efp);
 	fp = dfp;
@@ -253,7 +159,7 @@ char *xdebug_path_from_url(zend_string *fileurl)
 
 	if (tmp) {
 		fp = tmp + 7;
-		if (fp[0] == '/' && fp[2] == ':') {
+		if (fp[0] == '/' && fp[1] != '\0' && fp[2] == ':') {
 			fp++;
 		}
 		ret = xdstrdup(fp);
@@ -411,7 +317,7 @@ FILE *xdebug_fopen(char *fname, const char *mode, const char *extension, char **
 	} else {
 		tmp_fname = xdstrdup(fname);
 	}
-	r = stat(tmp_fname, &buf);
+	r = lstat(tmp_fname, &buf);
 	/* We're not freeing "tmp_fname" as that is used in the freopen as well. */
 
 	if (r == -1) {
@@ -420,10 +326,16 @@ FILE *xdebug_fopen(char *fname, const char *mode, const char *extension, char **
 		goto lock;
 	}
 
-	/* 3. It exists, check if we can open it. */
+	/* 3. If the file exists, but is a symlink, we need to not follow it, and instead create a new file */
+	if (S_ISLNK(buf.st_mode)) {
+		fh = xdebug_open_file_with_random_ext(fname, "w", extension, new_fname);
+		goto lock;
+	}
+
+	/* 4. It exists, check if we can open it. */
 	fh = xdebug_open_file(fname, "r+", extension, new_fname);
 	if (!fh) {
-		/* 4. If fh == null we couldn't even open the file, so open a new one with a new name */
+		/* If fh == null we couldn't even open the file, so open a new one with a new name */
 		fh = xdebug_open_file_with_random_ext(fname, "w", extension, new_fname);
 		goto lock;
 	}

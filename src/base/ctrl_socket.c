@@ -137,7 +137,7 @@ static void handle_command(HANDLE h, const char *line)
 	char *cmd = NULL;
 	xdebug_dbgp_arg *args;
 	int res = 0;
-	xdebug_ctrl_cmd *command;
+	xdebug_ctrl_cmd *command = NULL;
 	xdebug_str *message;
 	xdebug_xml_node *retval;
 	res = xdebug_cmd_parse(line, (char**) &cmd, (xdebug_dbgp_arg**) &args);
@@ -145,25 +145,45 @@ static void handle_command(HANDLE h, const char *line)
 	retval = xdebug_xml_node_init("ctrl-response");
 	xdebug_xml_add_attribute(retval, "xmlns:xdebug-ctrl", "https://xdebug.org/ctrl/xdebug");
 
+	if (res != XDEBUG_ERROR_OK) {
+		xdebug_xml_node *error = xdebug_xml_node_init("error");
+		xdebug_xml_add_attribute_ex(error, "code", xdebug_sprintf("%lu", XDEBUG_ERROR_INVALID_ARGS), 0, 1);
+		ADD_REASON_MESSAGE(XDEBUG_ERROR_INVALID_ARGS);
+		xdebug_xml_add_child(retval, error);
+
+		goto send_result;
+	}
+
 	command = lookup_cmd(cmd);
-	if (command) {
-		command->handler(&retval, args);
-	} else {
-		xdebug_xml_node *error;
-		error = xdebug_xml_node_init("error");
+
+	if (!command) {
+		xdebug_xml_node *error = xdebug_xml_node_init("error");
 		xdebug_xml_add_attribute_ex(error, "code", xdebug_sprintf("%lu", XDEBUG_ERROR_COMMAND_UNAVAILABLE), 0, 1);
 		ADD_REASON_MESSAGE(XDEBUG_ERROR_COMMAND_UNAVAILABLE);
 		xdebug_xml_add_child(retval, error);
+
+		goto send_result;
 	}
 
+	command->handler(&retval, args);
+
+send_result:
 	message = make_message(retval);
 #if __linux__
-	write(fd, message->d, message->l);
+	/* MSG_NOSIGNAL, not write(): the client may already have closed the
+	 * socket (it does exactly that after sending an empty command), and a
+	 * SIGPIPE here would take the whole PHP process down with it. */
+	send(fd, message->d, message->l, MSG_NOSIGNAL);
 #elif WIN32
 	if (WriteFile(h, message->d, message->l, NULL, &XG_BASE(control_socket_ov))) {
 		SetEvent(XG_BASE(control_socket_ov).hEvent);
 	}
 #endif
+
+	/* The response tree owns every child node, attribute and text buffer
+	 * added to it above, so one dtor on the root reclaims the lot. */
+	xdebug_xml_node_dtor(retval);
+	xdebug_str_free(message);
 
 	xdfree(cmd);
 	xdebug_cmd_arg_dtor(args);
@@ -173,8 +193,24 @@ CTRL_FUNC(ps)
 {
 	xdebug_xml_node *response, *engine, *file, *pid, *time, *memory;
 	char *pid_str, *time_str, *memory_str;
-	function_stack_entry *fse = XDEBUG_VECTOR_HEAD(XG_BASE(stack));
+	function_stack_entry *fse = NULL;
+	bool stack_was_rebuilt = false;
 	double time_elapsed = XDEBUG_SECONDS_SINCE_START(xdebug_get_nanotime());
+
+	/* Without a debugging client the observer stops collecting frames, which is
+	 * exactly the state 'ps' is most often asked about — so build the stack on
+	 * the spot, the way 'pause' does. The cost is only paid when a command
+	 * actually arrives. */
+	if (XG_BASE(stack)) {
+		if (XDEBUG_VECTOR_COUNT(XG_BASE(stack)) == 0 && EG(current_execute_data)) {
+			xdebug_rebuild_stack();
+			stack_was_rebuilt = true;
+		}
+
+		if (XDEBUG_VECTOR_COUNT(XG_BASE(stack)) > 0) {
+			fse = XDEBUG_VECTOR_HEAD(XG_BASE(stack));
+		}
+	}
 
 	response = xdebug_xml_node_init("ps");
 	xdebug_xml_add_attribute(response, "success", "1");
@@ -185,7 +221,11 @@ CTRL_FUNC(ps)
 	xdebug_xml_add_child(response, engine);
 
 	file = xdebug_xml_node_init("fileuri");
-	xdebug_xml_add_text(file, ZSTR_VAL(fse->filename));
+	if (fse && fse->filename) {
+		/* xdstrdup, because the node owns its text and frees it: ZSTR_VAL is an
+		 * interior pointer into the zend_string, not its allocation. */
+		xdebug_xml_add_text(file, xdstrdup(ZSTR_VAL(fse->filename)));
+	}
 	xdebug_xml_add_child(response, file);
 
 	pid = xdebug_xml_node_init("pid");
@@ -204,6 +244,13 @@ CTRL_FUNC(ps)
 	xdebug_xml_add_child(response, memory);
 
 	xdebug_xml_add_child(*retval, response);
+
+	/* 'ps' only reports. Nothing pops frames off a stack the observer is not
+	 * collecting into, so a stack built here would go stale as soon as the
+	 * current call returns — drop it again rather than leave that behind. */
+	if (stack_was_rebuilt) {
+		xdebug_vector_empty(XG_BASE(stack));
+	}
 }
 
 CTRL_FUNC(pause)
@@ -284,7 +331,7 @@ static void xdebug_control_socket_handle(void)
 		}
 
 		memset(buffer, 0, sizeof(buffer));
-		bytes_read = read(new_sd, buffer, sizeof(buffer));
+		bytes_read = read(new_sd, buffer, sizeof(buffer) - 1);
 		if (bytes_read == -1) {
 			xdebug_log_ex(XLOG_CHAN_CONFIG, XLOG_WARN, "CTRL-HANDLE", "Can't receive from socket: %s", strerror(errno));
 		} else {
@@ -348,7 +395,7 @@ static void xdebug_control_socket_handle(void)
 	if (!ReadFile(
 		XG_BASE(control_socket_h),
 		buffer,
-		sizeof(buffer),
+		sizeof(buffer) - 1,
 		&bytes_read,
 		&XG_BASE(control_socket_ov)
 	)) {
@@ -399,6 +446,11 @@ static bool is_control_socket_active(void)
 }
 #endif
 
+bool xdebug_control_socket_is_active(void)
+{
+	return is_control_socket_active();
+}
+
 void xdebug_control_socket_dispatch(void)
 {
 	if (!is_control_socket_active()) {
@@ -438,7 +490,7 @@ void xdebug_control_socket_setup(void)
 		return;
 	}
 
-	XG_BASE(control_socket_path) = xdebug_sprintf("xdebug-ctrl." ZEND_ULONG_FMT, xdebug_get_pid());
+	XG_BASE(control_socket_path) = xdebug_sprintf("xdebug-ctrl." ZEND_ULONG_FMT, getpid());
 
 	/* Part 2b — Configure socket */
 	servaddr = (struct sockaddr_un *)xdmalloc(sizeof(struct sockaddr_un));

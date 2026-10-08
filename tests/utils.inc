@@ -235,4 +235,3 @@ function is_stripped_debugger() {
     return !function_exists("xdebug_get_headers");
 }
 ?>
-
