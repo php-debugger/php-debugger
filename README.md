@@ -11,13 +11,17 @@ been left out. What remains is a debugger you can leave switched on permanently,
 because when you are not using it you can barely tell it is there. It speaks the DBGp
 protocol, so PhpStorm, VS Code and anything else that already debugs PHP works with it,
 and it accepts Xdebug's INI settings, triggers and functions, so in most projects there
-is nothing to migrate beyond the line that loads the extension.
+is nothing to migrate beyond the line that loads the extension. And the debugger is no
+longer just for you: with [DBGP Client](https://github.com/php-debugger/dbgp-client),
+AI agents such as Claude Code can set breakpoints, step through your code and inspect
+its variables themselves.
 
 📖 **Full documentation: [php-debugger.dev](https://php-debugger.dev)**
 
 ## Why PHP Debugger?
 
 - **Near-zero overhead** when loaded with no debug client connected
+- **Built for AI agents** — with [DBGP Client](#debugging-with-ai-agents), your agent debugs PHP the way you would
 - **Drop-in compatible** — existing INI settings, IDE configurations and helper functions keep working
 - **Always on** — debugging starts with every request, so there is no trigger to remember
 - **Compiled in, or not** — a PHP interpreter with the debugger built in, or a plain extension
@@ -100,6 +104,46 @@ switch is your editor's listener, not the debugger's configuration. There is no
 See [IDE Support](https://php-debugger.dev/integrations/ide-support), or the guides for
 [PhpStorm](https://php-debugger.dev/integrations/phpstorm) and
 [VS Code](https://php-debugger.dev/integrations/vs-code).
+
+## Debugging with AI agents
+
+[DBGP Client](https://github.com/php-debugger/dbgp-client) gives AI agents a real
+debugger. Its `dbgp mcp` command is an [MCP](https://modelcontextprotocol.io) server:
+the agent starts the PHP code itself, as a script or a web request, sets breakpoints,
+steps through it, and reads the call stack, variables, output and warnings — the same
+evidence you would look at in your IDE.
+
+Install it — macOS and Linux:
+
+```bash
+curl -fsSL https://github.com/php-debugger/dbgp-client/releases/latest/download/install.sh | sh
+```
+
+Windows:
+
+```powershell
+powershell -c "irm https://github.com/php-debugger/dbgp-client/releases/latest/download/install.ps1 | iex"
+```
+
+Then add it to your agent. For Claude Code:
+
+```bash
+claude mcp add dbgp -- dbgp mcp
+```
+
+Other agents take the same command, `dbgp mcp`, in their MCP settings. Then ask the
+agent to debug something:
+
+> Find out why the total on the checkout page is wrong: debug the request to /checkout
+> with a breakpoint in CartService::total().
+
+The two are made for each other. Because PHP Debugger is always on, the agent needs no
+trigger and no configuration change to start a session; and because `dbgp` only listens
+while the agent is debugging, the rest of the time PHP runs with the near-zero overhead
+shown above. It works with PHP in a container or on a server too, and `-no-eval` keeps the
+agent read-only. See the [DBGP Client README](https://github.com/php-debugger/dbgp-client)
+for the options, and for a standalone command-line debugger for when you want to step
+through code in a terminal yourself.
 
 ## Xdebug Compatibility
 
