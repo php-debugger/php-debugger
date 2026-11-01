@@ -94,6 +94,15 @@ if test "$PHP_PHP_DEBUGGER" != "no"; then
     AX_CHECK_COMPILE_FLAG(-fsanitize-address,               _MAINTAINER_CFLAGS="$_MAINTAINER_CFLAGS -fsanitize-address")
     AX_CHECK_COMPILE_FLAG(-fstack-protector,                _MAINTAINER_CFLAGS="$_MAINTAINER_CFLAGS -fstack-protector")
 
+    dnl Mark PHP's own include dirs as system headers, so warnings in php-src
+    dnl headers (which we can't fix) don't trip -Werror. When a dir is passed
+    dnl with both -I and -isystem, GCC and Clang treat it as a system dir.
+    for php_debugger_inc in $INCLUDES; do
+      case "$php_debugger_inc" in
+        -I*) _MAINTAINER_CFLAGS="$_MAINTAINER_CFLAGS -isystem `echo "$php_debugger_inc" | sed 's/^-I//'`" ;;
+      esac
+    done
+
     MAINTAINER_CFLAGS="$_MAINTAINER_CFLAGS"
     STD_CFLAGS="-g -O0 -Wall"
   fi
