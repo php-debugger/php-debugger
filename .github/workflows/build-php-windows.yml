@@ -101,7 +101,8 @@ jobs:
                         echo "tag=${PHP_TAG}" >> "$GITHUB_OUTPUT"
                         exit 0
                     fi
-                    # Not called with tags (pull request): same resolution as release.yml.
+                    # Not called with tags (pull request): the same resolution as the
+                    # resolve-php-versions job in release.yml; keep the two in sync.
                     PHP_TAG=$(git ls-remote --tags https://github.com/php/php-src.git | \
                       grep "refs/tags/php-${version}\." | \
                       grep -v '\^{}' | \
@@ -141,8 +142,10 @@ jobs:
                     # JIT disabled.
                     $cfg = "$module\config\$vs\x64\config.$ts.bat"
                     $content = Get-Content $cfg -Raw
-                    $content = $content.Replace('"--enable-pgi" ', '')
-                    $content = $content -replace '"--with-(pdo-oci|oci8-19)=[^"]*" ', ''
+                    # [ \t]* rather than \s*, so removing a flag at the end of a line
+                    # cannot join it with the next one.
+                    $content = $content -replace '"--enable-pgi"[ \t]*', ''
+                    $content = $content -replace '"--with-(pdo-oci|oci8-19)=[^"]*"[ \t]*', ''
                     # Insert before the trailing %* (the arguments forwarded to configure).
                     # $ deliberately matches only at the end of the file, not of each line,
                     # so a %* anywhere else is left alone; the check below fails the job
@@ -152,11 +155,12 @@ jobs:
                         ([regex]::Matches($content, '"--enable-php-debugger"')).Count -ne 1) {
                         Write-Error "unexpected format of ${cfg}: $content"; exit 1
                     }
-                    Set-Content -Path $cfg -Value $content -NoNewline
+                    # The upstream .bat files are ASCII; keep them that way for cmd.
+                    Set-Content -Path $cfg -Value $content -NoNewline -Encoding ascii
                     Write-Host "configure: $content"
 
                     # Build and package without the PGO training passes.
-                    Set-Content -Path "$module\runner\task-$ts.bat" -Value @(
+                    Set-Content -Path "$module\runner\task-$ts.bat" -Encoding ascii -Value @(
                         'call buildconf.bat 2>&1'
                         'if errorlevel 1 exit 1'
                         "call config.$ts.bat 2>&1"

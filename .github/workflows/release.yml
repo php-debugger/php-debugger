@@ -102,7 +102,9 @@ jobs:
                 id: resolve
                 run: |
                     for version in 8.2 8.3 8.4 8.5; do
-                        # Get all tags for the version and find the latest stable release
+                        # Get all tags for the version and find the latest stable release.
+                        # build-php-windows.yml repeats this for pull request runs; keep the
+                        # two in sync.
                         PHP_TAG=$(git ls-remote --tags https://github.com/php/php-src.git | \
                           grep "refs/tags/php-${version}\." | \
                           grep -v '\^{}' | \
