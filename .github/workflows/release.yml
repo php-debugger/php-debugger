@@ -415,7 +415,11 @@ jobs:
                       --with-iconv="${ICONV_PATH}" \
                       ${{ matrix.ts == 'ts' && '--enable-zts' || '' }}
 
-                    make -j$(sysctl -n hw.logicalcpu)
+                    # PHP= keeps the Zend VM files generated in the release tag. Otherwise make
+                    # regenerates them with whatever php the runner has, and PHP 8.2's
+                    # generator writes a broken zend_vm_opcodes.h when that php defines
+                    # ZEND_VM_KIND itself (PHP 8.5 does).
+                    make -j$(sysctl -n hw.logicalcpu) PHP=
 
             -   name: Verify extension is statically linked
                 run: |
@@ -520,7 +524,11 @@ jobs:
                       $CONFIGURE_FLAGS \
                       $LINUX_FLAGS \
                       ${{ matrix.ts == 'ts' && '--enable-zts' || '' }}
-                    make -j$(nproc)
+                    # PHP= keeps the Zend VM files generated in the release tag. Otherwise make
+                    # regenerates them with whatever php the runner has, and PHP 8.2's
+                    # generator writes a broken zend_vm_opcodes.h when that php defines
+                    # ZEND_VM_KIND itself (PHP 8.5 does).
+                    make -j$(nproc) PHP=
 
             -   name: Verify extension is statically linked
                 run: |
