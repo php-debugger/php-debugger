@@ -62,9 +62,6 @@ env:
     # Linux-specific flags
     LINUX_FLAGS: --with-pdo-sqlite=/usr --with-sqlite3=/usr --with-iconv --with-readline --with-curl
 
-    # Windows-specific flags (JIT disabled - incompatible with php-debugger)
-    WINDOWS_FLAGS: --enable-php-debugger --with-mhash --with-pic --enable-mbstring --enable-mysqlnd --with-sodium=shared --with-curl --with-openssl --disable-phpdbg --disable-opcache-jit
-
 jobs:
     # A `push: tags` run always has a real, already-existing tag (RELEASE_REF
     # is just github.ref_name). A manual workflow_dispatch run instead takes
@@ -564,140 +561,13 @@ jobs:
                     name: ${{ steps.package.outputs.asset_name }}
                     path: ${{ steps.package.outputs.asset_path }}
 
+    # Lives in its own reusable workflow so pull requests that change it are
+    # built and tested on Windows runners without cutting a release.
     build-php-windows:
-        needs: [validate-tag, resolve-php-versions]
-        strategy:
-            fail-fast: false
-            matrix:
-                php-version:
-                    - '8.2'
-                    - '8.3'
-                    - '8.4'
-                    - '8.5'
-                ts:
-                    - nts
-                    - ts
-        runs-on: windows-2022
-        name: "PHP Binary Windows — PHP ${{ matrix.php-version }} — ${{ matrix.ts == 'ts' && 'TS' || 'NTS' }}"
-        steps:
-            -   name: Checkout extension
-                uses: actions/checkout@v7
-                with:
-                    ref: ${{ env.RELEASE_REF }}
-                    path: ext-src
-
-            -   name: Setup SDK and build tree
-                shell: cmd
-                run: |
-                    git clone https://github.com/php/php-sdk-binary-tools.git C:\php-sdk
-                    C:\php-sdk\bin\phpsdk_buildtree.bat phpdev vs17 x64
-
-            -   name: Clone PHP and copy extension
-                shell: pwsh
-                run: |
-                    # Use the pre-resolved PHP tag from the resolve-php-versions job
-                    $phpTag = switch ("${{ matrix.php-version }}") {
-                        "8.2" { "${{ needs.resolve-php-versions.outputs.php-8-2-tag }}" }
-                        "8.3" { "${{ needs.resolve-php-versions.outputs.php-8-3-tag }}" }
-                        "8.4" { "${{ needs.resolve-php-versions.outputs.php-8-4-tag }}" }
-                        "8.5" { "${{ needs.resolve-php-versions.outputs.php-8-5-tag }}" }
-                    }
-
-                    Write-Host "Using resolved PHP tag: $phpTag"
-                    git clone --depth=1 --branch=$phpTag https://github.com/php/php-src.git C:\php-sdk\phpdev\vs17\x64\php-src
-                    xcopy /E /I /Y ext-src C:\php-sdk\phpdev\vs17\x64\php-src\ext\php_debugger
-
-            -   name: Create build script
-                shell: cmd
-                run: |
-                    echo @echo off > C:\php-sdk\phpdev\vs17\x64\php-src\build.bat
-                    echo cd /d C:\php-sdk\phpdev\vs17\x64\php-src >> C:\php-sdk\phpdev\vs17\x64\php-src\build.bat
-                    echo if errorlevel 1 exit /b 1 >> C:\php-sdk\phpdev\vs17\x64\php-src\build.bat
-                    echo call buildconf.bat --force >> C:\php-sdk\phpdev\vs17\x64\php-src\build.bat
-                    echo if errorlevel 1 exit /b 1 >> C:\php-sdk\phpdev\vs17\x64\php-src\build.bat
-                    echo call configure.bat ${{ env.WINDOWS_FLAGS }} ${{ matrix.ts == 'ts' && '--enable-zts' || '' }} >> C:\php-sdk\phpdev\vs17\x64\php-src\build.bat
-                    echo if errorlevel 1 exit /b 1 >> C:\php-sdk\phpdev\vs17\x64\php-src\build.bat
-                    echo nmake >> C:\php-sdk\phpdev\vs17\x64\php-src\build.bat
-
-            -   name: Build PHP
-                shell: cmd
-                run: C:\php-sdk\phpsdk-starter.bat -c vs17 -a x64 -t C:\php-sdk\phpdev\vs17\x64\php-src\build.bat
-
-            -   name: Test extension functionality
-                shell: pwsh
-                run: |
-                    $possiblePaths = @(
-                        "C:\php-sdk\phpdev\vs17\x64\php-src\x64\Release${{ matrix.ts == 'ts' && '_TS' || '' }}\php.exe",
-                        "C:\php-sdk\phpdev\vs17\x64\php-src\Release${{ matrix.ts == 'ts' && '_TS' || '' }}\php.exe",
-                        "C:\php-sdk\phpdev\vs17\x64\php-src\x64\Release\php.exe",
-                        "C:\php-sdk\phpdev\vs17\x64\php-src\Release\php.exe"
-                    )
-
-                    $php = $null
-                    foreach ($path in $possiblePaths) {
-                        if (Test-Path $path) {
-                            $php = $path
-                            break
-                        }
-                    }
-
-                    if (-not $php) {
-                        Write-Host "php.exe not found in expected locations. Searching..."
-                        Get-ChildItem -Path "C:\php-sdk\phpdev\vs17\x64\php-src" -Recurse -Filter "php.exe" -ErrorAction SilentlyContinue | Select-Object -First 1 | ForEach-Object { $php = $_.FullName }
-                    }
-
-                    if (-not $php) {
-                        Write-Error "php.exe not found anywhere in build directory"; exit 1
-                    }
-                    Write-Host "Found PHP at: $php"
-
-                    if (-not (& $php -m | Select-String -Pattern "php_debugger" -Quiet)) {
-                        Write-Error "php_debugger not in module list"; exit 1
-                    }
-
-                    & $php -r "assert(extension_loaded('php_debugger'), 'php_debugger not loaded'); assert(function_exists('xdebug_info'), 'xdebug_info missing'); echo 'All tests passed!' . PHP_EOL;"
-                    if ($LASTEXITCODE -ne 0) { Write-Error "PHP tests failed"; exit 1 }
-
-            -   name: Package artifact
-                id: package
-                shell: pwsh
-                run: |
-                    $phpVer = "${{ matrix.php-version }}"
-                    $tsTag = "${{ matrix.ts }}"
-                    $assetName = "php-php${phpVer}-${tsTag}-windows-x64.exe"
-
-                    $possiblePaths = @(
-                        "C:\php-sdk\phpdev\vs17\x64\php-src\x64\Release${{ matrix.ts == 'ts' && '_TS' || '' }}\php.exe",
-                        "C:\php-sdk\phpdev\vs17\x64\php-src\Release${{ matrix.ts == 'ts' && '_TS' || '' }}\php.exe",
-                        "C:\php-sdk\phpdev\vs17\x64\php-src\x64\Release\php.exe",
-                        "C:\php-sdk\phpdev\vs17\x64\php-src\Release\php.exe"
-                    )
-
-                    $php = $null
-                    foreach ($path in $possiblePaths) {
-                        if (Test-Path $path) {
-                            $php = $path
-                            break
-                        }
-                    }
-
-                    if (-not $php) {
-                        Get-ChildItem -Path "C:\php-sdk\phpdev\vs17\x64\php-src" -Recurse -Filter "php.exe" -ErrorAction SilentlyContinue | Select-Object -First 1 | ForEach-Object { $php = $_.FullName }
-                    }
-
-                    if (-not $php) {
-                        Write-Error "php.exe not found"; exit 1
-                    }
-
-                    Write-Host "Found PHP at: $php"
-                    Copy-Item $php -Destination $assetName
-                    Add-Content -Path $env:GITHUB_OUTPUT -Value "asset_name=${assetName}" -Encoding utf8
-
-            -   name: Upload artifact
-                uses: actions/upload-artifact@v6
-                with:
-                    name: ${{ steps.package.outputs.asset_name }}
-                    path: ${{ steps.package.outputs.asset_name }}
+        needs: validate-tag
+        uses: ./.github/workflows/build-php-windows.yml
+        with:
+            ref: ${{ github.event.inputs.tag || github.ref_name }}
 
     release:
         needs: [build-macos, build-linux, build-windows, build-php-macos, build-php-linux, build-php-windows]
@@ -720,8 +590,9 @@ jobs:
                     mkdir release-assets
                     # Copy extension files (.so and .dll)
                     find artifacts -type f \( -name '*.so' -o -name '*.dll' \) -exec cp {} release-assets/ \;
-                    # Copy PHP interpreter binaries (no extension for Unix, .exe for Windows)
-                    find artifacts -type f -name 'php-php*' ! -name '*.zip' -exec cp {} release-assets/ \;
+                    # Copy PHP interpreters: a bare binary for Unix, a zip bundle for
+                    # Windows (php.exe needs php8.dll and the dependency DLLs beside it)
+                    find artifacts -type f -name 'php-php*' \( ! -name '*.zip' -o -name '*-windows-*.zip' \) -exec cp {} release-assets/ \;
                     ls -la release-assets/
 
             -   name: Create release

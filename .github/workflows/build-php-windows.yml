@@ -1,0 +1,209 @@
+name: Windows PHP interpreter
+
+# Builds the self-contained Windows PHP interpreter with php_debugger compiled in
+# statically, packaged as a zip in the same layout as the windows.php.net
+# downloads (php.exe, php8[ts].dll, the dependency DLLs, ext\, php.ini-*).
+#
+# A zip, not a bare php.exe: on Windows php.exe is only a launcher, and PHP
+# itself (including the statically built debugger) lives in php8.dll /
+# php8ts.dll, which in turn needs the dependency DLLs (libcrypto, libssh2, ...).
+#
+# The build reuses php/php-windows-builder's BuildPhp module, which is what the
+# official windows.php.net builds use. That gives the official dependency set,
+# the toolset matching the official builds (VS16 for 8.2/8.3, VS17 for 8.4/8.5,
+# so users' existing extension DLLs keep loading), and the official configure
+# flags, including a real NTS build (Windows configure defaults to ZTS). Two
+# things are changed: php_debugger is added statically with the JIT disabled
+# (it is incompatible with php-debugger), and PGO is dropped, since its
+# training run would add a lot of build time for a debugging interpreter.
+#
+# Called by release.yml. It also runs on pull requests that change it, so a
+# change to this build is tested on real Windows runners before it reaches a
+# release.
+
+on:
+    workflow_call:
+        inputs:
+            ref:
+                description: 'Extension ref to build (defaults to the triggering ref)'
+                type: string
+                required: false
+    pull_request:
+        paths:
+            - '.github/workflows/build-php-windows.yml'
+            - 'config.w32'
+
+permissions:
+    contents: read
+
+jobs:
+    build:
+        strategy:
+            fail-fast: false
+            matrix:
+                php-version:
+                    - '8.2'
+                    - '8.3'
+                    - '8.4'
+                    - '8.5'
+                ts:
+                    - nts
+                    - ts
+        runs-on: windows-2022
+        name: "PHP Binary Windows — PHP ${{ matrix.php-version }} — ${{ matrix.ts == 'ts' && 'TS' || 'NTS' }}"
+        steps:
+            -   name: Checkout extension
+                uses: actions/checkout@v7
+                with:
+                    ref: ${{ inputs.ref }}
+                    path: ext-src
+
+            -   name: Checkout php-windows-builder
+                uses: actions/checkout@v7
+                with:
+                    repository: php/php-windows-builder
+                    # v1, pinned: the steps below patch files inside it.
+                    ref: 29352c0ef9e8ce65264ea9e287881a6f7758a953
+                    path: builder
+
+            -   name: Resolve PHP source tag
+                id: php-tag
+                shell: bash
+                run: |
+                    version="${{ matrix.php-version }}"
+                    PHP_TAG=$(git ls-remote --tags https://github.com/php/php-src.git | \
+                      grep "refs/tags/php-${version}\." | \
+                      grep -v '\^{}' | \
+                      grep -vE 'RC|alpha|beta' | \
+                      sed 's/.*refs\/tags\///' | \
+                      sort -V | \
+                      tail -1)
+                    if [ -z "$PHP_TAG" ]; then
+                        echo "No stable tag found for PHP ${version}, using branch PHP-${version}"
+                        PHP_TAG="PHP-${version}"
+                    fi
+                    echo "Using PHP source ref: ${PHP_TAG}"
+                    echo "tag=${PHP_TAG}" >> "$GITHUB_OUTPUT"
+
+            -   name: Fetch PHP source and add the extension
+                shell: pwsh
+                run: |
+                    # Short path: the official build lays deps\ and obj\ next to the source dir.
+                    git clone --depth=1 --branch "${{ steps.php-tag.outputs.tag }}" https://github.com/php/php-src.git C:\php-build\php-src
+                    if ($LASTEXITCODE -ne 0) { exit 1 }
+                    Copy-Item -Path ext-src -Destination C:\php-build\php-src\ext\php_debugger -Recurse
+
+            -   name: Adjust the official build configuration
+                shell: pwsh
+                run: |
+                    $module = "builder\php\BuildPhp"
+                    $ts = "${{ matrix.ts }}"
+
+                    # The toolset the official build uses for this PHP version.
+                    $vs = (Get-Content "$module\config\vs.json" -Raw | ConvertFrom-Json).php."${{ matrix.php-version }}"
+                    if (-not $vs) { Write-Error "php-windows-builder has no toolset for PHP ${{ matrix.php-version }}"; exit 1 }
+                    Write-Host "Toolset for PHP ${{ matrix.php-version }}: $vs"
+
+                    # Official configure flags, minus PGO instrumentation and the
+                    # Oracle extensions (their SDK path is relative to the official
+                    # build tree), plus the debugger compiled in statically and the
+                    # JIT disabled.
+                    $cfg = "$module\config\$vs\x64\config.$ts.bat"
+                    $content = Get-Content $cfg -Raw
+                    $content = $content.Replace('"--enable-pgi" ', '')
+                    $content = $content -replace '"--with-(pdo-oci|oci8-19)=[^"]*" ', ''
+                    $content = $content.Replace('%*', '"--enable-php-debugger" "--disable-opcache-jit" %*')
+                    if ($content -match 'enable-pgi|oci' -or $content -notmatch 'enable-php-debugger') {
+                        Write-Error "unexpected format of ${cfg}: $content"; exit 1
+                    }
+                    Set-Content -Path $cfg -Value $content -NoNewline
+                    Write-Host "configure: $content"
+
+                    # Build and package without the PGO training passes.
+                    Set-Content -Path "$module\runner\task-$ts.bat" -Value @(
+                        'call buildconf.bat 2>&1'
+                        'if errorlevel 1 exit 1'
+                        "call config.$ts.bat 2>&1"
+                        'if errorlevel 1 exit 2'
+                        'nmake 2>&1'
+                        'if errorlevel 1 exit 3'
+                        'nmake snap 2>&1'
+                        'if errorlevel 1 exit 4'
+                    )
+
+            -   name: Build PHP
+                shell: pwsh
+                working-directory: C:\php-build\php-src
+                env:
+                    GITHUB_TOKEN: ${{ github.token }}
+                run: |
+                    Import-Module "$env:GITHUB_WORKSPACE\builder\php\BuildPhp" -Force
+                    Invoke-PhpBuild -Arch x64 -Ts "${{ matrix.ts }}"
+
+            -   name: Package the interpreter bundle
+                id: package
+                shell: pwsh
+                run: |
+                    $zips = @(Get-ChildItem C:\php-build\php-src\artifacts -Filter 'php-*.zip' |
+                        Where-Object { $_.Name -notmatch '^php-(debug|devel|test)-pack-' -and $_.Name -notmatch '-src\.zip$' })
+                    if ($zips.Count -ne 1) {
+                        Get-ChildItem C:\php-build\php-src\artifacts | Format-Table Name, Length
+                        Write-Error "expected exactly one PHP binary zip, found $($zips.Count)"; exit 1
+                    }
+                    $assetName = "php-php${{ matrix.php-version }}-${{ matrix.ts }}-windows-x64.zip"
+                    Write-Host "Packaging $($zips[0].Name) as $assetName"
+                    Copy-Item $zips[0].FullName -Destination $assetName
+                    Add-Content -Path $env:GITHUB_OUTPUT -Value "asset_name=${assetName}" -Encoding utf8
+
+            -   name: Test the bundle from a clean directory
+                shell: pwsh
+                run: |
+                    # Unpack outside the build tree, so php.exe can only use the DLLs
+                    # shipped in the zip. The old bare-php.exe asset passed CI only
+                    # because its test ran next to php8.dll in the build directory.
+                    $dir = Join-Path $env:RUNNER_TEMP 'php-bundle'
+                    Expand-Archive -Path "${{ steps.package.outputs.asset_name }}" -DestinationPath $dir
+                    $php = Join-Path $dir 'php.exe'
+                    if (-not (Test-Path $php)) { Write-Error "php.exe is not at the root of the bundle"; exit 1 }
+
+                    & $php -n -v
+                    if ($LASTEXITCODE -ne 0) { Write-Error "bundled php.exe failed to start (exit $LASTEXITCODE)"; exit 1 }
+
+                    # Shared extensions (and the dependency DLLs they need, e.g.
+                    # libcrypto for openssl) must load from the bundle as well.
+                    $shared = @('openssl', 'curl', 'mbstring', 'sodium', 'zip', 'fileinfo', 'intl')
+                    $loadArgs = @('-n', '-d', "extension_dir=$dir\ext")
+                    $expected = @()
+                    foreach ($e in $shared) {
+                        if (Test-Path (Join-Path $dir "ext\php_$e.dll")) {
+                            $loadArgs += @('-d', "extension=$e")
+                            $expected += $e
+                        }
+                    }
+                    if ($expected -notcontains 'openssl') { Write-Error "the bundle has no php_openssl.dll"; exit 1 }
+
+                    $wantZts = if ("${{ matrix.ts }}" -eq 'ts') { 'true' } else { 'false' }
+                    $test = Join-Path $env:RUNNER_TEMP 'bundle-test.php'
+                    Set-Content -Path $test -Value @"
+                    <?php
+                    `$fail = [];
+                    foreach (['php_debugger', 'dom', 'simplexml', 'xml', 'libxml', 'zlib', '$($expected -join "', '")'] as `$ext) {
+                        if (!extension_loaded(`$ext)) { `$fail[] = "extension `$ext is not loaded"; }
+                    }
+                    foreach (['xdebug_break', 'xdebug_info', 'php_debugger_info'] as `$fn) {
+                        if (!function_exists(`$fn)) { `$fail[] = "function `$fn is missing"; }
+                    }
+                    if (ini_get('xdebug.client_port') === false) { `$fail[] = 'xdebug.* INI missing'; }
+                    if (ini_get('php_debugger.client_port') === false) { `$fail[] = 'php_debugger.* INI missing'; }
+                    if ((bool) PHP_ZTS !== $wantZts) { `$fail[] = 'PHP_ZTS is ' . var_export((bool) PHP_ZTS, true) . ", expected $wantZts"; }
+                    if (`$fail) { fwrite(STDERR, implode(PHP_EOL, `$fail) . PHP_EOL); exit(1); }
+                    echo 'All bundle checks passed' . PHP_EOL;
+                    "@
+                    & $php @loadArgs $test
+                    if ($LASTEXITCODE -ne 0) { Write-Error "bundle checks failed"; exit 1 }
+
+            -   name: Upload artifact
+                uses: actions/upload-artifact@v6
+                with:
+                    name: ${{ steps.package.outputs.asset_name }}
+                    path: ${{ steps.package.outputs.asset_name }}
