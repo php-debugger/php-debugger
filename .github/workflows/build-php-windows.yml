@@ -17,15 +17,34 @@ name: Windows PHP interpreter
 # (it is incompatible with php-debugger), and PGO is dropped, since its
 # training run would add a lot of build time for a debugging interpreter.
 #
-# Called by release.yml. It also runs on pull requests that change it, so a
-# change to this build is tested on real Windows runners before it reaches a
-# release.
+# Called by release.yml, which passes the php-src tags it resolved once for
+# all platforms, so every OS in a release builds the same PHP patch version.
+# It also runs on pull requests that change it, so a change to this build is
+# tested on real Windows runners before it reaches a release; those resolve the
+# latest tags themselves. Pull requests that only touch src/ do not trigger it:
+# to get Windows coverage for Windows-specific code, touch this file too.
 
 on:
     workflow_call:
         inputs:
             ref:
                 description: 'Extension ref to build (defaults to the triggering ref)'
+                type: string
+                required: false
+            php-8-2-tag:
+                description: 'php-src tag for PHP 8.2 (resolved here when empty)'
+                type: string
+                required: false
+            php-8-3-tag:
+                description: 'php-src tag for PHP 8.3 (resolved here when empty)'
+                type: string
+                required: false
+            php-8-4-tag:
+                description: 'php-src tag for PHP 8.4 (resolved here when empty)'
+                type: string
+                required: false
+            php-8-5-tag:
+                description: 'php-src tag for PHP 8.5 (resolved here when empty)'
                 type: string
                 required: false
     pull_request:
@@ -71,6 +90,18 @@ jobs:
                 shell: bash
                 run: |
                     version="${{ matrix.php-version }}"
+                    case "$version" in
+                        8.2) PHP_TAG="${{ inputs.php-8-2-tag }}" ;;
+                        8.3) PHP_TAG="${{ inputs.php-8-3-tag }}" ;;
+                        8.4) PHP_TAG="${{ inputs.php-8-4-tag }}" ;;
+                        8.5) PHP_TAG="${{ inputs.php-8-5-tag }}" ;;
+                    esac
+                    if [ -n "$PHP_TAG" ]; then
+                        echo "Using PHP source ref from the caller: ${PHP_TAG}"
+                        echo "tag=${PHP_TAG}" >> "$GITHUB_OUTPUT"
+                        exit 0
+                    fi
+                    # Not called with tags (pull request): same resolution as release.yml.
                     PHP_TAG=$(git ls-remote --tags https://github.com/php/php-src.git | \
                       grep "refs/tags/php-${version}\." | \
                       grep -v '\^{}' | \
@@ -112,8 +143,10 @@ jobs:
                     $content = Get-Content $cfg -Raw
                     $content = $content.Replace('"--enable-pgi" ', '')
                     $content = $content -replace '"--with-(pdo-oci|oci8-19)=[^"]*" ', ''
-                    $content = $content.Replace('%*', '"--enable-php-debugger" "--disable-opcache-jit" %*')
-                    if ($content -match 'enable-pgi|oci' -or $content -notmatch 'enable-php-debugger') {
+                    # Insert before the trailing %* only (the arguments forwarded to configure).
+                    $content = $content -replace '%\*(\s*)$', '"--enable-php-debugger" "--disable-opcache-jit" %*$1'
+                    if ($content -match '--enable-pgi|--with-(pdo-oci|oci8-19)' -or
+                        ([regex]::Matches($content, '--enable-php-debugger')).Count -ne 1) {
                         Write-Error "unexpected format of ${cfg}: $content"; exit 1
                     }
                     Set-Content -Path $cfg -Value $content -NoNewline

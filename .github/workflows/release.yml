@@ -564,10 +564,14 @@ jobs:
     # Lives in its own reusable workflow so pull requests that change it are
     # built and tested on Windows runners without cutting a release.
     build-php-windows:
-        needs: validate-tag
+        needs: [validate-tag, resolve-php-versions]
         uses: ./.github/workflows/build-php-windows.yml
         with:
             ref: ${{ github.event.inputs.tag || github.ref_name }}
+            php-8-2-tag: ${{ needs.resolve-php-versions.outputs.php-8-2-tag }}
+            php-8-3-tag: ${{ needs.resolve-php-versions.outputs.php-8-3-tag }}
+            php-8-4-tag: ${{ needs.resolve-php-versions.outputs.php-8-4-tag }}
+            php-8-5-tag: ${{ needs.resolve-php-versions.outputs.php-8-5-tag }}
 
     release:
         needs: [build-macos, build-linux, build-windows, build-php-macos, build-php-linux, build-php-windows]
