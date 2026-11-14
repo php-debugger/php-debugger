@@ -143,10 +143,13 @@ jobs:
                     $content = Get-Content $cfg -Raw
                     $content = $content.Replace('"--enable-pgi" ', '')
                     $content = $content -replace '"--with-(pdo-oci|oci8-19)=[^"]*" ', ''
-                    # Insert before the trailing %* only (the arguments forwarded to configure).
+                    # Insert before the trailing %* (the arguments forwarded to configure).
+                    # $ deliberately matches only at the end of the file, not of each line,
+                    # so a %* anywhere else is left alone; the check below fails the job
+                    # if the flags were not inserted exactly once.
                     $content = $content -replace '%\*(\s*)$', '"--enable-php-debugger" "--disable-opcache-jit" %*$1'
                     if ($content -match '--enable-pgi|--with-(pdo-oci|oci8-19)' -or
-                        ([regex]::Matches($content, '--enable-php-debugger')).Count -ne 1) {
+                        ([regex]::Matches($content, '"--enable-php-debugger"')).Count -ne 1) {
                         Write-Error "unexpected format of ${cfg}: $content"; exit 1
                     }
                     Set-Content -Path $cfg -Value $content -NoNewline

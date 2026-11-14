@@ -418,7 +418,8 @@ jobs:
                     # PHP= keeps the Zend VM files generated in the release tag. Otherwise make
                     # regenerates them with whatever php the runner has, and PHP 8.2's
                     # generator writes a broken zend_vm_opcodes.h when that php defines
-                    # ZEND_VM_KIND itself (PHP 8.5 does).
+                    # ZEND_VM_KIND itself (PHP 8.5 does). The regeneration is skipped when
+                    # $(PHP) is empty: see the vm.gen.intermediate rule in Zend/Makefile.frag.
                     make -j$(sysctl -n hw.logicalcpu) PHP=
 
             -   name: Verify extension is statically linked
@@ -527,7 +528,8 @@ jobs:
                     # PHP= keeps the Zend VM files generated in the release tag. Otherwise make
                     # regenerates them with whatever php the runner has, and PHP 8.2's
                     # generator writes a broken zend_vm_opcodes.h when that php defines
-                    # ZEND_VM_KIND itself (PHP 8.5 does).
+                    # ZEND_VM_KIND itself (PHP 8.5 does). The regeneration is skipped when
+                    # $(PHP) is empty: see the vm.gen.intermediate rule in Zend/Makefile.frag.
                     make -j$(nproc) PHP=
 
             -   name: Verify extension is statically linked
@@ -575,6 +577,8 @@ jobs:
         needs: [validate-tag, resolve-php-versions]
         uses: ./.github/workflows/build-php-windows.yml
         with:
+            # Same value as env.RELEASE_REF, which is not available in with: when
+            # calling a reusable workflow, so the expression is repeated here.
             ref: ${{ github.event.inputs.tag || github.ref_name }}
             php-8-2-tag: ${{ needs.resolve-php-versions.outputs.php-8-2-tag }}
             php-8-3-tag: ${{ needs.resolve-php-versions.outputs.php-8-3-tag }}
