@@ -41,10 +41,11 @@ env:
     # in the UI, not the tag) still builds and releases the right commit.
     RELEASE_REF: ${{ github.event.inputs.tag || github.ref_name }}
 
-    # Common configure flags for all Unix builds (JIT disabled - incompatible with php-debugger)
+    # Common configure flags for all Unix builds (JIT disabled - incompatible with php-debugger).
+    # The PIC flag is not here: its spelling depends on the PHP version, see PIC_FLAG
+    # in the build steps.
     CONFIGURE_FLAGS: >-
       --with-mhash
-      --with-pic
       --enable-mbstring
       --enable-mysqlnd
       --with-password-argon2
@@ -413,6 +414,14 @@ jobs:
 
                     ./buildconf --force
 
+                    # PHP 8.6 bundles Libtool 2.5, which rejects --with-pic in favor of
+                    # --enable-pic; 8.2-8.5 bundle Libtool 1.5, which only knows --with-pic
+                    # (and would merely warn about --enable-pic, silently building without it).
+                    case "${{ matrix.php-version }}" in
+                        8.[2-5]) PIC_FLAG=--with-pic ;;
+                        *) PIC_FLAG=--enable-pic ;;
+                    esac
+
                     ./configure \
                       --prefix="${PREFIX}" \
                       --localstatedir="${LOCALSTATEDIR}" \
@@ -420,6 +429,7 @@ jobs:
                       --with-config-file-path="${CONFIG_FILE_PATH}" \
                       --with-config-file-scan-dir="${CONFIG_FILE_SCAN_DIR}" \
                       $CONFIGURE_FLAGS \
+                      $PIC_FLAG \
                       $MACOS_FLAGS \
                       --with-iconv="${ICONV_PATH}" \
                       ${{ matrix.ts == 'ts' && '--enable-zts' || '' }}
@@ -530,10 +540,20 @@ jobs:
                 run: |
                     cd ~/php-src
                     ./buildconf --force
+
+                    # PHP 8.6 bundles Libtool 2.5, which rejects --with-pic in favor of
+                    # --enable-pic; 8.2-8.5 bundle Libtool 1.5, which only knows --with-pic
+                    # (and would merely warn about --enable-pic, silently building without it).
+                    case "${{ matrix.php-version }}" in
+                        8.[2-5]) PIC_FLAG=--with-pic ;;
+                        *) PIC_FLAG=--enable-pic ;;
+                    esac
+
                     ./configure \
                       --with-config-file-path=/usr/local/etc/php \
                       --with-config-file-scan-dir=/usr/local/etc/php/conf.d \
                       $CONFIGURE_FLAGS \
+                      $PIC_FLAG \
                       $LINUX_FLAGS \
                       ${{ matrix.ts == 'ts' && '--enable-zts' || '' }}
                     # PHP= keeps the Zend VM files generated in the release tag. Otherwise make
