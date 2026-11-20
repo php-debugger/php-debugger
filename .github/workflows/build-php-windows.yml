@@ -11,8 +11,8 @@ name: Windows PHP interpreter
 # The build reuses php/php-windows-builder's BuildPhp module, which is what the
 # official windows.php.net builds use. That gives the official dependency set,
 # the toolset matching the official builds (VS16 for 8.2/8.3, VS17 for 8.4/8.5,
-# so users' existing extension DLLs keep loading), and the official configure
-# flags, including a real NTS build (Windows configure defaults to ZTS). Two
+# VS18 for 8.6, so users' existing extension DLLs keep loading), and the official
+# configure flags, including a real NTS build (Windows configure defaults to ZTS). Two
 # things are changed: php_debugger is added statically with the JIT disabled
 # (it is incompatible with php-debugger), and PGO is dropped, since its
 # training run would add a lot of build time for a debugging interpreter.
@@ -47,6 +47,10 @@ on:
                 description: 'php-src tag for PHP 8.5 (resolved here when empty)'
                 type: string
                 required: false
+            php-8-6-tag:
+                description: 'php-src tag for PHP 8.6 (resolved here when empty)'
+                type: string
+                required: false
     pull_request:
         paths:
             - '.github/workflows/build-php-windows.yml'
@@ -65,10 +69,12 @@ jobs:
                     - '8.3'
                     - '8.4'
                     - '8.5'
+                    - '8.6'
                 ts:
                     - nts
                     - ts
-        runs-on: windows-2022
+        # VS 2026 (needed for PHP 8.6) is only on the windows-2025-vs2026 image
+        runs-on: ${{ matrix.php-version == '8.6' && 'windows-2025-vs2026' || 'windows-2022' }}
         name: "PHP Binary Windows — PHP ${{ matrix.php-version }} — ${{ matrix.ts == 'ts' && 'TS' || 'NTS' }}"
         steps:
             -   name: Checkout extension
@@ -81,8 +87,9 @@ jobs:
                 uses: actions/checkout@v7
                 with:
                     repository: php/php-windows-builder
-                    # v1, pinned: the steps below patch files inside it.
-                    ref: 29352c0ef9e8ce65264ea9e287881a6f7758a953
+                    # v1 (1.10.0), pinned: the steps below patch files inside it. Needs
+                    # 1.10.0 or later for the VS 2026 toolset and PHP SDK 2.9.0 used by 8.6.
+                    ref: 227d3cb94e4fd9e9ab9459020df2394ee9a00eb4
                     path: builder
 
             -   name: Resolve PHP source tag
@@ -95,6 +102,7 @@ jobs:
                         8.3) PHP_TAG="${{ inputs.php-8-3-tag }}" ;;
                         8.4) PHP_TAG="${{ inputs.php-8-4-tag }}" ;;
                         8.5) PHP_TAG="${{ inputs.php-8-5-tag }}" ;;
+                        8.6) PHP_TAG="${{ inputs.php-8-6-tag }}" ;;
                     esac
                     if [ -n "$PHP_TAG" ]; then
                         echo "Using PHP source ref from the caller: ${PHP_TAG}"

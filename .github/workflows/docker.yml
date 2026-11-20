@@ -39,7 +39,7 @@ env:
 
     # supported PHP minor versions, oldest first: the last one is the newest
     # stable and its cli image also gets the "latest" tag
-    PHP_VERSIONS: '["8.2", "8.3", "8.4", "8.5"]'
+    PHP_VERSIONS: '["8.2", "8.3", "8.4", "8.5", "8.6"]'
 
     # official image variants to mirror (apache only exists on Debian);
     # family selects the Dockerfile (docker/Dockerfile.<family>)

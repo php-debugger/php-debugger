@@ -45,7 +45,7 @@ application, the smaller the share of the work the debugger touches.
 
 ## Installation
 
-**Requirements:** PHP 8.2, 8.3, 8.4, or 8.5.
+**Requirements:** PHP 8.2, 8.3, 8.4, 8.5, or 8.6.
 
 ### Installer
 
@@ -83,7 +83,7 @@ FROM phpdebugger/php:8.4-fpm
 ```
 
 All official variants (`cli`, `fpm`, `apache`, `zts`, and their Alpine equivalents) for
-PHP 8.2–8.5, on amd64 and arm64. Everything from the official images works unchanged,
+PHP 8.2–8.6, on amd64 and arm64. Everything from the official images works unchanged,
 including `docker-php-ext-install`. See [Docker](https://php-debugger.dev/getting-started/docker).
 
 ### Other options

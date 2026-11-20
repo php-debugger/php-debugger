@@ -21,7 +21,7 @@
         }
     ],
     "require": {
-        "php": ">=8.2,<8.6"
+        "php": ">=8.2,<8.7"
     },
     "php-ext": {
         "extension-name": "php_debugger",

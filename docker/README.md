@@ -18,7 +18,7 @@ These images are meant for development environments and should **not** be used i
 
 ## Supported tags
 
-Images are built for PHP **8.2, 8.3, 8.4 and 8.5**, for `linux/amd64` and `linux/arm64`, mirroring the official image variants:
+Images are built for PHP **8.2, 8.3, 8.4, 8.5 and 8.6**, for `linux/amd64` and `linux/arm64`, mirroring the official image variants:
 
 | Tag | Distro |
 |---|---|
