@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 PHP Debugger — a Zend extension forked from Xdebug, stripped to step-debugging only (DBGp). Profiling, coverage, tracing, and gcstats were removed. Goal: near-zero overhead when no debug client is attached, while remaining drop-in compatible with Xdebug INI/functions/triggers. Where the two goals conflict, overhead wins and the divergence is documented — see the note on `xdebug.control_socket` under [INI / function naming](#ini--function-naming), which is currently the only INI *default* that differs from Xdebug's.
 
-Supports PHP 8.2–8.5. The shared library is `modules/php_debugger.so` (`php_debugger.dll` on Windows). The Zend module registers as `php_debugger`; `extension_loaded("xdebug")` returns false unless `php_debugger.report_xdebug_module=1` is set, which registers an additional `xdebug` module alias. The `xdebug_` C symbol prefix is unchanged throughout the source.
+Supports PHP 8.2–8.6. The shared library is `modules/php_debugger.so` (`php_debugger.dll` on Windows). The Zend module registers as `php_debugger`; `extension_loaded("xdebug")` returns false unless `php_debugger.report_xdebug_module=1` is set, which registers an additional `xdebug` module alias. The `xdebug_` C symbol prefix is unchanged throughout the source.
 
 ## Build
 
@@ -20,7 +20,7 @@ make -j$(nproc 2>/dev/null || sysctl -n hw.logicalcpu)
 
 Developer flags (`-Werror`, ASAN, full warnings) — `./configure --enable-php-debugger --enable-xdebug-dev`.
 
-`./configure` errors out if PHP version is `< 8.0` or `>= 8.7`. Configure script enforces it via `PHP_XDEBUG_FOUND_VERNUM` against `php-config --vernum`.
+`./configure` errors out if PHP version is `< 8.2` or `>= 8.7`. Configure script enforces it via `PHP_XDEBUG_FOUND_VERNUM` against `php-config --vernum`.
 
 Load extension: `php -d zend_extension=$PWD/modules/php_debugger.so ...`. **Always `zend_extension=`, not `extension=`** — registration as a Zend extension is required (observer API, opcode handlers).
 
@@ -77,7 +77,7 @@ Global state lives in `zend_xdebug_globals` (defined in `php_xdebug.h`): two par
 - `lib.c/h` — mode bitmask, `start_with_request`, control-socket granularity, opcode-handler multiplexing, active-frame tracking, output dirs, var-display limits. The `xdebug_global_mode` int and `xdebug_lib_set_mode()` are the single source of truth for mode.
 - `var.c`, `var_export_{html,line,text,xml}.c` — zval inspection and serialization (DBGp uses XML).
 - `maps/` — path-mapping mini-language and parser (used by `xdebug.path_mapping`); has its own C unit tests in `tests/ctest/`.
-- `compat.c/h` — PHP-version compatibility shims for engine API drift across 8.2–8.5.
+- `compat.c/h` — PHP-version compatibility shims for engine API drift across 8.2–8.6.
 - `compat_stubs.c/h` — empty/stub implementations of Xdebug functions that were stripped (profiler, coverage, trace, gcstats, develop helpers like `xdebug_var_dump`). They exist so existing code calling `xdebug_get_code_coverage()`, etc., doesn't fatal. When deciding whether a function should be a real impl or a stub, check whether it appears in `php_xdebug.stub.php` / `php_xdebug_arginfo.h` (regenerated from the stub via `phpize` + `gen_stub.php`).
 - `usefulstuff.c`, `cmd_parser.c`, `xml.c`, `str.c`, `hash.c`, `llist.c`, `set.c`, `vector.h`, `crc32.c`, `timing.c`, `log.c`, `headers.c`, `file.c`, `normalize_path.c`, `trim.c`, `xdebug_strndup.c`.
 

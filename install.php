@@ -30,8 +30,8 @@ if ($os === null) {
     exit(1);
 }
 
-if (version_compare(PHP_VERSION, '8.2.0', '<') || version_compare(PHP_VERSION, '8.6.0', '>=')) {
-    fwrite(STDERR, "Error: PHP {$phpVer} is not supported. Requires PHP 8.2–8.5.\n");
+if (version_compare(PHP_VERSION, '8.2.0', '<') || version_compare(PHP_VERSION, '8.7.0', '>=')) {
+    fwrite(STDERR, "Error: PHP {$phpVer} is not supported. Requires PHP 8.2–8.6.\n");
     exit(1);
 }
 

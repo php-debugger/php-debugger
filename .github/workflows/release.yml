@@ -97,11 +97,12 @@ jobs:
             php-8-3-tag: ${{ steps.resolve.outputs.php-8-3-tag }}
             php-8-4-tag: ${{ steps.resolve.outputs.php-8-4-tag }}
             php-8-5-tag: ${{ steps.resolve.outputs.php-8-5-tag }}
+            php-8-6-tag: ${{ steps.resolve.outputs.php-8-6-tag }}
         steps:
             -   name: Resolve PHP version tags
                 id: resolve
                 run: |
-                    for version in 8.2 8.3 8.4 8.5; do
+                    for version in 8.2 8.3 8.4 8.5 8.6; do
                         # Get all tags for the version and find the latest stable release.
                         # build-php-windows.yml repeats this for pull request runs; keep the
                         # two in sync.
@@ -135,6 +136,7 @@ jobs:
                     - '8.3'
                     - '8.4'
                     - '8.5'
+                    - '8.6'
                 ts:
                     - nts
                     - ts
@@ -199,6 +201,7 @@ jobs:
                     - '8.3'
                     - '8.4'
                     - '8.5'
+                    - '8.6'
                 ts:
                     - nts
                     - ts
@@ -268,10 +271,12 @@ jobs:
                     - '8.3'
                     - '8.4'
                     - '8.5'
+                    - '8.6'
                 ts:
                   - nts
                   - ts
-        runs-on: windows-2022
+        # PHP 8.6 is built with VS 2026, which only the windows-2025-vs2026 image has
+        runs-on: ${{ matrix.php-version == '8.6' && 'windows-2025-vs2026' || 'windows-2022' }}
         name: "Windows — PHP ${{ matrix.php-version }} — ${{ matrix.ts == 'ts' && 'TS' || 'NTS' }}"
         steps:
             -   uses: actions/checkout@v7
@@ -342,6 +347,7 @@ jobs:
                     - '8.3'
                     - '8.4'
                     - '8.5'
+                    - '8.6'
                 ts:
                     - nts
                     - ts
@@ -367,6 +373,7 @@ jobs:
                         8.3) PHP_TAG="${{ needs.resolve-php-versions.outputs.php-8-3-tag }}" ;;
                         8.4) PHP_TAG="${{ needs.resolve-php-versions.outputs.php-8-4-tag }}" ;;
                         8.5) PHP_TAG="${{ needs.resolve-php-versions.outputs.php-8-5-tag }}" ;;
+                        8.6) PHP_TAG="${{ needs.resolve-php-versions.outputs.php-8-6-tag }}" ;;
                     esac
 
                     echo "Using resolved PHP tag: ${PHP_TAG}"
@@ -473,6 +480,7 @@ jobs:
                     - '8.3'
                     - '8.4'
                     - '8.5'
+                    - '8.6'
                 ts:
                     - nts
                     - ts
@@ -505,6 +513,7 @@ jobs:
                         8.3) PHP_TAG="${{ needs.resolve-php-versions.outputs.php-8-3-tag }}" ;;
                         8.4) PHP_TAG="${{ needs.resolve-php-versions.outputs.php-8-4-tag }}" ;;
                         8.5) PHP_TAG="${{ needs.resolve-php-versions.outputs.php-8-5-tag }}" ;;
+                        8.6) PHP_TAG="${{ needs.resolve-php-versions.outputs.php-8-6-tag }}" ;;
                     esac
 
                     echo "Using resolved PHP tag: ${PHP_TAG}"
@@ -586,6 +595,7 @@ jobs:
             php-8-3-tag: ${{ needs.resolve-php-versions.outputs.php-8-3-tag }}
             php-8-4-tag: ${{ needs.resolve-php-versions.outputs.php-8-4-tag }}
             php-8-5-tag: ${{ needs.resolve-php-versions.outputs.php-8-5-tag }}
+            php-8-6-tag: ${{ needs.resolve-php-versions.outputs.php-8-6-tag }}
 
     release:
         needs: [build-macos, build-linux, build-windows, build-php-macos, build-php-linux, build-php-windows]

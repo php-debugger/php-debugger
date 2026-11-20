@@ -23,7 +23,7 @@ jobs:
             fail-fast: false
             matrix:
                 command: ["bench", "symfony", "rector"]
-                php: ["8.2", "8.3", "8.4", "8.5"]
+                php: ["8.2", "8.3", "8.4", "8.5", "8.6"]
                 php_debugger_mode: ["no", "off", "debug", "debug-on-demand", "debug-connected"]
         steps:
             -   uses: actions/checkout@v7
@@ -178,7 +178,7 @@ jobs:
             -   name: Setup PHP
                 uses: shivammathur/setup-php@v2
                 with:
-                    php-version: "8.5"
+                    php-version: "8.6"
                     coverage: none
 
             -   uses: actions/checkout@v7

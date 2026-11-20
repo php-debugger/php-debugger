@@ -11,13 +11,14 @@ on:
             php-version:
                 description: 'PHP version to build'
                 required: false
-                default: '8.5'
+                default: '8.6'
                 type: choice
                 options:
                     - '8.2'
                     - '8.3'
                     - '8.4'
                     - '8.5'
+                    - '8.6'
 
 jobs:
     build-unix:
@@ -30,14 +31,14 @@ jobs:
                     - os: ubuntu-latest
                       name: Linux (x86_64)
         runs-on: ${{ matrix.os }}
-        name: "${{ matrix.name }} — PHP ${{ inputs.php-version || '8.5' }}"
+        name: "${{ matrix.name }} — PHP ${{ inputs.php-version || '8.6' }}"
         steps:
             -   uses: actions/checkout@v7
 
             -   name: Setup PHP
                 uses: shivammathur/setup-php@v2
                 with:
-                    php-version: ${{ inputs.php-version || '8.5' }}
+                    php-version: ${{ inputs.php-version || '8.6' }}
                     coverage: none
                     extensions: xmlreader
 
@@ -81,15 +82,16 @@ jobs:
                 ts:
                     - nts
                     - ts
-        runs-on: windows-2022
-        name: "Windows (x64) — PHP ${{ inputs.php-version || '8.5' }} — ${{ matrix.ts == 'ts' && 'TS' || 'NTS' }}"
+        # PHP 8.6 is built with VS 2026, which only the windows-2025-vs2026 image has
+        runs-on: ${{ (inputs.php-version || '8.6') == '8.6' && 'windows-2025-vs2026' || 'windows-2022' }}
+        name: "Windows (x64) — PHP ${{ inputs.php-version || '8.6' }} — ${{ matrix.ts == 'ts' && 'TS' || 'NTS' }}"
         steps:
             -   uses: actions/checkout@v7
 
             -   name: Build the extension
                 uses: php/php-windows-builder/extension@v1
                 with:
-                    php-version: ${{ inputs.php-version || '8.5' }}
+                    php-version: ${{ inputs.php-version || '8.6' }}
                     arch: x64
                     ts: ${{ matrix.ts }}
                     args: --enable-php-debugger
@@ -99,7 +101,7 @@ jobs:
                 id: info
                 shell: bash
                 run: |
-                    PHP_VER="${{ inputs.php-version || '8.5' }}"
+                    PHP_VER="${{ inputs.php-version || '8.6' }}"
                     TS_TAG="${{ matrix.ts }}"
                     echo "artifact_name=php-debugger-php${PHP_VER}-${TS_TAG}-windows-x64" >> $GITHUB_OUTPUT
 
