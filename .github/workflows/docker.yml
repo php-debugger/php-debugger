@@ -42,16 +42,19 @@ env:
     PHP_VERSIONS: '["8.2", "8.3", "8.4", "8.5", "8.6"]'
 
     # official image variants to mirror (apache only exists on Debian);
-    # family selects the Dockerfile (docker/Dockerfile.<family>)
+    # family selects the Dockerfile (docker/Dockerfile.<family>). "until" is
+    # the last PHP version that has the variant: from 8.6 on, the official
+    # images are ZTS-only (docker-library/php#1673), so the plain variants
+    # are ZTS builds and the separate -zts variants no longer exist.
     VARIANTS: |
         [
             {"variant": "cli",        "family": "debian"},
             {"variant": "fpm",        "family": "debian"},
             {"variant": "apache",     "family": "debian"},
-            {"variant": "zts",        "family": "debian"},
+            {"variant": "zts",        "family": "debian", "until": "8.5"},
             {"variant": "cli-alpine", "family": "alpine"},
             {"variant": "fpm-alpine", "family": "alpine"},
-            {"variant": "zts-alpine", "family": "alpine"}
+            {"variant": "zts-alpine", "family": "alpine", "until": "8.5"}
         ]
 
     # architectures and the native runners that build them (no QEMU)
@@ -113,9 +116,13 @@ jobs:
                 id: matrix
                 run: |
                     echo "latest-php=$(jq -rn --argjson v "$PHP_VERSIONS" '$v | last')" >> "$GITHUB_OUTPUT"
-                    # PHP versions x variants
-                    jq -cn --argjson versions "$PHP_VERSIONS" --argjson variants "$VARIANTS" \
-                        '[$versions[] as $php | $variants[] | {php: $php} + .]' > /tmp/variants.json
+                    # PHP versions x variants, minus variants a PHP version no
+                    # longer has (see "until" in VARIANTS)
+                    jq -cn --argjson versions "$PHP_VERSIONS" --argjson variants "$VARIANTS" '
+                        def ver: split(".") | map(tonumber);
+                        [$versions[] as $php | $variants[]
+                            | select(.until == null or ($php | ver) <= (.until | ver))
+                            | del(.until) | {php: $php} + .]' > /tmp/variants.json
                     echo "variants=$(jq -c '{include: .}' /tmp/variants.json)" >> "$GITHUB_OUTPUT"
                     # ... x architectures
                     echo "builds=$(jq -c --argjson archs "$ARCHS" '{include: [.[] as $v | $archs[] | $v + .]}' /tmp/variants.json)" >> "$GITHUB_OUTPUT"
@@ -286,6 +293,15 @@ jobs:
                         alpine) docker run --rm "$IMAGE" sh -c 'grep -qi "ID=alpine" /etc/os-release' ;;
                     esac
                     docker run --rm "$IMAGE" php -v
+                    # thread safety must match the official image: ZTS for the
+                    # -zts variants, and for every variant from PHP 8.6 on
+                    # (ZTS-only upstream); NTS otherwise
+                    case "${{ matrix.variant }}" in
+                        *zts*) WANT_ZTS=1 ;;
+                        *) case "${{ matrix.php }}" in 8.[2-5]) WANT_ZTS=0 ;; *) WANT_ZTS=1 ;; esac ;;
+                    esac
+                    # (int): PHP_ZTS is a bool on current PHP versions
+                    docker run --rm "$IMAGE" php -r "exit((int) PHP_ZTS === $WANT_ZTS ? 0 : 1);"
                     # tolerate release tags with or without a leading "v"
                     docker run --rm "$IMAGE" php -v | grep -F "PHP Debugger v${DEBUGGER_REF#v}"
                     docker run --rm "$IMAGE" php -m | grep -ix php_debugger
@@ -304,8 +320,8 @@ jobs:
         # so the published tag set never has mixed debugger/PHP versions
         # across variants, and never points at an image that failed
         # verification. That guarantee covers build+verify only, though: the
-        # publish step below is 28 independent Docker Hub API calls (one per
-        # variant, each already retried with backoff), and Docker Hub has no
+        # publish step below is one independent Docker Hub API call per
+        # variant (each already retried with backoff), and Docker Hub has no
         # atomic multi-tag update — a registry-side failure partway through
         # can still leave some variants' tags updated and others not.
         # fail-fast here stops queued variants from publishing once one
