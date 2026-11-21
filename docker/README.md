@@ -25,13 +25,13 @@ Images are built for PHP **8.2, 8.3, 8.4, 8.5 and 8.6**, for `linux/amd64` and `
 | `8.x-cli` (also `8.x`) | Debian |
 | `8.x-fpm` | Debian |
 | `8.x-apache` | Debian |
-| `8.x-zts` | Debian |
+| `8.x-zts` (8.2–8.5 only) | Debian |
 | `8.x-cli-alpine` (also `8.x-alpine`) | Alpine |
 | `8.x-fpm-alpine` | Alpine |
-| `8.x-zts-alpine` | Alpine |
+| `8.x-zts-alpine` (8.2–8.5 only) | Alpine |
 | `latest` | newest stable PHP, cli variant |
 
-Each tag matches the official `php:` tag of the same name.
+Each tag matches the official `php:` tag of the same name, including its thread safety. Up to PHP 8.5 the official images are NTS, with ZTS builds under the `-zts` tags. From PHP 8.6 on, the official images are ZTS-only ([docker-library/php#1673](https://github.com/docker-library/php/issues/1673)), so every 8.6 tag is a ZTS build and there are no `8.6-zts` tags.
 
 There are no patch-level tags (`8.4.23`): each tag always contains the latest patch release of its PHP minor version. Images are rebuilt on every PHP Debugger release and weekly, so they track new PHP patch releases within a few days.
 
