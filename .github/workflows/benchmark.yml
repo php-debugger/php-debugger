@@ -9,6 +9,11 @@ on:
     pull_request:
         types: [ labeled ]
 
+# The summary job reads earlier benchmark runs' artifacts through the API
+permissions:
+    contents: read
+    actions: read
+
 jobs:
     run-benchmark:
         # When triggered when a pull request is labeled we check the name of the label
@@ -26,10 +31,10 @@ jobs:
                 php: ["8.2", "8.3", "8.4", "8.5", "8.6"]
                 php_debugger_mode: ["no", "off", "debug", "debug-on-demand", "debug-connected"]
         steps:
-            -   uses: actions/checkout@v7
+            -   uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
             -   name: Setup PHP
-                uses: shivammathur/setup-php@v2
+                uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
                 with:
                     php-version: "${{ matrix.php }}"
                     coverage: none
@@ -156,7 +161,7 @@ jobs:
                     echo "${{ matrix.php }},${{ matrix.command }},${{ matrix.php_debugger_mode }}" > results/matrix-values-${{ matrix.php }}-${{ matrix.command }}-${{ matrix.php_debugger_mode }}.txt
 
             -   name: Upload result and matrix info
-                uses: actions/upload-artifact@v7
+                uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
                 with:
                     name: results-${{ matrix.command }}-${{ matrix.php }}-${{ matrix.php_debugger_mode }}
                     path: results/
@@ -176,15 +181,15 @@ jobs:
                       branch: "base"
         steps:
             -   name: Setup PHP
-                uses: shivammathur/setup-php@v2
+                uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
                 with:
                     php-version: "8.6"
                     coverage: none
 
-            -   uses: actions/checkout@v7
+            -   uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
             -   name: Download all artifacts
-                uses: actions/download-artifact@v8
+                uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
                 with:
                     path: results
 
@@ -201,7 +206,7 @@ jobs:
 
             -   name: Upload summary.csv as artifact
                 if: matrix.comparison.name == 'base-branch'
-                uses: actions/upload-artifact@v7
+                uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
                 with:
                     name: summary.csv
                     path: summary.csv
@@ -210,10 +215,17 @@ jobs:
         # Clean up intermediary artifacts after both performance jobs complete
         needs: performance
         runs-on: ubuntu-latest
+        permissions:
+            actions: write
         steps:
             -   name: delete intermediary artifacts
                 # The intermediate files that we generated are not needed and can be deleted,
                 # helping us keep the summary page clean
-                uses: geekyeggo/delete-artifact@v6
-                with:
-                    name: results-*
+                env:
+                    GH_TOKEN: ${{ github.token }}
+                run: |
+                    gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts?per_page=100" \
+                        --jq '.artifacts[] | select(.name | startswith("results-")) | .id' \
+                    | while read -r id; do
+                        gh api -X DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$id"
+                    done

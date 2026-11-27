@@ -20,6 +20,15 @@ on:
                     - '8.5'
                     - '8.6'
 
+permissions:
+    contents: read
+
+# A newer push to a pull request supersedes its older run; other runs
+# (pushes, manual runs) each get their own group, so none is dropped
+concurrency:
+    group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+    cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
     build-unix:
         strategy:
@@ -33,10 +42,10 @@ jobs:
         runs-on: ${{ matrix.os }}
         name: "${{ matrix.name }} — PHP ${{ inputs.php-version || '8.6' }}"
         steps:
-            -   uses: actions/checkout@v7
+            -   uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
             -   name: Setup PHP
-                uses: shivammathur/setup-php@v2
+                uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
                 with:
                     php-version: ${{ inputs.php-version || '8.6' }}
                     coverage: none
@@ -69,7 +78,7 @@ jobs:
                     echo "artifact_name=php-debugger-php${PHP_VER}-${OS_TAG}-${ARCH}" >> $GITHUB_OUTPUT
 
             -   name: Upload artifact
-                uses: actions/upload-artifact@v6
+                uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
                 with:
                     name: ${{ steps.info.outputs.artifact_name }}
                     path: modules/php_debugger.so
@@ -82,14 +91,15 @@ jobs:
                 ts:
                     - nts
                     - ts
-        # PHP 8.6 is built with VS 2026, which only the windows-2025-vs2026 image has
-        runs-on: ${{ (inputs.php-version || '8.6') == '8.6' && 'windows-2025-vs2026' || 'windows-2022' }}
+        # PHP 8.6 and later are built with VS 2026, which only the
+        # windows-2025-vs2026 image has
+        runs-on: ${{ contains(fromJSON('["8.2","8.3","8.4","8.5"]'), inputs.php-version || '8.6') && 'windows-2022' || 'windows-2025-vs2026' }}
         name: "Windows (x64) — PHP ${{ inputs.php-version || '8.6' }} — ${{ matrix.ts == 'ts' && 'TS' || 'NTS' }}"
         steps:
-            -   uses: actions/checkout@v7
+            -   uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
             -   name: Build the extension
-                uses: php/php-windows-builder/extension@v1
+                uses: php/php-windows-builder/extension@227d3cb94e4fd9e9ab9459020df2394ee9a00eb4 # 1.10.0
                 with:
                     php-version: ${{ inputs.php-version || '8.6' }}
                     arch: x64
@@ -118,7 +128,7 @@ jobs:
                     echo "dll_path=$($dll.FullName)" >> $env:GITHUB_OUTPUT
 
             -   name: Upload artifact
-                uses: actions/upload-artifact@v6
+                uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
                 with:
                     name: ${{ steps.info.outputs.artifact_name }}
                     path: ${{ steps.find-dll.outputs.dll_path }}
