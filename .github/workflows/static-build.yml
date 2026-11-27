@@ -8,12 +8,25 @@ on:
       - 'php_php_debugger.h'
       - 'xdebug.c'
       - '.github/workflows/static-build.yml'
+      - '.github/scripts/resolve-php-sources.py'
+      - '.github/scripts/fetch-php-source.sh'
   pull_request:
     paths:
       - 'config.m4'
       - 'php_php_debugger.h'
       - 'xdebug.c'
       - '.github/workflows/static-build.yml'
+      - '.github/scripts/resolve-php-sources.py'
+      - '.github/scripts/fetch-php-source.sh'
+
+permissions:
+  contents: read
+
+# A newer push to a pull request supersedes its older run; other runs
+# (pushes, manual runs) each get their own group, so none is dropped
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   static-build:
@@ -26,20 +39,23 @@ jobs:
 
     steps:
       - name: Checkout extension
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: ext-src
 
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential autoconf automake libtool re2c bison \
+          # No bison or re2c: the release tarball ships the generated sources
+          sudo apt-get install -y build-essential autoconf automake libtool \
             libxml2-dev libsqlite3-dev pkg-config
 
-      - name: Clone PHP source
+      # The latest php.net release of this PHP version, as the release
+      # workflow builds against
+      - name: Download PHP source
         run: |
-          git clone --depth=1 --branch="PHP-${{ matrix.php }}" \
-            https://github.com/php/php-src.git ~/php-src
+          SOURCE=$(python3 ext-src/.github/scripts/resolve-php-sources.py "${{ matrix.php }}" | jq -c '.["${{ matrix.php }}"]')
+          sh ext-src/.github/scripts/fetch-php-source.sh "$(jq -r .url <<<"$SOURCE")" "$(jq -r .sha256 <<<"$SOURCE")" ~/php-src
 
       - name: Copy extension into php-src
         run: |

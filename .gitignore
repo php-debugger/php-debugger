@@ -88,6 +88,7 @@ phpt.*
 !make-release.php
 !tests/frankenphp/**/*.php
 !tests/frankenphp/**/*.sh
+!.github/scripts/*.sh
 !bench.php
 !test-ini.php
 !rector.php
