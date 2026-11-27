@@ -6,6 +6,15 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
+# A newer push to a pull request supersedes its older run; other runs
+# (pushes, manual runs) each get their own group, so none is dropped
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   sanitizers:
     name: "ASAN + UBSAN — PHP ${{ matrix.php }}"
@@ -22,30 +31,40 @@ jobs:
 
     steps:
       - name: Checkout extension
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install build dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            build-essential autoconf automake libtool re2c bison \
+            build-essential autoconf automake libtool \
             clang llvm libxml2-dev libsqlite3-dev pkg-config
 
+      # The latest php.net release of this PHP version, as the release
+      # workflow builds against
+      - name: Resolve PHP source
+        id: php-source
+        run: |
+          SOURCE=$(python3 .github/scripts/resolve-php-sources.py "${{ matrix.php }}" | jq -c '.["${{ matrix.php }}"]')
+          echo "version=$(jq -r .version <<<"$SOURCE")" >> "$GITHUB_OUTPUT"
+          echo "url=$(jq -r .url <<<"$SOURCE")" >> "$GITHUB_OUTPUT"
+          echo "sha256=$(jq -r .sha256 <<<"$SOURCE")" >> "$GITHUB_OUTPUT"
+
+      # Keyed on the exact PHP release, so a new patch release is built afresh
       - name: Cache PHP build
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         id: php-cache
         with:
           path: ~/php-install
-          key: php-asan-${{ matrix.php }}-${{ hashFiles('.github/workflows/sanitizers.yml') }}
+          key: php-asan-${{ steps.php-source.outputs.version }}-${{ hashFiles('.github/workflows/sanitizers.yml') }}
 
       - name: Build PHP with sanitizers
         if: steps.php-cache.outputs.cache-hit != 'true'
         run: |
-          git clone --depth=1 --branch="PHP-${{ matrix.php }}" \
-            https://github.com/php/php-src.git ~/php-src
-
+          # The release tarball ships configure and the generated sources:
+          # no buildconf, bison or re2c needed
+          sh .github/scripts/fetch-php-source.sh "${{ steps.php-source.outputs.url }}" "${{ steps.php-source.outputs.sha256 }}" ~/php-src
           cd ~/php-src
-          ./buildconf --force
 
           CC=clang CXX=clang++ \
           ./configure \
@@ -96,7 +115,7 @@ jobs:
 
       - name: Upload test logs on failure
         if: failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: sanitizer-logs-${{ matrix.php }}
           path: |
